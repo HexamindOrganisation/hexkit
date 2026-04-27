@@ -79,4 +79,4 @@ widgets:
     size:
       width: 12
       height: "auto"
-    text: "agent-ui · powered by shadcn"
+    text: "agent-ui app"

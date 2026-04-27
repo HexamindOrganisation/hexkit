@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -18,6 +19,13 @@ interface InboxState {
   version: number;
 }
 
+export interface ConversationMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: number;
+}
+
 interface AgentUIContextValue {
   dispatcher: ActionDispatcher;
   agent?: AgentBridge;
@@ -29,6 +37,10 @@ interface AgentUIContextValue {
   subscribeContainer: (cb: (event: AgentEvent) => void) => () => void;
   pushDiagnostic: (d: Diagnostic) => void;
   diagnostics: Diagnostic[];
+  /** Full conversation log (user + assistant + system, finalized only). */
+  conversation: ConversationMessage[];
+  /** Append a user message to the conversation log. */
+  pushUserMessage: (content: string) => void;
 }
 
 const AgentUIContext = createContext<AgentUIContextValue | null>(null);
@@ -55,6 +67,19 @@ export function AgentUIProvider({
   const inboxSubsRef = useRef<Map<string, Set<() => void>>>(new Map());
   const containerSubsRef = useRef<Set<(e: AgentEvent) => void>>(new Set());
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [conversation, setConversation] = useState<ConversationMessage[]>([]);
+
+  const pushUserMessage = useCallback((content: string) => {
+    setConversation((prev) => [
+      ...prev,
+      {
+        id: `user-${Date.now()}-${prev.length}`,
+        role: "user",
+        content,
+        timestamp: Date.now(),
+      },
+    ]);
+  }, []);
   const knownSet = useMemo(
     () => new Set(knownWidgetNames),
     [knownWidgetNames],
@@ -125,13 +150,32 @@ export function AgentUIProvider({
       }
       // Container-bound events.
       containerSubsRef.current.forEach((cb) => cb(event));
-      if (event.kind === "error") {
+      if (event.kind === "message") {
+        setConversation((prev) => [
+          ...prev,
+          {
+            id: event.messageId ?? `assistant-${Date.now()}-${prev.length}`,
+            role: event.role,
+            content: event.content,
+            timestamp: Date.now(),
+          },
+        ]);
+      } else if (event.kind === "error") {
         pushDiagnostic({
           severity: "error",
           code: "agent.error",
           message: event.message,
           path: [],
         });
+        setConversation((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}-${prev.length}`,
+            role: "system",
+            content: `Error: ${event.message}`,
+            timestamp: Date.now(),
+          },
+        ]);
       }
     });
     return unsub;
@@ -146,8 +190,10 @@ export function AgentUIProvider({
       subscribeContainer,
       pushDiagnostic,
       diagnostics,
+      conversation,
+      pushUserMessage,
     }),
-    [dispatcher, agent, diagnostics],
+    [dispatcher, agent, diagnostics, conversation, pushUserMessage],
   );
 
   return (
@@ -159,6 +205,16 @@ export function useAgentUIContext(): AgentUIContextValue {
   const ctx = useContext(AgentUIContext);
   if (!ctx) throw new Error("useAgentUIContext must be used inside <AgentUI>");
   return ctx;
+}
+
+/**
+ * Read the full conversation log (user + assistant + system, finalized).
+ * Streaming token events are not included; emit a final `message` event to
+ * land in history.
+ */
+export function useConversation(): { messages: ConversationMessage[] } {
+  const ctx = useAgentUIContext();
+  return { messages: ctx.conversation };
 }
 
 // Widget-scoped context so hooks know which widget they're inside.

@@ -8,7 +8,7 @@ import { Textarea } from "../components/ui/textarea.js";
 export function AiChatInputWidgetComponent({
   props,
 }: WidgetProps<AiChatInputWidget>): JSX.Element {
-  const { dispatcher, agent } = useAgentUIContext();
+  const { dispatcher, agent, pushUserMessage } = useAgentUIContext();
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -21,6 +21,7 @@ export function AiChatInputWidgetComponent({
     if (!t) return;
     setSubmitting(true);
     try {
+      pushUserMessage(t);
       if (agent) {
         await agent.onUserSubmit(t);
       } else if (canFallback) {

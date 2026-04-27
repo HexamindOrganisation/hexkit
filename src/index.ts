@@ -21,6 +21,8 @@ export {
   useWidgetData,
   useAgentInbox,
   useAgentUIContext,
+  useConversation,
+  type ConversationMessage,
 } from "./runtime/context.js";
 
 // Schema + types
