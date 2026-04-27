@@ -5,3 +5,4 @@ export { PageFooterWidgetComponent } from "./page-footer.js";
 export { AiChatInputWidgetComponent } from "./ai-chat-input.js";
 export { AiResponseWidgetComponent } from "./ai-response.js";
 export { AiHistoryWidgetComponent } from "./ai-history.js";
+export { SpacerWidgetComponent } from "./spacer.js";

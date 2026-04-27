@@ -7,6 +7,7 @@ import {
   AiChatInputWidgetSchema,
   AiResponseWidgetSchema,
   AiHistoryWidgetSchema,
+  SpacerWidgetSchema,
 } from "../schema/widgets/index.js";
 import { ButtonGroupWidgetComponent } from "../widgets/button-group.js";
 import { FileTreeWidgetComponent } from "../widgets/file-tree.js";
@@ -15,6 +16,7 @@ import { PageFooterWidgetComponent } from "../widgets/page-footer.js";
 import { AiChatInputWidgetComponent } from "../widgets/ai-chat-input.js";
 import { AiResponseWidgetComponent } from "../widgets/ai-response.js";
 import { AiHistoryWidgetComponent } from "../widgets/ai-history.js";
+import { SpacerWidgetComponent } from "../widgets/spacer.js";
 import type { AnyWidgetDefinition } from "./types.js";
 
 export const builtinWidgets: AnyWidgetDefinition[] = [
@@ -57,6 +59,12 @@ export const builtinWidgets: AnyWidgetDefinition[] = [
     type: "ai-history",
     schema: AiHistoryWidgetSchema,
     component: AiHistoryWidgetComponent,
+    chromeless: true,
+  }),
+  defineWidget({
+    type: "spacer",
+    schema: SpacerWidgetSchema,
+    component: SpacerWidgetComponent,
     chromeless: true,
   }),
 ];

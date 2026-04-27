@@ -22,6 +22,7 @@ custom widgets, see [extending.md](./extending.md).
 | `ai-chat-input`  | Textarea + send → AgentBridge        | yes        | main   |
 | `ai-response`    | Live chat transcript (user + agent)  | yes        | main   |
 | `ai-history`     | List of past conversations           | yes        | main   |
+| `spacer`         | Empty cell — reserves layout space   | yes        | main   |
 
 **Chromeless** widgets opt out of the default `<div class="au-widget-host">`
 border/padding so they sit flush with the page edges.
@@ -405,6 +406,38 @@ function MyConversationPicker() {
   loadConversation("conversation-id", messages);
 }
 ```
+
+---
+
+## `spacer`
+
+An empty widget that renders nothing. Use it to reserve a cell in the
+layout — useful for pushing other widgets around without resorting to
+`position` tricks.
+
+### YAML
+
+```yaml
+- name: "left-pad"
+  type: "spacer"
+  position: { horizontal: "left", vertical: "high" }
+  size: { width: 4, height: "auto" }
+```
+
+The widget itself is invisible; what matters is that it occupies a cell
+with the `width` and `height` you give it. Common patterns:
+
+- **Push a widget right.** Place a `spacer` with `horizontal: "left"` at
+  the same `vertical` row as the widget you want to nudge — the grid
+  packer fills the spacer's cells first, so the next widget lands further
+  right.
+- **Reserve vertical space.** A `spacer` with a fixed pixel height creates
+  a gap row between busy sections.
+- **Empty cell in `tabs` layout.** Put a `spacer` in a `tab` panel that's
+  intentionally blank.
+
+It honors all the standard widget-base fields (`name`, `position`, `size`,
+`tab`) and nothing else.
 
 ---
 
