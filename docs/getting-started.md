@@ -1,8 +1,9 @@
 # Getting started
 
-`agent-ui` renders a React UI from a YAML file. You write the layout + widgets
-in YAML, the library loads it, validates it, and mounts a `<AgentUI>`
-component.
+`agent-ui` renders a React UI from a YAML file. You write the layout +
+widgets in YAML, the library loads it, validates it, and mounts an
+`<AgentUI>` component. Everything visible is a widget — there is no built-in
+header, footer, or chat shell.
 
 ## Install
 
@@ -10,29 +11,75 @@ component.
 npm install agent-ui react react-dom
 ```
 
-You also need a bundler that can read YAML as text. With Vite the idiomatic
-way is `import configText from "./ui.yaml?raw"`. With other bundlers, read the
-YAML however you prefer and pass the string (or a parsed object) to `<AgentUI>`.
+The library uses **shadcn/ui + Tailwind CSS** for the built-in widgets. You
+must install Tailwind in your app and apply the bundled preset.
+
+```bash
+npm install -D tailwindcss postcss autoprefixer
+```
+
+`tailwind.config.cjs`:
+
+```js
+const path = require("node:path");
+
+module.exports = {
+  presets: [require("agent-ui/tailwind-preset")],
+  content: [
+    "./src/**/*.{ts,tsx,html}",
+    // Important: include the library's compiled output so its Tailwind classes are picked up.
+    "./node_modules/agent-ui/dist/**/*.{js,cjs}",
+  ],
+};
+```
+
+`postcss.config.cjs`:
+
+```js
+module.exports = {
+  plugins: { tailwindcss: {}, autoprefixer: {} },
+};
+```
+
+In your app's CSS entry:
+
+```css
+@import "agent-ui/shadcn.css";   /* Tailwind directives + shadcn CSS variables */
+@import "agent-ui/style.css";    /* structural shell, layout chrome, diagnostics */
+```
+
+You also need a way to read YAML as text. With Vite the idiomatic form is
+`import configText from "./ui.yaml?raw"`. With other bundlers, read the YAML
+however you prefer and pass the string (or a parsed object) to `<AgentUI>`.
 
 ## Minimum working example
 
 ```tsx
 import { AgentUI, type ActionDispatcher } from "agent-ui";
+import "agent-ui/shadcn.css";
 import "agent-ui/style.css";
 
 const yaml = `
 page:
-  title: "Hello"
   layout_type: "grid"
 widgets:
-  - name: "greeting"
-    type: "markdown"
+  - name: "header"
+    type: "page-header"
     size: { width: 12, height: "auto" }
-    content: "# Hello world\\n\\nFrom **agent-ui**."
+    title: "Hello"
+    subtitle: "from agent-ui"
+  - name: "actions"
+    type: "button-group"
+    size: { width: 12, height: "auto" }
+    buttons:
+      - { label: "Click me", action: "say_hi" }
 `;
 
 const dispatcher: ActionDispatcher = {
-  async invoke() { return null; },
+  async invoke(action) {
+    if (action === "say_hi") alert("hi");
+    return null;
+  },
 };
 
 export default function App() {
@@ -40,27 +87,23 @@ export default function App() {
 }
 ```
 
-That renders a page titled "Hello" with one markdown widget, plus the two
-always-on containers: a user-input box at the bottom and an agent-response
-area above the main grid.
-
 ## The `<AgentUI>` component
 
 ```ts
 interface AgentUIProps {
   config: string | object | URL;     // raw YAML, already-parsed object, or fetchable
-  dispatcher: ActionDispatcher;      // required — see docs/getting-started.md#dispatcher
+  dispatcher: ActionDispatcher;      // required — see Dispatcher
   widgets?: WidgetRegistry | AnyWidgetDefinition[];  // extend built-in widgets
   agent?: AgentBridge;               // optional — for streaming agent output
-  theme?: Partial<ThemeTokens>;      // override theme tokens
+  theme?: Partial<ThemeTokens>;      // override structural-shell theme tokens
   diagnostics?: "overlay" | "console" | "silent";   // default: "overlay"
   onError?: (diagnostics: Diagnostic[]) => void;
 }
 ```
 
-- If `config` is a **string with a newline** or with `something:`, it's treated
-  as raw YAML. Any other string is treated as a URL to fetch.
-- If `config` is an **object**, it bypasses YAML parsing entirely. Useful for
+- If `config` is a **string with a newline** or with `something:`, it's
+  treated as raw YAML. Any other string is fetched as a URL.
+- If `config` is an **object**, YAML parsing is skipped. Useful for
   dynamically-generated configs and tests.
 - If `config` is a **`URL`**, the library fetches and parses it.
 
@@ -73,7 +116,12 @@ The dispatcher is the only way widgets talk to your application. Every
 ```ts
 interface ActionDispatcher {
   invoke(action: string, args?: unknown): Promise<unknown>;
-  subscribe?(action: string, args: unknown, onData: (d: unknown) => void): () => void;
+  subscribe?(
+    action: string,
+    args: unknown,
+    onData: (d: unknown) => void,
+    onError?: (e: unknown) => void,
+  ): () => void;
   has?(action: string): boolean;
 }
 ```
@@ -89,7 +137,7 @@ const dispatcher: ActionDispatcher = {
       default:           return null;
     }
   },
-  // Optional: allows the resolver to warn about YAML actions you haven't wired up.
+  // Optional: lets the resolver warn about YAML actions you haven't wired up.
   has(action) {
     return ["list_files", "save"].includes(action);
   },
@@ -100,13 +148,13 @@ const dispatcher: ActionDispatcher = {
 
 | Method | When |
 |---|---|
-| `invoke` | Widget mounts with `data_source`; form submits; file-row action clicked; menu item clicked |
+| `invoke` | Widget mounts with `data_source`; button-group click; file-tree action click; ai-chat-input fallback when no AgentBridge |
 | `subscribe` | Widget has `data_source: { ..., subscribe: true }` — for streaming data |
-| `has` | Only at resolve time, to emit warnings for unknown actions |
+| `has` | At resolve time, to emit warnings for unknown actions |
 
 ## AgentBridge (optional)
 
-Opt in when your UI needs to show streaming output from an AI agent.
+Opt in when your UI shows streaming output from an AI agent.
 
 ```ts
 interface AgentBridge {
@@ -127,16 +175,14 @@ Example that mocks a streaming turn:
 ```ts
 const agent: AgentBridge = {
   onUserSubmit(text) {
-    // Kick off a Claude call, for instance.
     console.log("User said:", text);
   },
   subscribeAgentOutput(emit) {
-    // Simulate a few streaming tokens then a completed message.
     const id = "m1";
     emit({ kind: "status", state: "responding" });
     const chunks = ["Hello ", "there ", "— let me think."];
     const timers = chunks.map((text, i) =>
-      setTimeout(() => emit({ kind: "token", text, messageId: id }), 200 * (i + 1))
+      setTimeout(() => emit({ kind: "token", text, messageId: id }), 200 * (i + 1)),
     );
     const final = setTimeout(() => {
       emit({ kind: "message", role: "assistant", content: "Hello there — let me think.", messageId: id });
@@ -154,24 +200,47 @@ const agent: AgentBridge = {
 
 | Event kind | Goes to |
 |---|---|
-| `token` | Agent-response container, coalesced by `messageId` into one growing bubble |
-| `message` | Agent-response container (finalized bubble; replaces a partial of the same `messageId`) |
-| `status` | Agent-response container ("…thinking" / "…responding" indicator) |
+| `token` | `ai-response` widget(s), coalesced by `messageId` into one growing bubble. |
+| `message` | `ai-response` widget(s) (finalized bubble) **and** the conversation log read by `ai-history`. |
+| `status` | `ai-response` widget(s) ("…thinking" / "…responding" indicator). |
 | `tool-call` | **Exactly one** widget: the one whose `name === event.widget`. No broadcast. |
-| `error` | Agent-response container **and** the diagnostics overlay |
+| `error` | `ai-response` widget(s), conversation log (as a system message), and the diagnostics overlay. |
 
-`tool-call.widget` is **required**. Events with no widget name, or a name that
-doesn't match any widget in the plan, are dropped with a dev-mode warning.
-This is how widget isolation is preserved.
+`tool-call.widget` is **required**. Events with no widget name, or a name
+that doesn't match any widget in the plan, are dropped with a dev-mode
+warning. This is how widget isolation is preserved.
+
+If your config has no `ai-response` widget, the agent's streaming output is
+still tracked in the conversation log (visible via `ai-history` or
+`useConversation()`) but isn't displayed by a streaming bubble.
 
 ### No bridge? Fallbacks
 
-- **User-input container**: if `dispatcher.has("user-submit")` is true, the
-  input falls back to calling `dispatcher.invoke("user-submit", { text })` on
-  submit. Otherwise it renders inert with a dev warning.
-- **Agent-response container**: renders an empty placeholder.
-- **tool-call** events: unreachable. Widgets that want to be updated by an
-  agent simply won't be, but they can still read data via `data_source`.
+- **`ai-chat-input`**: if `dispatcher.has("user-submit")` is true, submits
+  fall back to `dispatcher.invoke("user-submit", { text })`. Otherwise the
+  textarea renders inert with a dev warning. The user message still lands in
+  the conversation log either way.
+- **`ai-response`**: shows `empty_text` (or "No agent bridge connected.").
+- **`ai-history`**: shows whatever's in the log — initially empty.
+- **`tool-call`** events: unreachable. Widgets that expect agent updates
+  simply won't receive any, but they can still load via `data_source`.
+
+## Conversation log
+
+The provider maintains a unified conversation log:
+
+```ts
+import { useConversation } from "agent-ui";
+
+const { messages } = useConversation();
+// messages: { id, role: "user" | "assistant" | "system", content, timestamp }[]
+```
+
+It's populated by `ai-chat-input` (user submits) and by the provider's
+`AgentBridge` subscription (assistant `message` events and `error` events).
+The `ai-history` widget reads from this log. Token-only streams without a
+closing `message` event do **not** appear here — emit a `message` to mark a
+turn complete.
 
 ## Diagnostics
 
@@ -185,8 +254,7 @@ prop:
 - `"silent"`: suppress all reporting — your `onError` callback is your only
   signal.
 
-Diagnostics include YAML source `line` and `col` when available, so clicking
-through to the right spot in your config is usually trivial.
+Diagnostics include YAML source `line` and `col` when available.
 
 ## CLI
 
@@ -211,5 +279,6 @@ Validates a config and exits non-zero on errors. Good for CI.
 
 ## Next steps
 
-- **[YAML reference](./yaml-reference.md)** — every field and widget type documented.
+- **[YAML reference](./yaml-reference.md)** — config shape, layouts, and diagnostics.
+- **[Widgets](./widgets.md)** — every native widget's YAML schema and behavior.
 - **[Extending](./extending.md)** — custom widgets, custom dispatchers, hooks.

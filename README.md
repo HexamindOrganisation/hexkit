@@ -1,24 +1,50 @@
 # agent-ui
 
-A React + TypeScript library that turns a YAML config into a running AI agent UI.
+A React + TypeScript library that turns a YAML config into a running AI
+agent UI, built on shadcn/ui + Tailwind CSS. Everything visible is a widget
+— no built-in chrome.
 
-**Full docs:** [docs/README.md](./docs/README.md) · [Getting started](./docs/getting-started.md) · [YAML reference](./docs/yaml-reference.md) · [Extending](./docs/extending.md)
+**Full docs:** [docs/README.md](./docs/README.md) ·
+[Getting started](./docs/getting-started.md) ·
+[Widgets](./docs/widgets.md) ·
+[YAML reference](./docs/yaml-reference.md) ·
+[Extending](./docs/extending.md)
 
 ## Install
 
 ```bash
-npm install agent-ui
+npm install agent-ui react react-dom
+npm install -D tailwindcss postcss autoprefixer
+```
+
+`tailwind.config.cjs`:
+
+```js
+module.exports = {
+  presets: [require("agent-ui/tailwind-preset")],
+  content: [
+    "./src/**/*.{ts,tsx,html}",
+    "./node_modules/agent-ui/dist/**/*.{js,cjs}",
+  ],
+};
+```
+
+In your app's CSS entry:
+
+```css
+@import "agent-ui/shadcn.css";
+@import "agent-ui/style.css";
 ```
 
 ## Quick start
 
 ```tsx
 import { AgentUI, type ActionDispatcher } from "agent-ui";
+import "agent-ui/shadcn.css";
 import "agent-ui/style.css";
 
 const dispatcher: ActionDispatcher = {
   async invoke(action, args) {
-    // Route to your agent tools, HTTP, or local functions
     if (action === "list_user_files") return await fetch("/api/files").then(r => r.json());
     return null;
   },
@@ -26,18 +52,19 @@ const dispatcher: ActionDispatcher = {
 
 const config = `
 page:
-  title: "My Dashboard"
   layout_type: "grid"
 
 widgets:
-  - name: "My Files"
-    type: "file-type"
-    size: { width: 6, height: 400 }
-    data_source:
-      action: "list_user_files"
-    file_actions:
-      - name: "Open"
-        action: "open_file"
+  - name: "header"
+    type: "page-header"
+    size: { width: 12, height: "auto" }
+    title: "My Dashboard"
+
+  - name: "Files"
+    type: "file-tree"
+    size: { width: 12, height: 400 }
+    data_source: { action: "list_user_files" }
+    on_select: "open_file"
 `;
 
 export default function App() {
@@ -72,38 +99,44 @@ npx agent-ui emit-schema          # prints JSON Schema
 4. **normalize** defaults
 5. **compile** layout math → `RenderPlan`
 6. **render** as React
-7. **runtime** dispatches actions, subscribes to agent streams
+7. **runtime** dispatches actions, subscribes to agent streams, maintains the conversation log
 
 Stages 1–5 are pure and return `Result<T, Diagnostic[]>`. The `RenderPlan` is
 serializable and snapshot-testable.
 
 ## Built-in widgets
 
-| `type`            | purpose                             |
-|-------------------|-------------------------------------|
-| `markdown`        | Rendered markdown (static or live)  |
-| `file-type`       | File list with per-row action menu  |
-| `to-do-list-type` | Checkable tasks                     |
-| `data-table`      | Tabular data with sort/filter       |
-| `form`            | Input form → submit action          |
-| `key-value`       | Labeled facts / status panel        |
-| `chart`           | Line/bar SVG chart                  |
+| `type`           | Purpose                                 |
+|------------------|-----------------------------------------|
+| `page-header`    | Title + optional subtitle/icon          |
+| `page-footer`    | Single-line footer                      |
+| `button-group`   | Row/column of action buttons (shadcn)   |
+| `file-tree`      | Recursive folder/file tree              |
+| `ai-chat-input`  | Textarea + send → AgentBridge           |
+| `ai-response`    | Streaming agent output (tokens + msgs)  |
+| `ai-history`     | Full conversation transcript            |
+
+See [docs/widgets.md](./docs/widgets.md) for each widget's YAML schema and
+behavior.
 
 ## Custom widgets
 
 ```tsx
-import { defineWidget, WidgetRegistry, builtinWidgets } from "agent-ui";
+import { defineWidget, WidgetRegistry, builtinWidgets, WidgetBaseShape } from "agent-ui";
 import { z } from "zod";
 
 const banner = defineWidget({
   type: "banner",
   schema: z.object({
-    name: z.string(),
+    ...WidgetBaseShape,
     type: z.literal("banner"),
-    size: z.object({ width: z.number(), height: z.union([z.number(), z.literal("auto")]) }),
     message: z.string(),
   }),
-  component: ({ props }) => <div className="banner">{props.message}</div>,
+  component: ({ props }) => (
+    <div className="rounded-md bg-accent px-4 py-2 text-accent-foreground">
+      {props.message}
+    </div>
+  ),
 });
 
 const widgets = new WidgetRegistry([...builtinWidgets, banner]);
@@ -134,6 +167,12 @@ widget — no broadcast, no fallback. Widgets read their inbox via:
 
 ```ts
 const { lastPayload, history } = useAgentInbox<MyShape>();
+```
+
+The full conversation (user + assistant + system) is also exposed:
+
+```ts
+const { messages } = useConversation();
 ```
 
 ## License

@@ -19,27 +19,32 @@ import {
   WidgetRegistry,
   builtinWidgets,
   AgentUI,
+  WidgetBaseShape,
   type WidgetProps,
 } from "agent-ui";
 
 const BannerSchema = z.object({
-  // Every widget schema needs these three discriminator/layout fields.
-  name: z.string().min(1),
+  ...WidgetBaseShape,                       // name, type, position, size, tab
   type: z.literal("banner"),
-  size: z.object({
-    width: z.number().int().min(1).max(12),
-    height: z.union([z.number().positive(), z.literal("auto")]),
-  }),
-  // …then your own fields.
   message: z.string(),
   tone: z.enum(["info", "warn", "error"]).default("info"),
 });
 
 type BannerProps = z.infer<typeof BannerSchema>;
 
-function Banner({ props, dispatcher }: WidgetProps<BannerProps>) {
+function Banner({ props }: WidgetProps<BannerProps>) {
+  // Tailwind classes work because the consumer's tailwind.config includes
+  // node_modules/agent-ui/dist (and your own source) in `content`.
   return (
-    <div className={`banner banner-${props.tone}`}>
+    <div
+      className={
+        props.tone === "error"
+          ? "rounded-md bg-destructive px-4 py-2 text-destructive-foreground"
+          : props.tone === "warn"
+            ? "rounded-md bg-yellow-100 px-4 py-2 text-yellow-900"
+            : "rounded-md bg-accent px-4 py-2 text-accent-foreground"
+      }
+    >
       {props.message}
     </div>
   );
@@ -68,42 +73,39 @@ Now `type: "banner"` works in YAML:
   tone: "warn"
 ```
 
-### Reusing the base shape
+### `chromeless` widgets
 
-There's a shortcut for the three common fields:
+If your widget should sit flush (no border/padding from the default
+`<div class="au-widget-host">`), pass `chromeless: true`:
 
 ```ts
-import { WidgetBaseShape } from "agent-ui"; // optional export path; see "Importing internals" below
-
-const BannerSchema = z.object({
-  ...WidgetBaseShape,
-  type: z.literal("banner"),
-  message: z.string(),
+defineWidget({
+  type: "banner",
+  schema: BannerSchema,
+  component: Banner,
+  chromeless: true,
 });
 ```
 
-That way `name`, `size`, `position`, and `tab` all come in for free — only
-`type` and your new fields need to be declared.
+This is what the built-in `page-header`, `page-footer`, `ai-chat-input`,
+`ai-response`, and `ai-history` widgets do.
 
 ### Replacing a built-in
 
-If you want, for example, a richer markdown renderer than the bundled one:
+Pass your version *after* `builtinWidgets` — later registrations win. For
+example, a custom file-tree:
 
 ```tsx
-import ReactMarkdown from "react-markdown";
-import { MarkdownWidgetSchema, defineWidget } from "agent-ui";
+import { FileTreeWidgetSchema, defineWidget } from "agent-ui";
 
-const richMarkdown = defineWidget({
-  type: "markdown",     // same name → overrides the built-in
-  schema: MarkdownWidgetSchema,
-  component: ({ props }) => <ReactMarkdown>{props.content ?? ""}</ReactMarkdown>,
+const fancyFileTree = defineWidget({
+  type: "file-tree",                  // same type → overrides the built-in
+  schema: FileTreeWidgetSchema,
+  component: MyFancyFileTree,
 });
 
-const registry = new WidgetRegistry([...builtinWidgets, richMarkdown]);
+const registry = new WidgetRegistry([...builtinWidgets, fancyFileTree]);
 ```
-
-`WidgetRegistry.registerMany` keeps later registrations' definitions, so
-passing your version after `builtinWidgets` wins.
 
 ### Widget defaults
 
@@ -111,17 +113,17 @@ passing your version after `builtinWidgets` wins.
 defineWidget({
   type: "banner",
   schema: BannerSchema,
-  defaults: { tone: "info" },   // merged into user YAML before validation
+  defaults: { tone: "info" },         // shallow-merged into raw YAML before validation
   component: Banner,
 });
 ```
 
-Defaults are shallow-merged on the *raw* YAML input before Zod validates it,
-so any field the user sets still wins.
+User-set fields still win.
 
 ## Widget runtime hooks
 
-Widgets receive `props` and `dispatcher`. For the rest, use hooks:
+Widgets receive `props` and `dispatcher` directly. For everything else, use
+hooks.
 
 ### `useWidgetData<T>(dataSource)`
 
@@ -150,7 +152,6 @@ import { useAgentInbox } from "agent-ui";
 
 function ActivityFeed() {
   const { lastPayload, history } = useAgentInbox<Event>();
-  // lastPayload is undefined until the first matching tool-call arrives.
   return <ul>{history.map((e, i) => <li key={i}>{e.kind}</li>)}</ul>;
 }
 ```
@@ -158,13 +159,43 @@ function ActivityFeed() {
 A widget called `"feed"` receives an event like:
 
 ```ts
-bridge.subscribeAgentOutput((emit) => {
-  emit({ kind: "tool-call", widget: "feed", payload: { kind: "heartbeat" } });
-});
+emit({ kind: "tool-call", widget: "feed", payload: { kind: "heartbeat" } });
 ```
 
-If `widget` doesn't match any widget `name` in the plan, the event drops with
-a diagnostic — no broadcast.
+If `widget` doesn't match any widget `name` in the plan, the event drops
+with a diagnostic — no broadcast.
+
+### `useConversation()`
+
+Reads the full conversation log (user + assistant + system, finalized only).
+The same log that backs the built-in `ai-history` widget.
+
+```tsx
+import { useConversation, type ConversationMessage } from "agent-ui";
+
+function MyHistory() {
+  const { messages } = useConversation();
+  return (
+    <ul>
+      {messages.map((m: ConversationMessage) => (
+        <li key={m.id}>
+          [{m.role}] {m.content}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+User messages land here when the user submits via `ai-chat-input` (or any
+widget that calls `useAgentUIContext().pushUserMessage(text)`). Assistant
+messages land here from finalized `message` events on the `AgentBridge`.
+
+### `useAgentUIContext()`
+
+Escape hatch for the full provider value: `{ dispatcher, agent,
+pushUserMessage, pushDiagnostic, conversation, ... }`. Useful when building
+custom widgets that need fine-grained control.
 
 ## Dispatcher patterns
 
@@ -200,12 +231,12 @@ const dispatcher: ActionDispatcher = {
 And in YAML:
 
 ```yaml
-- name: "live-trades"
-  type: "data-table"
+- name: "Files"
+  type: "file-tree"
   data_source:
-    action: "market.trades"
+    action: "watch.files"
     subscribe: true
-  # ...
+  size: { width: 12, height: "auto" }
 ```
 
 ### Routing through Claude tool use
@@ -238,10 +269,10 @@ const agent: AgentBridge = {
   },
   subscribeAgentOutput(emit) {
     const es = new EventSource("/api/chat/stream");
-    es.addEventListener("token",   (e) => emit({ kind: "token",   ...JSON.parse(e.data) }));
-    es.addEventListener("message", (e) => emit({ kind: "message", ...JSON.parse(e.data) }));
-    es.addEventListener("tool",    (e) => emit({ kind: "tool-call", ...JSON.parse(e.data) }));
-    es.addEventListener("status",  (e) => emit({ kind: "status",  ...JSON.parse(e.data) }));
+    es.addEventListener("token",   (e) => emit({ kind: "token",    ...JSON.parse(e.data) }));
+    es.addEventListener("message", (e) => emit({ kind: "message",  ...JSON.parse(e.data) }));
+    es.addEventListener("tool",    (e) => emit({ kind: "tool-call",...JSON.parse(e.data) }));
+    es.addEventListener("status",  (e) => emit({ kind: "status",   ...JSON.parse(e.data) }));
     return () => es.close();
   },
 };
@@ -255,26 +286,64 @@ structured data, and you push that data into a specific widget:
 ```ts
 // Server-side pseudocode
 onToolResult("list_user_files", (result) => {
-  emit({ kind: "tool-call", widget: "My Files", payload: result.files });
+  emit({ kind: "tool-call", widget: "Files", payload: result.files });
 });
 ```
 
-Client-side, the widget named `"My Files"` already reads `useAgentInbox`:
+The widget named `"Files"` reads `useAgentInbox` internally:
 
 ```tsx
-function FileTypeWidget({ props }) {
+function FileTreeWidget({ props }) {
   const { data } = useWidgetData(props.data_source);
   const { lastPayload } = useAgentInbox();
-  const files = lastPayload ?? data ?? [];
-  // agent updates win over the initial data-source fetch
+  const nodes = lastPayload ?? data ?? props.nodes ?? [];
+  // agent updates win over the data-source fetch, which wins over static nodes
 }
 ```
 
-(This is exactly what the built-in `file-type` widget does.)
+That's exactly what the built-in `file-tree` widget does.
 
 ## Theming
 
-### Overriding tokens
+There are two layers: the **shadcn/Tailwind** layer (used by the built-in
+widgets) and the **legacy CSS variables** (used by the structural shell:
+sidebar layout, tabs, widget host frame, diagnostics overlay).
+
+### shadcn / Tailwind
+
+Edit the CSS variables in your own globals after importing `agent-ui/shadcn.css`:
+
+```css
+@import "agent-ui/shadcn.css";
+
+:root {
+  --primary: 280 75% 52%;            /* purple */
+  --radius: 0.75rem;
+}
+```
+
+The variables match the canonical shadcn palette — see
+[shadcn.css](../src/shadcn.css) for the full list. Set the `.dark` class on
+a parent to flip into dark mode.
+
+You can also extend the Tailwind preset in your own `tailwind.config.cjs`:
+
+```js
+module.exports = {
+  presets: [require("agent-ui/tailwind-preset")],
+  content: ["./src/**/*.{ts,tsx}", "./node_modules/agent-ui/dist/**/*.{js,cjs}"],
+  theme: {
+    extend: {
+      fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+    },
+  },
+};
+```
+
+### Structural shell tokens
+
+The `theme` prop overrides the legacy palette compiled into CSS variables on
+the `<AgentUI>` root:
 
 ```tsx
 <AgentUI
@@ -290,8 +359,7 @@ function FileTypeWidget({ props }) {
 ```
 
 Available tokens: `bg`, `fg`, `accent`, `accentFg`, `border`, `radius`,
-`space1`…`space5`, `font`. These compile to CSS custom properties on the
-`<AgentUI>` root:
+`space1`…`space5`, `font`. They compile to:
 
 ```css
 --au-bg, --au-fg, --au-accent, --au-accent-fg, --au-border,
@@ -299,23 +367,24 @@ Available tokens: `bg`, `fg`, `accent`, `accentFg`, `border`, `radius`,
 --au-accent-hover, --au-accent-soft
 ```
 
+These are read by the structural shell only — the built-in widgets ignore
+them and use the shadcn variables.
+
 ### Per-widget styling
 
-Every widget is wrapped in a `<div class="au-widget-host" data-widget-type="…">`,
-so scoped CSS is easy:
+Every widget is wrapped in `<div class="au-widget-host" data-widget-name="…"
+data-widget-type="…">`, so scoped CSS is easy:
 
 ```css
-.au-widget-host[data-widget-type="chart"] {
+.au-widget-host[data-widget-type="file-tree"] {
   background: #fafafa;
-  padding: 16px;
+}
+.au-widget-host[data-widget-name="Quick actions"] {
+  /* ... */
 }
 ```
 
-You can also target by name:
-
-```css
-.au-widget-host[data-widget-name="Traffic"] { /* ... */ }
-```
+Chromeless widgets get the additional class `au-widget-host-chromeless`.
 
 ## Working with the plan directly
 
@@ -342,8 +411,7 @@ Good for:
 
 - Snapshot tests that pin the shape of your layout.
 - Prerendering / SSR where you want to inspect a plan before mounting.
-- Building a visual editor on top (it's an explicit non-goal of v1, but the
-  primitives are here).
+- Building a visual editor on top.
 
 ## Testing
 
@@ -352,12 +420,22 @@ The library doesn't ship a test harness, but the pieces compose well:
 ```ts
 import { compilePlan, WidgetRegistry, builtinWidgets } from "agent-ui";
 
-test("dashboard has 2 widgets", () => {
+test("dashboard has a header and a button group", () => {
   const config = {
-    page: { title: "X", layout_type: "grid" },
+    page: { layout_type: "grid" },
     widgets: [
-      { name: "a", type: "markdown", size: { width: 6, height: 100 }, content: "a" },
-      { name: "b", type: "markdown", size: { width: 6, height: 100 }, content: "b" },
+      {
+        name: "header",
+        type: "page-header",
+        size: { width: 12, height: "auto" },
+        title: "Hi",
+      },
+      {
+        name: "actions",
+        type: "button-group",
+        size: { width: 12, height: "auto" },
+        buttons: [{ label: "Go", action: "go" }],
+      },
     ],
   };
   const plan = compilePlan(config, { registry: new WidgetRegistry(builtinWidgets) });
@@ -378,15 +456,15 @@ const dispatcher: ActionDispatcher = {
 
 ## Importing internals
 
-The public surface is deliberately narrow; a few internals are still exported
-for power users:
+The public surface is deliberately narrow; here's what's exported:
 
-- `parseYaml`, `compilePlan`, `resolve`, `normalize`, `resolveTheme`
-- `WidgetRegistry`, `defineWidget`, `builtinWidgets`
-- `ConfigSchema`, `BuiltinWidgetSchemas`, `buildConfigSchema`
-- Hook surface: `useWidgetData`, `useAgentInbox`, `useAgentUIContext`
-- Types: `RenderPlan`, `RenderPlanWidget`, `ResolvedConfig`, `Diagnostic`,
-  `ThemeTokens`, and everything above.
+- **Mount**: `AgentUI`, `AgentUIProps`
+- **Runtime**: `ActionDispatcher`, `nullDispatcher`, `AgentBridge`, `AgentEvent`
+- **Registry**: `defineWidget`, `WidgetRegistry`, `builtinWidgets`, `WidgetDefinition`, `AnyWidgetDefinition`, `WidgetProps`
+- **Hooks**: `useWidgetData`, `useAgentInbox`, `useAgentUIContext`, `useConversation`, `ConversationMessage`
+- **Schema**: `ConfigSchema`, `buildConfigSchema`, `BuiltinWidgetSchemas`, `BuiltinWidgetType`, `BuiltinWidget`, `WidgetBaseShape`, `WidgetBaseSchema`, plus per-widget schemas (`PageHeaderWidgetSchema`, `FileTreeWidgetSchema`, …) and types
+- **Compile**: `parseYaml`, `compilePlan`, `resolve`, `normalize`, `resolveTheme`, `RenderPlan`, `RenderPlanWidget`, `ResolvedConfig`, `ResolvedWidget`, `ResolvedTheme`, `ThemeTokens`, `ParseResult`, `SourceMap`
+- **Diagnostics**: `Diagnostic`, `DiagnosticSeverity`, `Result`
 
-If you need something else (e.g., `WidgetBaseShape`), file an issue — the
-surface is intentionally held small.
+If you need something else, file an issue — the surface is intentionally
+held small.
