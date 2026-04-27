@@ -200,19 +200,24 @@ const agent: AgentBridge = {
 
 | Event kind | Goes to |
 |---|---|
-| `token` | `ai-response` widget(s), coalesced by `messageId` into one growing bubble. |
-| `message` | `ai-response` widget(s) (finalized bubble) **and** the conversation log read by `ai-history`. |
+| `token` | The `ai-response` widget(s)' streaming-partial overlay, coalesced by `messageId`. |
+| `message` | Appended to the conversation log (visible via `ai-response` and `useConversation()`); drops the matching streaming partial. |
 | `status` | `ai-response` widget(s) ("…thinking" / "…responding" indicator). |
 | `tool-call` | **Exactly one** widget: the one whose `name === event.widget`. No broadcast. |
-| `error` | `ai-response` widget(s), conversation log (as a system message), and the diagnostics overlay. |
+| `error` | Appended to the conversation log as a system message; also surfaced in the diagnostics overlay. |
 
 `tool-call.widget` is **required**. Events with no widget name, or a name
 that doesn't match any widget in the plan, are dropped with a dev-mode
 warning. This is how widget isolation is preserved.
 
+`ai-history` is *not* a renderer of the live transcript — it's a clickable
+list of past conversations from a host data source. Selecting one calls
+`loadConversation(id, messages)`, which replaces the in-memory log; the
+`ai-response` widget then re-renders with the loaded messages.
+
 If your config has no `ai-response` widget, the agent's streaming output is
-still tracked in the conversation log (visible via `ai-history` or
-`useConversation()`) but isn't displayed by a streaming bubble.
+still tracked in the conversation log (visible via `useConversation()`) but
+isn't displayed.
 
 ### No bridge? Fallbacks
 
@@ -220,8 +225,11 @@ still tracked in the conversation log (visible via `ai-history` or
   fall back to `dispatcher.invoke("user-submit", { text })`. Otherwise the
   textarea renders inert with a dev warning. The user message still lands in
   the conversation log either way.
-- **`ai-response`**: shows `empty_text` (or "No agent bridge connected.").
-- **`ai-history`**: shows whatever's in the log — initially empty.
+- **`ai-response`**: shows the conversation log (user-only at first if
+  there's no bridge), or `empty_text` when the log is empty.
+- **`ai-history`**: still works — its conversation list comes from your
+  `data_source` action, independent of the bridge. Selecting one loads its
+  messages directly into the log.
 - **`tool-call`** events: unreachable. Widgets that expect agent updates
   simply won't receive any, but they can still load via `data_source`.
 

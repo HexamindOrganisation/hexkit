@@ -34,6 +34,19 @@ widgets:
         action: "delete_all"
         variant: "destructive"
 
+  - name: "history"
+    type: "ai-history"
+    position:
+      horizontal: "left"
+      vertical: "middle"
+    size:
+      width: 12
+      height: "auto"
+    data_source:
+      action: "list_conversations"
+    on_select: "load_conversation"
+    empty_text: "No past conversations"
+
   - name: "agent-output"
     type: "ai-response"
     position:

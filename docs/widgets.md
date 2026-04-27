@@ -20,8 +20,8 @@ custom widgets, see [extending.md](./extending.md).
 | `button-group`   | Row/column of action buttons         | no         |
 | `file-tree`      | Recursive folder/file tree           | no         |
 | `ai-chat-input`  | Textarea + send → AgentBridge        | yes        |
-| `ai-response`    | Streaming agent output (tokens + msg)| yes        |
-| `ai-history`     | Full conversation transcript         | yes        |
+| `ai-response`    | Live chat transcript (user + agent)  | yes        |
+| `ai-history`     | List of past conversations           | yes        |
 
 **Chromeless** widgets opt out of the default `<div class="au-widget-host">`
 border/padding so they sit flush with the page edges.
@@ -231,7 +231,9 @@ Pressing **Shift+Enter** inserts a newline; **Enter alone** submits.
 
 ## `ai-response`
 
-Streaming agent output panel. Reads from the `AgentBridge` event stream.
+Live chat transcript. Renders the conversation log (user + assistant +
+system) **and** any in-flight assistant response that's still streaming
+tokens.
 
 ### YAML
 
@@ -243,75 +245,138 @@ Streaming agent output panel. Reads from the `AgentBridge` event stream.
   empty_text: "Ask the agent something below."   # optional
 ```
 
+### What it shows
+
+- **User** messages — right-aligned, primary color bubbles. Pushed into the
+  log by `ai-chat-input` on submit.
+- **Assistant** messages — left-aligned, accent-color bubbles. Pushed into
+  the log by the provider when a `message` event arrives on the
+  `AgentBridge`, **or** loaded into the log by `ai-history`.
+- **System** messages — centered, muted italic. Pushed into the log on
+  `error` events (and any system-role `message` events you emit).
+- **Streaming partial** — a translucent assistant bubble that grows as
+  `token` events stream in. When a final `message` with the same
+  `messageId` arrives, the partial is dropped and the finalized bubble takes
+  its place from the log.
+
+The widget auto-scrolls to the bottom on every new message or token.
+
 ### Event handling
 
 | Event kind | Effect on `ai-response` |
-|------------|------------------------|
-| `token`    | Appends to the in-progress assistant bubble (coalesced by `messageId`). |
-| `message`  | Finalizes the bubble (or appends a new one). |
+|------------|-------------------------|
+| `token`    | Appended to (or starts) a translucent assistant bubble at the bottom, coalesced by `messageId`. |
+| `message`  | Drops the matching partial; the provider has already added the finalized message to the log. |
 | `status`   | Shows "…thinking" / "…responding" indicator. |
-| `error`    | Appends a system-style error bubble. |
+| `error`    | Provider appends a system-role row to the log; the widget renders it. |
 | `tool-call`| Ignored — those route to the targeted widget by `name`. |
 
 ### Empty state
 
-If no `AgentBridge` is connected, or there are no messages yet, the widget
-renders `empty_text` (or "No agent bridge connected." when truly inert).
+If the conversation log is empty, no partial is in flight, and status is
+`idle`, the widget renders `empty_text` (or "No agent bridge connected."
+when no bridge is wired).
 
 ---
 
 ## `ai-history`
 
-Full conversation transcript: user messages, assistant messages, system
-messages. A different view of the same data backing `ai-response`, plus the
-user side which `ai-response` doesn't show.
+Vertical, clickable list of **past conversations** (chats), pulled from a
+host-defined data source. Selecting a conversation calls `on_select` to
+fetch its messages and loads them into the conversation log read by
+`ai-response`. Subsequent user submits and assistant replies append to the
+loaded conversation.
 
 ### YAML
 
 ```yaml
 - name: "history"
   type: "ai-history"
-  position: { horizontal: "right", vertical: "middle" }
-  size: { width: 6, height: 400 }
-  empty_text: "No conversation yet."   # optional
-  show_system: true                    # optional; default true
+  position: { horizontal: "left", vertical: "middle" }
+  size: { width: 3, height: 400 }
+  data_source:                       # optional; returns ConversationSummary[]
+    action: "list_conversations"
+    args: { user_id: "u123" }        # optional
+    subscribe: true                  # optional
+  conversations:                     # optional; static fallback when no data_source
+    - { id: "c1", title: "Welcome chat" }
+  on_select: "load_conversation"     # required; invoked with { id }
+  empty_text: "No past conversations"   # optional
 ```
 
-### What it shows
+### `ConversationSummary` shape
 
-- **User** messages: right-aligned, primary color bubbles.
-- **Assistant** messages: left-aligned, accent-color bubbles.
-- **System** messages: centered, muted italic. Hidden if `show_system: false`.
+Each item the data source returns:
 
-Each row also shows a small `HH:MM · role` line beneath. Auto-scrolls to
-bottom on new messages.
+```ts
+type ConversationSummary = {
+  id: string;          // required, unique
+  title: string;       // required, the clickable label
+  preview?: string;    // optional, sub-text under the title
+  timestamp?: number;  // optional, formatted as "Mon DD, HH:MM"
+};
+```
 
-### Data source
+### `on_select` action
 
-Internal — populated by the provider, not by `data_source`:
+When a conversation is clicked, the widget invokes
+`dispatcher.invoke(on_select, { id })`. The result must be either:
 
-- `ai-chat-input` calls `pushUserMessage(text)` on submit → user message lands
-  here immediately.
-- The provider's `subscribeAgentOutput` handler appends finalized `message`
-  events from the `AgentBridge` (assistant + system).
-- Errors land as system-role rows.
+- An array: `ConversationMessage[]`, **or**
+- An object with a `messages` property: `{ messages: ConversationMessage[] }`.
 
-Token-only streams (no closing `message`) do **not** appear in history. Emit
-a final `message` event to mark a turn complete.
+The `ConversationMessage` shape:
+
+```ts
+type ConversationMessage = {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: number;
+};
+```
+
+The returned messages are passed to the provider via `loadConversation(id,
+messages)`, which:
+
+1. Replaces the in-memory conversation log with the loaded messages.
+2. Sets `selectedConversationId` so `ai-history` can highlight the active
+   row.
+
+After load, `ai-response` re-renders with the loaded transcript. Continuing
+the chat appends new user/assistant turns to that log.
+
+### Highlighting the active conversation
+
+The button for the conversation whose id matches `selectedConversationId`
+gets `aria-selected="true"` and an `accent` background. Clicking another
+conversation switches the active one — the previous one's in-memory
+appendings are **lost** unless the host has persisted them (typically by
+intercepting `pushUserMessage` and assistant `message` events to write to
+storage).
 
 ### Reading the log from custom code
 
 ```ts
 import { useConversation } from "agent-ui";
 
-function MyWidget() {
+function MyView() {
   const { messages } = useConversation();
   return <pre>{JSON.stringify(messages, null, 2)}</pre>;
 }
 ```
 
-`useConversation` is also exported as a hook — use it from your own widgets
-or host components if you want a different rendering of the same log.
+To trigger conversation loading from your own widget:
+
+```ts
+import { useAgentUIContext, type ConversationMessage } from "agent-ui";
+
+function MyConversationPicker() {
+  const { loadConversation } = useAgentUIContext();
+  // ...
+  loadConversation("conversation-id", messages);
+}
+```
 
 ---
 
@@ -378,13 +443,14 @@ widgets:
   - name: "history"
     type: "ai-history"
     position: { horizontal: "right", vertical: "middle" }
-    size: { width: 6, height: 400 }
-    empty_text: "No conversation yet."
+    size: { width: 3, height: 400 }
+    data_source: { action: "list_conversations" }
+    on_select: "load_conversation"
 
   - name: "agent-output"
     type: "ai-response"
-    position: { horizontal: "left", vertical: "low" }
-    size: { width: 12, height: "auto" }
+    position: { horizontal: "right", vertical: "middle" }
+    size: { width: 3, height: 400 }
 
   - name: "chat-input"
     type: "ai-chat-input"

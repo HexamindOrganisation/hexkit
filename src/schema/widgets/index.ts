@@ -35,6 +35,8 @@ export {
 export {
   AiHistoryWidgetSchema,
   type AiHistoryWidget,
+  ConversationSummarySchema,
+  type ConversationSummary,
 } from "./ai-history.js";
 
 import { ButtonGroupWidgetSchema } from "./button-group.js";

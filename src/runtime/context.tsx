@@ -39,8 +39,15 @@ interface AgentUIContextValue {
   diagnostics: Diagnostic[];
   /** Full conversation log (user + assistant + system, finalized only). */
   conversation: ConversationMessage[];
+  /** Id of the conversation currently loaded into the log, if any. */
+  selectedConversationId?: string;
   /** Append a user message to the conversation log. */
   pushUserMessage: (content: string) => void;
+  /**
+   * Replace the conversation log with a previously-saved conversation.
+   * Subsequent user submits and assistant replies append to the loaded log.
+   */
+  loadConversation: (id: string, messages: ConversationMessage[]) => void;
 }
 
 const AgentUIContext = createContext<AgentUIContextValue | null>(null);
@@ -68,6 +75,9 @@ export function AgentUIProvider({
   const containerSubsRef = useRef<Set<(e: AgentEvent) => void>>(new Set());
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    string | undefined
+  >(undefined);
 
   const pushUserMessage = useCallback((content: string) => {
     setConversation((prev) => [
@@ -80,6 +90,14 @@ export function AgentUIProvider({
       },
     ]);
   }, []);
+
+  const loadConversation = useCallback(
+    (id: string, messages: ConversationMessage[]) => {
+      setSelectedConversationId(id);
+      setConversation(messages);
+    },
+    [],
+  );
   const knownSet = useMemo(
     () => new Set(knownWidgetNames),
     [knownWidgetNames],
@@ -191,9 +209,19 @@ export function AgentUIProvider({
       pushDiagnostic,
       diagnostics,
       conversation,
+      ...(selectedConversationId !== undefined && { selectedConversationId }),
       pushUserMessage,
+      loadConversation,
     }),
-    [dispatcher, agent, diagnostics, conversation, pushUserMessage],
+    [
+      dispatcher,
+      agent,
+      diagnostics,
+      conversation,
+      selectedConversationId,
+      pushUserMessage,
+      loadConversation,
+    ],
   );
 
   return (
