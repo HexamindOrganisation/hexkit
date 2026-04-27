@@ -83,7 +83,7 @@ function TreeNode({
     <li role="treeitem" aria-expanded={isFolder ? expanded : undefined}>
       <div
         className={cn(
-          "group flex items-center gap-1.5 rounded-md py-1 pr-1 hover:bg-accent",
+          "group flex items-center gap-1.5 rounded-md py-1 pr-1 hover:bg-primary/10",
           (isFolder || onSelect) && "cursor-pointer",
         )}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}

@@ -365,52 +365,97 @@ module.exports = {
 };
 ```
 
-### Structural shell tokens — bridged to shadcn
+### Constrained theme API — mode + accent + escape hatch
 
-The `theme` prop (and the `page.theme.*` / `page.main_color` YAML fields)
-override the legacy palette compiled into CSS variables on the `<AgentUI>`
-root:
+The theme is intentionally minimal. Both `<AgentUI theme={...}>` and the
+YAML `page.theme` block accept the same shape:
+
+```ts
+interface ThemeTokens {
+  mode?: "light" | "dark" | "system";
+  accent?: string;                    // hex
+  overrides?: Record<string, string>; // raw CSS-var values
+}
+```
 
 ```tsx
 <AgentUI
   config={yaml}
   dispatcher={dispatcher}
   theme={{
+    mode: "dark",
     accent: "#8b5cf6",
-    radius: "12px",
-    fg: "#f4f4f5",
-    bg: "#18181b",
   }}
 />
 ```
 
-Available tokens: `bg`, `fg`, `accent`, `accentFg`, `border`, `radius`,
-`space1`…`space5`, `font`. They compile to:
+**Why so few knobs?** shadcn ships ~15 interrelated CSS variables tuned to
+work together at specific lightness levels for each mode. Letting users
+pick arbitrary `background` and `foreground` hex values (the previous
+API) was a foot-gun: text contrast got weird, borders disappeared, muted
+sections didn't read as muted. The current API picks a curated palette
+*as a whole* via `mode`, then lets you re-color the brand surface with
+one `accent` value.
 
-```css
---au-bg, --au-fg, --au-accent, --au-accent-fg, --au-border,
---au-radius, --au-space-1..5, --au-font,
---au-accent-hover, --au-accent-soft
+**What `accent` bridges to:**
+
+| Resolved CSS variable    | Source        |
+|--------------------------|---------------|
+| `--primary`              | `accent` (HSL) |
+| `--ring`                 | `accent` (HSL) — focus rings |
+| `--primary-foreground`   | auto-contrast over `accent` |
+
+Everything else (`--background`, `--foreground`, `--card`, `--popover`,
+`--muted`, `--accent`, `--secondary`, `--destructive`, `--border`,
+`--input`, …) stays at the value defined in `agent-ui/shadcn.css` for the
+active mode.
+
+**`mode: "system"`** tracks `prefers-color-scheme` at runtime. The shell
+listens to the media query and toggles a `dark` class on the AgentUI root,
+which flips the palette via the `.dark` selector in `agent-ui/shadcn.css`.
+
+**Escape hatch — `overrides`.** When a curated default really doesn't fit,
+write the variable directly:
+
+```tsx
+<AgentUI
+  theme={{
+    mode: "light",
+    accent: "#4F46E5",
+    overrides: {
+      "--muted": "210 40% 90%",
+      "--border": "214 32% 88%",
+      "--radius": "0.75rem",
+    },
+  }}
+/>
 ```
 
-These are read by the structural shell.
+Values are written verbatim as inline CSS on the AgentUI root. For shadcn
+vars, pass HSL triplets like `"210 40% 90%"` (they're consumed via
+`hsl(var(...))`). Reach for this only when you need it.
 
-**Theme overrides are bridged to the shadcn palette automatically.** When
-you set `theme.background`, `theme.foreground`, or `theme.accent` (or
-`page.main_color`), the resolver also writes the equivalent HSL triplet
-to the matching shadcn variable so the built-in widgets pick up the same
-colors:
+### Legacy `--au-*` tokens
 
-| Source                                   | Bridges to (shadcn) |
-|------------------------------------------|---------------------|
-| `theme.background`                       | `--background` |
-| `theme.foreground`                       | `--foreground`, `--card-foreground`, `--popover-foreground` |
-| `theme.accent` *or* `page.main_color`    | `--primary`, `--ring` |
-| derived `accentFg` (auto-contrast)       | `--primary-foreground` |
+The structural shell (`.au-root`, `.au-sidebar`, `.au-tab-bar`,
+`.au-diagnostics`, etc.) uses a small set of legacy custom properties
+internally. They're now derived from the shadcn palette:
 
-Variables you don't override (`--accent`, `--muted`, `--destructive`,
-`--card`, `--border`, `--input`, …) keep their curated defaults from
-`agent-ui/shadcn.css`.
+```css
+.au-root {
+  --au-bg: hsl(var(--background));
+  --au-fg: hsl(var(--foreground));
+  --au-accent: hsl(var(--primary));
+  --au-accent-fg: hsl(var(--primary-foreground));
+  --au-border: hsl(var(--border));
+  --au-radius: var(--radius);
+  --au-accent-soft: hsl(var(--primary) / 0.1);
+  /* + --au-space-1..6 (spacing scale) */
+}
+```
+
+So the legacy chrome automatically follows light/dark mode and the
+user's accent — there's nothing to configure separately.
 
 ### Per-widget styling
 

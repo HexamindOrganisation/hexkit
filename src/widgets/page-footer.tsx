@@ -5,7 +5,7 @@ export function PageFooterWidgetComponent({
   props,
 }: WidgetProps<PageFooterWidget>): JSX.Element {
   return (
-    <footer className="flex items-center justify-center border-t border-border bg-background px-4 py-2 text-xs text-muted-foreground">
+    <footer className="flex items-center justify-center px-4 py-3 text-xs text-muted-foreground">
       {props.text ?? ""}
     </footer>
   );

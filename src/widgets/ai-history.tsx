@@ -37,19 +37,19 @@ export function AiHistoryWidgetComponent({
 
   if (error) {
     return (
-      <div className="p-3 text-sm text-destructive">
+      <div className="p-2 text-sm text-destructive">
         Error: {error.message}
       </div>
     );
   }
   if (loading && conversations.length === 0) {
     return (
-      <div className="p-3 text-sm italic text-muted-foreground">Loading…</div>
+      <div className="p-2 text-sm italic text-muted-foreground">Loading…</div>
     );
   }
   if (conversations.length === 0) {
     return (
-      <div className="p-3 text-sm italic text-muted-foreground">
+      <div className="p-2 text-sm italic text-muted-foreground">
         {props.empty_text ?? "No past conversations"}
       </div>
     );
@@ -57,7 +57,7 @@ export function AiHistoryWidgetComponent({
 
   return (
     <ul
-      className="m-0 flex h-full list-none flex-col gap-1 overflow-auto p-2"
+      className="m-0 flex max-h-[28rem] list-none flex-col gap-0.5 overflow-auto p-0"
       role="listbox"
       aria-label="Past conversations"
     >
@@ -73,9 +73,9 @@ export function AiHistoryWidgetComponent({
               aria-selected={isSelected}
               className={cn(
                 "flex w-full flex-col gap-0.5 rounded-md px-3 py-2 text-left transition-colors",
-                "hover:bg-accent hover:text-accent-foreground",
+                "hover:bg-primary/10",
                 "disabled:cursor-wait disabled:opacity-60",
-                isSelected && "bg-accent text-accent-foreground",
+                isSelected && "bg-primary/15 font-medium text-primary",
               )}
             >
               <span className="truncate text-sm font-medium">{c.title}</span>

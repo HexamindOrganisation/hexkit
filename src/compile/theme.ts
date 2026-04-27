@@ -1,135 +1,64 @@
 import type { Page } from "../schema/page.js";
 
+/**
+ * Theme inputs — both the YAML `page.theme` block and the `<AgentUI theme>`
+ * prop accept this shape. Curated palette per `mode`; one `accent`; raw
+ * CSS-var `overrides` as an escape hatch.
+ */
 export interface ThemeTokens {
-  bg: string;
-  fg: string;
-  accent: string;
-  accentFg: string;
-  border: string;
-  radius: string;
-  space1: string;
-  space2: string;
-  space3: string;
-  space4: string;
-  space5: string;
-  font: string;
+  mode?: "light" | "dark" | "system";
+  /** Hex color (`#RGB`, `#RRGGBB`, `#RRGGBBAA`). Bridges to `--primary`, `--ring`, `--primary-foreground`. */
+  accent?: string;
+  /**
+   * Raw CSS custom property overrides written inline on the AgentUI root.
+   * Values are verbatim — for shadcn variables, pass HSL triplets like
+   * `"210 40% 90%"` (consumed via `hsl(var(--name))`).
+   */
+  overrides?: Record<string, string>;
 }
 
 export type ResolvedTheme = {
-  tokens: ThemeTokens;
+  /** Resolved mode. `"system"` is preserved here; the shell listens to
+   *  `prefers-color-scheme` to decide which class to apply at render time. */
+  mode: "light" | "dark" | "system";
+  /** Inline CSS custom properties to set on the AgentUI root. */
   cssVars: Record<string, string>;
-};
-
-const DEFAULT_TOKENS: ThemeTokens = {
-  bg: "#ffffff",
-  fg: "#1a1a1a",
-  accent: "#2E86DE",
-  accentFg: "#ffffff",
-  border: "#e4e4e7",
-  radius: "8px",
-  space1: "4px",
-  space2: "8px",
-  space3: "12px",
-  space4: "16px",
-  space5: "24px",
-  font: "Inter var, Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
 };
 
 export function resolveTheme(
   page: Page,
   override: Partial<ThemeTokens> = {},
 ): ResolvedTheme {
-  // Track which fields the user actually provided so we only override the
-  // shipped shadcn palette when they've explicitly opted in.
-  const userAccent =
-    override.accent ?? page.theme?.accent ?? page.main_color;
-  const userBg = override.bg ?? page.theme?.background;
-  const userFg = override.fg ?? page.theme?.foreground;
+  const theme = page.theme;
+  const mode = override.mode ?? theme?.mode ?? "light";
+  const accent = override.accent ?? theme?.accent;
 
-  const accent = userAccent ?? DEFAULT_TOKENS.accent;
-  const bg = userBg ?? DEFAULT_TOKENS.bg;
-  const fg = userFg ?? DEFAULT_TOKENS.fg;
-  const accentFg = override.accentFg ?? contrastFg(accent);
-  const border = override.border ?? DEFAULT_TOKENS.border;
+  const cssVars: Record<string, string> = {};
 
-  const tokens: ThemeTokens = {
-    ...DEFAULT_TOKENS,
-    ...override,
-    accent,
-    bg,
-    fg,
-    accentFg,
-    border,
-  };
-
-  const cssVars: Record<string, string> = {
-    // Legacy --au-* tokens, used by the structural shell (sidebar, tabs,
-    // diagnostics overlay, etc.).
-    "--au-bg": tokens.bg,
-    "--au-fg": tokens.fg,
-    "--au-accent": tokens.accent,
-    "--au-accent-fg": tokens.accentFg,
-    "--au-border": tokens.border,
-    "--au-radius": tokens.radius,
-    "--au-space-1": tokens.space1,
-    "--au-space-2": tokens.space2,
-    "--au-space-3": tokens.space3,
-    "--au-space-4": tokens.space4,
-    "--au-space-5": tokens.space5,
-    "--au-font": tokens.font,
-    "--au-accent-hover": shade(tokens.accent, -0.1),
-    "--au-accent-soft": shade(tokens.accent, 0.85),
-  };
-
-  // Bridge user-provided theme overrides into the shadcn palette so the
-  // built-in widgets pick up the same colors. We only write a shadcn var
-  // when the user set the corresponding source — otherwise the curated
-  // shadcn defaults from `agent-ui/shadcn.css` stand.
-  if (userBg) {
-    const hsl = hexToHsl(userBg);
-    if (hsl) cssVars["--background"] = hsl;
-  }
-  if (userFg) {
-    const hsl = hexToHsl(userFg);
-    if (hsl) {
-      cssVars["--foreground"] = hsl;
-      cssVars["--card-foreground"] = hsl;
-      cssVars["--popover-foreground"] = hsl;
-    }
-  }
-  if (userAccent) {
+  if (accent) {
     const hsl = hexToHsl(accent);
     if (hsl) {
       cssVars["--primary"] = hsl;
       cssVars["--ring"] = hsl;
+      const fgHsl = hexToHsl(contrastFg(accent));
+      if (fgHsl) cssVars["--primary-foreground"] = fgHsl;
     }
-    const fgHsl = hexToHsl(accentFg);
-    if (fgHsl) cssVars["--primary-foreground"] = fgHsl;
   }
 
-  return { tokens, cssVars };
+  // Caller-supplied raw overrides take precedence.
+  const overrides = { ...theme?.overrides, ...override.overrides };
+  for (const [name, value] of Object.entries(overrides)) {
+    cssVars[name] = value;
+  }
+
+  return { mode, cssVars };
 }
 
 function contrastFg(hex: string): string {
   const rgb = hexToRgb(hex);
   if (!rgb) return "#ffffff";
   const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-  return lum > 0.6 ? "#1a1a1a" : "#ffffff";
-}
-
-/**
- * Adjust a hex color toward black (negative amt) or white (positive amt).
- * amt in [-1, 1].
- */
-function shade(hex: string, amt: number): string {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return hex;
-  const target = amt < 0 ? 0 : 255;
-  const a = Math.abs(amt);
-  const r = Math.round(rgb.r + (target - rgb.r) * a);
-  const g = Math.round(rgb.g + (target - rgb.g) * a);
-  const b = Math.round(rgb.b + (target - rgb.b) * a);
-  return rgbToHex(r, g, b);
+  return lum > 0.6 ? "#0a0a0a" : "#ffffff";
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
@@ -144,15 +73,6 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const n = parseInt(h.slice(0, 6), 16);
   if (Number.isNaN(n)) return null;
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
-
-function rgbToHex(r: number, g: number, b: number): string {
-  const c = (x: number) => x.toString(16).padStart(2, "0");
-  return `#${c(clamp(r))}${c(clamp(g))}${c(clamp(b))}`;
-}
-
-function clamp(x: number): number {
-  return Math.max(0, Math.min(255, x));
 }
 
 /**

@@ -39,10 +39,7 @@ export function AiChatInputWidgetComponent({
   };
 
   return (
-    <form
-      className="flex items-end gap-2 border-t border-border bg-background px-4 py-3"
-      onSubmit={onSubmit}
-    >
+    <form className="flex items-end gap-2" onSubmit={onSubmit}>
       <Textarea
         rows={props.rows ?? 2}
         placeholder={

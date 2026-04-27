@@ -31,11 +31,12 @@ is a widget. Place a `page-header`, `ai-chat-input`, etc. as widgets.
 ```yaml
 page:
   layout_type: "grid"            # required; one of: grid | flex | sidebar | tabs
-  main_color: "#2E86DE"          # optional; hex color (#RGB, #RRGGBB, or #RRGGBBAA)
-  theme:                         # optional; overrides derived palette
-    background: "#ffffff"
-    foreground: "#1a1a1a"
-    accent: "#2E86DE"
+  theme:                         # optional; pick a curated palette
+    mode: "light"                #   "light" | "dark" | "system"
+    accent: "#4F46E5"            #   any hex; flows to --primary, --ring, focus, hovers
+    overrides:                   #   optional; raw CSS-var overrides (escape hatch)
+      "--muted": "210 40% 90%"
+      "--border": "214 32% 88%"
   main_menu:                     # optional; only consumed by layout_type: sidebar
     - name: "Home"
       icon: "/assets/home.svg"   # optional
@@ -46,12 +47,22 @@ page:
 
 - **`layout_type`** determines how the `widgets` array is arranged — see
   [Layouts](#layouts).
-- **`main_color`** is used to derive a legacy palette (hover, soft tint,
-  contrast foreground) for the structural shell. The shadcn widgets read from
-  the CSS variables in `agent-ui/shadcn.css`, not from `main_color`.
-- **`theme`** overrides specific tokens of that palette.
-- **`main_menu`** is consumed only by `layout_type: sidebar` — it renders as
-  the vertical nav. Other layouts ignore it. Each click calls
+- **`theme.mode`** picks the curated shadcn palette for that mode. `system`
+  tracks `prefers-color-scheme` at runtime and switches automatically.
+- **`theme.accent`** is one hex color. The resolver bridges it to
+  `--primary` (used by buttons, user-message bubbles, focus rings, hover
+  tints, etc.) plus a derived `--primary-foreground` for contrast. All
+  other shadcn variables (`--background`, `--foreground`, `--card`,
+  `--muted`, `--border`, `--input`, `--secondary`, `--destructive`, …)
+  stay at the values tuned for the chosen mode — they're designed to work
+  together; let them.
+- **`theme.overrides`** is an escape hatch. Each entry is written verbatim
+  as an inline CSS custom property on the AgentUI root. Use HSL triplets
+  like `"210 40% 90%"` for shadcn variables (they're consumed via
+  `hsl(var(--name))`). Reach for this only when a curated default truly
+  doesn't fit.
+- **`main_menu`** is consumed only by `layout_type: sidebar` — it renders
+  as the vertical nav. Other layouts ignore it. Each click calls
   `dispatcher.invoke(item.action)`.
 
 ## Common widget fields

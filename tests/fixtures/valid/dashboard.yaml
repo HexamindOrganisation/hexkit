@@ -1,6 +1,8 @@
 page:
-  main_color: "#2E86DE"
   layout_type: "grid"
+  theme:
+    mode: "light"
+    accent: "#2E86DE"
 
 widgets:
   - name: "My Files"

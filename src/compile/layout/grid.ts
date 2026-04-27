@@ -91,7 +91,7 @@ export function compileGrid(
   const template: GridTemplate = {
     columns: COLUMNS,
     rows: Math.max(1, maxRow + 1),
-    gap: "var(--au-space-3)",
+    gap: "var(--au-space-5)",
   };
 
   return {

@@ -61,7 +61,7 @@ export function AiResponseWidgetComponent({
 
   if (isEmpty) {
     return (
-      <div className="flex h-full items-center justify-center bg-background px-4 py-3 text-sm italic text-muted-foreground">
+      <div className="flex min-h-[6rem] items-center justify-center text-sm italic text-muted-foreground">
         {props.empty_text ?? (agent ? "" : "No agent bridge connected.")}
       </div>
     );
@@ -70,7 +70,7 @@ export function AiResponseWidgetComponent({
   return (
     <div
       ref={scrollRef}
-      className="flex h-full flex-col gap-2 overflow-auto bg-background px-4 py-3"
+      className="flex max-h-[28rem] flex-col gap-3 overflow-auto"
     >
       {log.map((m) => (
         <Bubble key={m.id} role={m.role} content={m.content} />

@@ -91,6 +91,13 @@ export function AgentUI(props: AgentUIProps): JSX.Element {
     };
   }, [config, registry, dispatcher, theme, diagnostics, onError]);
 
+  // Hooks below this line must run on every render — never gate them with
+  // conditional returns. Compute the mode regardless of load state so the
+  // dark-mode listener mounts before the plan resolves.
+  const mode: "light" | "dark" | "system" =
+    state.kind === "ready" ? state.plan.theme.mode : "light";
+  const darkActive = useDarkActive(mode);
+
   if (state.kind === "loading") {
     return <div className="au-root au-loading">Loading…</div>;
   }
@@ -115,10 +122,18 @@ export function AgentUI(props: AgentUIProps): JSX.Element {
       knownWidgetNames={widgetNames}
     >
       <div
-        className={`au-root au-layout-${plan.layout.kind}`}
+        className={[
+          "au-root",
+          `au-layout-${plan.layout.kind}`,
+          darkActive ? "dark" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         style={plan.theme.cssVars as React.CSSProperties}
       >
-        {renderLayout(plan, dispatcher)}
+        <div className="au-main-slot">
+          {renderLayout(plan, dispatcher)}
+        </div>
         {plan.footer.length > 0 && (
           <div className="au-footer-slot">
             {plan.footer.map((w) => (
@@ -132,6 +147,33 @@ export function AgentUI(props: AgentUIProps): JSX.Element {
       </div>
     </AgentUIProvider>
   );
+}
+
+/**
+ * Resolves whether dark mode should be active right now.
+ *  - "dark"   → always.
+ *  - "light"  → never.
+ *  - "system" → tracks the OS `prefers-color-scheme` media query.
+ */
+function useDarkActive(mode: "light" | "dark" | "system"): boolean {
+  const [systemDark, setSystemDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  });
+
+  useEffect(() => {
+    if (mode !== "system") return;
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    setSystemDark(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [mode]);
+
+  if (mode === "dark") return true;
+  if (mode === "light") return false;
+  return systemDark;
 }
 
 function renderLayout(plan: RenderPlan, dispatcher: ActionDispatcher): JSX.Element {

@@ -113,7 +113,7 @@ interface AgentUIProps {
   dispatcher: ActionDispatcher;      // required — see Dispatcher
   widgets?: WidgetRegistry | AnyWidgetDefinition[];  // extend built-in widgets
   agent?: AgentBridge;               // optional — for streaming agent output
-  theme?: Partial<ThemeTokens>;      // override structural-shell theme tokens
+  theme?: Partial<ThemeTokens>;      // { mode, accent, overrides } — see Theme
   diagnostics?: "overlay" | "console" | "silent";   // default: "overlay"
   onError?: (diagnostics: Diagnostic[]) => void;
 }
