@@ -5,7 +5,7 @@ page:
   # tokens (background, foreground, muted, border, …) stay at the values
   # tuned for that mode.
   theme:
-    mode: "dark"           # "light" | "dark" | "system"
+    mode: "light"           # "light" | "dark" | "system"
     accent: "#469BE5"       # any hex — flows to --primary, --ring, focus rings, hovers
 
 widgets:
