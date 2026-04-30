@@ -96,7 +96,7 @@ export function FormWidgetComponent({
           : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4";
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+    <form className="flex flex-col gap-4 p-1" onSubmit={onSubmit} noValidate>
       <div className={gridClass}>
         {props.fields.map((field) => (
           <Field
