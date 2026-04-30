@@ -24,6 +24,7 @@ custom widgets, see [extending.md](./extending.md).
 | `ai-history`     | List of past conversations           | yes        | main   |
 | `spacer`         | Empty cell — reserves layout space   | yes        | main   |
 | `markdown`       | Renders markdown text safely         | no         | main   |
+| `form`           | Schema-driven form → dispatcher      | no         | main   |
 
 **Chromeless** widgets opt out of the default `<div class="au-widget-host">`
 border/padding so they sit flush with the page edges.
@@ -524,6 +525,121 @@ The renderer is **safe by construction**:
 If you need richer features (tables, images, syntax highlighting, GFM),
 register a custom widget that wraps a vetted library like `react-markdown`
 with `rehype-sanitize`.
+
+---
+
+## `form`
+
+Schema-driven form. Each field renders the right control; on submit the
+collected values are dispatched as a single action through the
+`ActionDispatcher`. Useful for parametrizing an agent run, configuring a
+tool before invoking it, or collecting structured input that's awkward to
+extract from chat.
+
+### YAML
+
+```yaml
+- name: "new-job"
+  type: "form"
+  size: { width: 6, height: "auto" }
+  submit_action: "create_job"
+  submit_label: "Run job"
+  reset_label: "Reset"           # optional: shows a reset button
+  columns: 2                     # optional: 1–4, default 1
+  reset_on_success: true         # optional
+  success_message: "Job queued." # optional
+  fields:
+    - id: "name"
+      label: "Job name"
+      type: "text"
+      required: true
+      max_length: 60
+      placeholder: "weekly-rollup"
+    - id: "model"
+      label: "Model"
+      type: "select"
+      default: "claude-opus-4-7"
+      options:
+        - { label: "Opus 4.7", value: "claude-opus-4-7" }
+        - { label: "Sonnet 4.6", value: "claude-sonnet-4-6" }
+        - { label: "Haiku 4.5", value: "claude-haiku-4-5-20251001" }
+    - id: "max_steps"
+      label: "Max steps"
+      type: "number"
+      default: 10
+      min: 1
+      max: 100
+    - id: "instructions"
+      label: "Instructions"
+      type: "textarea"
+      rows: 4
+    - id: "dry_run"
+      label: "Dry run only"
+      type: "checkbox"
+      default: false
+```
+
+### Submit payload
+
+The dispatcher receives `{ ...submit_args, ...values }` for `submit_action`,
+where `values` is keyed by each field's `id`. With the example above:
+
+```ts
+dispatcher.invoke("create_job", {
+  name: "weekly-rollup",
+  model: "claude-opus-4-7",
+  max_steps: 10,
+  instructions: "…",
+  dry_run: false,
+});
+```
+
+If the action throws, the error message is shown beside the submit button.
+On success, `success_message` is shown and the form resets if
+`reset_on_success: true`.
+
+### Field types
+
+| `type`              | Control            | Value type | Extra fields |
+|---------------------|--------------------|------------|--------------|
+| `text`              | single-line input  | string     | `placeholder`, `default`, `min_length`, `max_length`, `pattern` |
+| `email` / `url` / `password` / `search` / `tel` | input | string | same as `text` (with built-in validation for `email` / `url`) |
+| `textarea`          | multi-line input   | string     | `placeholder`, `default`, `rows`, `min_length`, `max_length` |
+| `number`            | number input       | number     | `placeholder`, `default`, `min`, `max`, `step` |
+| `checkbox`          | checkbox           | boolean    | `default` |
+| `select`            | native `<select>`  | string     | `options` (required), `default`, `placeholder` |
+| `radio`             | radio group        | string     | `options` (required), `default` |
+| `date` / `time` / `datetime-local` | date input | string | `default`, `min`, `max` |
+
+All field types share `id`, `label`, `required`, `help`, `disabled`.
+
+### Prefilling
+
+Bind `data_source` to a dispatcher action that returns a record keyed by
+field `id`s; the form seeds those values on mount and re-seeds whenever
+the source changes:
+
+```yaml
+- name: "edit-job"
+  type: "form"
+  data_source: { action: "load_job", args: { id: "abc" } }
+  submit_action: "save_job"
+  submit_args: { id: "abc" }
+  fields: [ … ]
+```
+
+### Validation
+
+Validation runs client-side before dispatch:
+
+- `required` — non-empty string, true checkbox, or numeric value
+- `min_length` / `max_length` — string fields
+- `min` / `max` — numbers and date inputs
+- `pattern` — RegExp source applied to text-like fields
+- `email` / `url` types apply built-in format checks
+
+Server-side validation should be enforced in the dispatcher action — throw
+an `Error` with a useful message and the form will surface it.
 
 ---
 

@@ -7,3 +7,4 @@ export { AiResponseWidgetComponent } from "./ai-response.js";
 export { AiHistoryWidgetComponent } from "./ai-history.js";
 export { SpacerWidgetComponent } from "./spacer.js";
 export { MarkdownWidgetComponent } from "./markdown.js";
+export { FormWidgetComponent } from "./form.js";
