@@ -130,6 +130,7 @@ const agent: AgentBridge = {
     }
     conversationLog.push({ role: "user", content: text });
     const messageId = `reply-${Date.now()}`;
+    lastEmit?.({ kind: "status", state: "thinking" });
     try {
       const res = await fetch(`${API}/chat`, {
         method: "POST",
@@ -144,10 +145,15 @@ const agent: AgentBridge = {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let full = "";
+      let firstChunk = true;
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
+        if (firstChunk) {
+          lastEmit?.({ kind: "status", state: "responding" });
+          firstChunk = false;
+        }
         full += chunk;
         lastEmit?.({ kind: "token", text: chunk, messageId });
       }
@@ -158,6 +164,7 @@ const agent: AgentBridge = {
         role: "assistant",
         content: full,
       });
+      lastEmit?.({ kind: "status", state: "idle" });
       // Title/preview were updated server-side after the first user message.
       await notifyConversationListChanged();
     } catch (err) {
@@ -165,6 +172,7 @@ const agent: AgentBridge = {
         kind: "error",
         message: err instanceof Error ? err.message : String(err),
       });
+      lastEmit?.({ kind: "status", state: "idle" });
     }
   },
   subscribeAgentOutput(cb) {

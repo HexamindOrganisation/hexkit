@@ -272,6 +272,9 @@ tokens.
   position: { horizontal: "right", vertical: "middle" }
   size: { width: 6, height: 300 }
   empty_text: "Ask the agent something below."   # optional
+  thinking_indicator: "dots"                     # optional: "dots" | "text" | "none" (default "dots")
+  thinking_text: "…thinking"                     # optional: text shown when indicator is "text", and aria-label for "dots"
+  responding_text: "…responding"                 # optional: shown briefly between status=responding and the first token
 ```
 
 ### What it shows
@@ -296,7 +299,7 @@ The widget auto-scrolls to the bottom on every new message or token.
 |------------|-------------------------|
 | `token`    | Appended to (or starts) a translucent assistant bubble at the bottom, coalesced by `messageId`. |
 | `message`  | Drops the matching partial; the provider has already added the finalized message to the log. |
-| `status`   | Shows "…thinking" / "…responding" indicator. |
+| `status`   | `thinking` shows the loading indicator (animated dots by default) when no tokens have arrived yet; `responding` shows `responding_text` until the first token; `idle` clears both. |
 | `error`    | Provider appends a system-role row to the log; the widget renders it. |
 | `tool-call`| Ignored — those route to the targeted widget by `name`. |
 

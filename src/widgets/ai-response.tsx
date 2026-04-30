@@ -78,12 +78,51 @@ export function AiResponseWidgetComponent({
       {partials.map((p) => (
         <Bubble key={p.id} role="assistant" content={p.content} partial />
       ))}
-      {status !== "idle" && (
+      {status === "thinking" && partials.length === 0 && (
+        <ThinkingIndicator
+          mode={props.thinking_indicator ?? "dots"}
+          text={props.thinking_text ?? "…thinking"}
+        />
+      )}
+      {status === "responding" && partials.length === 0 && (
         <div className="text-xs italic text-muted-foreground">
-          {status === "thinking" ? "…thinking" : "…responding"}
+          {props.responding_text ?? "…responding"}
         </div>
       )}
     </div>
+  );
+}
+
+function ThinkingIndicator({
+  mode,
+  text,
+}: {
+  mode: "dots" | "text" | "none";
+  text: string;
+}): JSX.Element | null {
+  if (mode === "none") return null;
+  if (mode === "text") {
+    return <div className="text-xs italic text-muted-foreground">{text}</div>;
+  }
+  return (
+    <div
+      role="status"
+      aria-label={text}
+      className="flex items-center gap-1 px-3.5 py-2"
+    >
+      <Dot delay="0ms" />
+      <Dot delay="150ms" />
+      <Dot delay="300ms" />
+    </div>
+  );
+}
+
+function Dot({ delay }: { delay: string }): JSX.Element {
+  return (
+    <span
+      className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+      style={{ animationDelay: delay }}
+    />
   );
 }
 
