@@ -1,0 +1,22 @@
+agent_id: langchain-hello
+name: Hello LangChain
+framework: langchain
+entrypoint: agent.py
+agent_callable: build_agent
+version: 0.1.0
+description: >
+  Minimal LangChain tool-calling agent. Exposes one tool (`get_current_time`)
+  and replies to user questions using it.
+
+capabilities:
+  streaming: true
+  tools: true
+  state: false
+  approvals: false
+  multi_turn: true
+
+env:
+  - OPENAI_API_KEY
+
+extra:
+  model: gpt-4o-mini
