@@ -43,6 +43,10 @@ def create_app(registry: AgentRegistry) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        # Warm-start any subprocess workers. No-op for in-process mode.
+        # A failure here aborts startup before uvicorn binds the port —
+        # exactly what we want: a broken worker means the server stays down.
+        await registry.start_all()
         try:
             yield
         finally:

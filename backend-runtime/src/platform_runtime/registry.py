@@ -22,15 +22,36 @@ Lifecycle
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
+import logging
 import sys
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Iterable
 
 from .adapters import get_adapter_class
+from .adapters.remote_adapter import RemoteAdapter
 from .manifest import MANIFEST_FILENAME, AgentManifest, ManifestError, load_manifest
 from .protocol import UnifiedAgentRuntime
+from .subprocess_supervisor import WorkerSupervisor
+
+
+logger = logging.getLogger("platform_runtime.registry")
+
+
+class IsolationMode(str, Enum):
+    """How agents are hosted relative to the server process.
+
+    - IN_PROCESS:  the agent's code is imported directly into the server.
+                   Lowest overhead, no isolation.
+    - SUBPROCESS:  each agent runs in its own `python -m platform_runtime.worker`
+                   child process. The server never imports agent code.
+    """
+
+    IN_PROCESS = "in_process"
+    SUBPROCESS = "subprocess"
 
 
 class RegistryError(Exception):
@@ -49,8 +70,22 @@ class LoadedAgent:
 class AgentRegistry:
     """In-memory map of `agent_id` → `LoadedAgent`."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        isolation: IsolationMode = IsolationMode.IN_PROCESS,
+        *,
+        python_executable: str | None = None,
+    ) -> None:
         self._agents: dict[str, LoadedAgent] = {}
+        self._isolation = isolation
+        # Interpreter to use when spawning workers. None ⇒ inherit the
+        # parent's `sys.executable`. Piece 4 will override this per-agent
+        # for venv-isolated installs.
+        self._python_executable = python_executable
+
+    @property
+    def isolation(self) -> IsolationMode:
+        return self._isolation
 
     # ------------------------------------------------------------------
     # Discovery
@@ -92,20 +127,51 @@ class AgentRegistry:
                 f"(already loaded from {self._agents[manifest.agent_id].root})"
             )
 
+        if self._isolation is IsolationMode.IN_PROCESS:
+            runtime = self._build_in_process(manifest, root)
+        elif self._isolation is IsolationMode.SUBPROCESS:
+            runtime = self._build_subprocess(manifest, root)
+        else:
+            raise RegistryError(f"Unknown isolation mode: {self._isolation}")
+
+        loaded = LoadedAgent(manifest=manifest, root=root, runtime=runtime)
+        self._agents[manifest.agent_id] = loaded
+        return loaded
+
+    def _build_in_process(
+        self, manifest: AgentManifest, root: Path
+    ) -> UnifiedAgentRuntime:
+        """Construct an in-process adapter for `manifest.framework`."""
         factory = self._resolve_callable(manifest, root)
         adapter_cls = get_adapter_class(manifest.framework)
-
         try:
-            runtime = adapter_cls(manifest=manifest, root=root, factory=factory)
+            return adapter_cls(manifest=manifest, root=root, factory=factory)
         except Exception as e:
             raise RegistryError(
                 f"Adapter {adapter_cls.__name__} failed to initialize "
                 f"for agent '{manifest.agent_id}': {e}"
             ) from e
 
-        loaded = LoadedAgent(manifest=manifest, root=root, runtime=runtime)
-        self._agents[manifest.agent_id] = loaded
-        return loaded
+    def _build_subprocess(
+        self, manifest: AgentManifest, root: Path
+    ) -> UnifiedAgentRuntime:
+        """Construct a RemoteAdapter backed by an unstarted supervisor.
+
+        The supervisor is NOT started here. Callers must invoke
+        `await registry.start_all()` before serving. This keeps `load()`
+        synchronous (so discovery stays straightforward) while preserving
+        fail-fast behavior at the explicit warmup step.
+        """
+        supervisor = WorkerSupervisor(
+            str(root),
+            python_executable=self._python_executable,
+        )
+        logger.info(
+            "Prepared subprocess worker for agent_id=%s framework=%s (not started)",
+            manifest.agent_id,
+            manifest.framework,
+        )
+        return RemoteAdapter(supervisor=supervisor)
 
     # ------------------------------------------------------------------
     # Lookup
@@ -125,6 +191,38 @@ class AgentRegistry:
 
     def __iter__(self) -> Iterable[LoadedAgent]:
         return iter(self._agents.values())
+
+    # ------------------------------------------------------------------
+    # Async warmup
+    # ------------------------------------------------------------------
+
+    async def start_all(self) -> None:
+        """Start any subprocess workers in parallel. No-op for in-process.
+
+        Called from the server's lifespan after `discover()` so that a
+        worker that fails to come up blocks server startup rather than
+        manifesting as a 500 on the first request.
+        """
+        if self._isolation is not IsolationMode.SUBPROCESS:
+            return
+
+        starts: list[asyncio.Future] = []
+        for loaded in self._agents.values():
+            # Reach into the proxy for its supervisor. We could also expose
+            # a `start()` on RemoteAdapter, but the adapter is supposed to
+            # be transport-opaque; the registry is the right place to know
+            # about supervisors.
+            sup = getattr(loaded.runtime, "_sup", None)
+            if isinstance(sup, WorkerSupervisor) and not sup.is_alive():
+                starts.append(asyncio.create_task(sup.start()))
+
+        if starts:
+            # `gather` with return_exceptions=False so a single bad worker
+            # surfaces immediately. Other supervisors that succeeded keep
+            # their processes; aclose() in the lifespan finally-block will
+            # tear them down.
+            await asyncio.gather(*starts)
+            logger.info("Started %d worker(s)", len(starts))
 
     # ------------------------------------------------------------------
     # Shutdown
