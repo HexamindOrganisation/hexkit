@@ -49,6 +49,11 @@ logger = logging.getLogger("platform_runtime.venv")
 # not part of the manifest schema.
 FRAMEWORK_EXTRAS: dict[str, str] = {
     "langchain": "langchain",
+    # LangGraph and DeepAgents are built on top of LangChain; reuse the
+    # langchain extras group. Authors are free to list deepagents itself
+    # under `requirements:` in their manifest if they need it installed.
+    "langgraph": "langchain",
+    "deepagents": "langchain",
     "openai-agents": "openai-agents",
     "google-adk": "google-adk",
 }

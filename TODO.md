@@ -38,7 +38,7 @@ Each one exercises the abstraction; expect event-schema tweaks.
 
 - [x] OpenAI Agents SDK adapter
 - [x] Google ADK adapter
-- [ ] LangGraph / Deepagents
+- [x] LangGraph / DeepAgents (aliases to the LangChain adapter; both produce `CompiledStateGraph`)
 - [ ] Pydantic AI
 
 ### Control / HITL

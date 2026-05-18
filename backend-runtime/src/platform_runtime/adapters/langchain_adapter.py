@@ -57,7 +57,7 @@ from ..protocol import (
 from . import register_adapter
 
 
-@register_adapter("langchain")
+@register_adapter("langchain", "langgraph", "deepagents")
 class LangChainAdapter(UnifiedAgentRuntime):
     """Adapter for LangChain `Runnable` objects."""
 

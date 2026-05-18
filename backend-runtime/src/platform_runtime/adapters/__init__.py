@@ -21,24 +21,33 @@ _REGISTRY: dict[str, type[UnifiedAgentRuntime]] = {}
 A = TypeVar("A", bound=type[UnifiedAgentRuntime])
 
 
-def register_adapter(framework: str) -> Callable[[A], A]:
-    """Decorator: register an adapter class under a framework name.
+def register_adapter(
+    framework: str, *aliases: str
+) -> Callable[[A], A]:
+    """Decorator: register an adapter class under a framework name and any
+    number of aliases.
+
+    Aliases all dispatch to the same adapter class. Use them when several
+    framework names share an underlying runtime (e.g. `langchain`,
+    `langgraph`, and `deepagents` all produce LangChain `Runnable`s and
+    share one adapter implementation).
 
     Usage:
-        @register_adapter("langchain")
+        @register_adapter("langchain", "langgraph", "deepagents")
         class LangChainAdapter(UnifiedAgentRuntime):
             ...
     """
 
     def decorator(cls: A) -> A:
-        existing = _REGISTRY.get(framework)
-        if existing is not None and existing is not cls:
-            raise RuntimeError(
-                f"Adapter for framework '{framework}' already registered "
-                f"({existing.__name__}); refusing to overwrite with "
-                f"{cls.__name__}."
-            )
-        _REGISTRY[framework] = cls
+        for name in (framework, *aliases):
+            existing = _REGISTRY.get(name)
+            if existing is not None and existing is not cls:
+                raise RuntimeError(
+                    f"Adapter for framework '{name}' already registered "
+                    f"({existing.__name__}); refusing to overwrite with "
+                    f"{cls.__name__}."
+                )
+            _REGISTRY[name] = cls
         return cls
 
     return decorator

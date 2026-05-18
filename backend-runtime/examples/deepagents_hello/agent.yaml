@@ -1,0 +1,25 @@
+agent_id: deepagents-hello
+name: Hello DeepAgents
+framework: deepagents
+entrypoint: agent.py
+agent_callable: build_agent
+version: 0.1.0
+description: >
+  Minimal DeepAgents agent. DeepAgents is built on LangGraph; the runtime
+  serves it through the same LangChain adapter.
+
+capabilities:
+  streaming: true
+  tools: true
+  state: true
+  approvals: false
+  multi_turn: true
+
+requirements:
+  - deepagents
+
+env:
+  - OPENAI_API_KEY
+
+extra:
+  model: gpt-4o-mini

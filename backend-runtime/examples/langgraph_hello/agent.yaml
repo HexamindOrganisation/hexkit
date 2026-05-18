@@ -1,0 +1,23 @@
+agent_id: langgraph-hello
+name: Hello LangGraph
+framework: langgraph
+entrypoint: agent.py
+agent_callable: build_agent
+version: 0.1.0
+description: >
+  Minimal standalone LangGraph agent: a tiny StateGraph with a model node
+  and a tool node. Demonstrates that the runtime handles bare LangGraph
+  graphs (not just `create_agent` output) via the same LangChain adapter.
+
+capabilities:
+  streaming: true
+  tools: true
+  state: true
+  approvals: false
+  multi_turn: true
+
+env:
+  - OPENAI_API_KEY
+
+extra:
+  model: gpt-4o-mini

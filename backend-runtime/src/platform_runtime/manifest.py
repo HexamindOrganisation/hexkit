@@ -28,7 +28,17 @@ MANIFEST_FILENAME = "agent.yaml"
 
 # Frameworks the platform knows how to wrap. Adding a new adapter means
 # adding a member here and registering it in the adapter registry.
-SUPPORTED_FRAMEWORKS = frozenset({"langchain", "openai-agents", "google-adk"})
+SUPPORTED_FRAMEWORKS = frozenset({
+    # All three of these share the LangChain adapter — see
+    # adapters/langchain_adapter.py. The aliases exist so manifests read
+    # honestly when the agent is built with langgraph or deepagents rather
+    # than core LangChain.
+    "langchain",
+    "langgraph",
+    "deepagents",
+    "openai-agents",
+    "google-adk",
+})
 
 
 class AgentManifest(BaseModel):
