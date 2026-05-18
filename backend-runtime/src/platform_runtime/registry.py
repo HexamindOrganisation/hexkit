@@ -245,16 +245,33 @@ class AgentRegistry:
     def _resolve_callable(manifest: AgentManifest, root: Path):
         """Import `manifest.entrypoint` and return `manifest.agent_callable`.
 
-        The entrypoint file is loaded under a synthetic module name derived
-        from the agent_id, so two agents with an `agent.py` next to their
-        manifests do not collide in `sys.modules`. The agent's directory is
-        prepended to `sys.path` so the entrypoint can `import sibling` etc.
+        Multi-file agents
+        -----------------
+        Two locations are prepended to `sys.path` to cover the common shapes
+        of multi-file agent layouts:
+
+        - The manifest directory (`root`). This makes manifest-rooted
+          absolute imports work, e.g. `from app.tools import foo` when the
+          agent dir is `<root>/app/...`.
+        - The entrypoint's own directory. This mirrors the convention of
+          running `python <script>` directly, where the script's folder is
+          on `sys.path`. It allows `from tools import foo` when the
+          entrypoint and `tools.py` sit side by side, no `__init__.py`
+          required.
+
+        The entrypoint file itself is loaded under a synthetic module name
+        derived from the agent_id, so two agents with an `agent.py` next to
+        their manifests do not collide in `sys.modules`.
         """
         entrypoint_path = manifest.resolved_entrypoint(root)
         module_name = f"_platform_agent_{manifest.agent_id}"
 
-        if str(root) not in sys.path:
-            sys.path.insert(0, str(root))
+        # Order matters: insert(0) puts the entrypoint dir first so that an
+        # agent's local file shadows any same-named package elsewhere on
+        # sys.path. The manifest dir goes second.
+        for path in (entrypoint_path.parent, root):
+            if str(path) not in sys.path:
+                sys.path.insert(0, str(path))
 
         spec = importlib.util.spec_from_file_location(module_name, entrypoint_path)
         if spec is None or spec.loader is None:
