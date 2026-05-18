@@ -114,6 +114,20 @@ async def _handle(req: WorkerRequest, runtime: UnifiedAgentRuntime) -> None:
             h = await runtime.health()
             await _emit(frame_result(req.id, h.model_dump(mode="json")))
 
+        elif req.method == "cancel":
+            target_run_id = req.params.get("run_id")
+            if not isinstance(target_run_id, str):
+                await _emit(
+                    frame_error(
+                        req.id,
+                        "cancel requires params.run_id",
+                        "ValueError",
+                    )
+                )
+                return
+            ok = await runtime.cancel(target_run_id)
+            await _emit(frame_result(req.id, {"cancelled": ok}))
+
         elif req.method == "invoke":
             ir = InvokeRequest.model_validate(req.params)
             r = await runtime.invoke(ir)

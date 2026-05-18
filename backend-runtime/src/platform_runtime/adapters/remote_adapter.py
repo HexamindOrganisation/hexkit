@@ -71,5 +71,9 @@ class RemoteAdapter(UnifiedAgentRuntime):
         raw = await self._sup.rpc("health")
         return HealthStatus.model_validate(raw)
 
+    async def cancel(self, run_id: str) -> bool:
+        raw = await self._sup.rpc("cancel", {"run_id": run_id})
+        return bool(raw.get("cancelled", False))
+
     async def aclose(self) -> None:
         await self._sup.stop()

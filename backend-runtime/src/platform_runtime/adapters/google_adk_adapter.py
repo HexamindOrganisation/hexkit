@@ -82,6 +82,7 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
         self._runner: Runner | None = None
         self._session_service: InMemorySessionService | None = None
         self._lock = asyncio.Lock()
+        self._cancel_signals: dict[str, asyncio.Event] = {}
 
     # ------------------------------------------------------------------
     # Lazy agent / runner construction
@@ -133,6 +134,8 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
     ) -> AsyncIterator[RuntimeEvent]:
         run_id = request.run_id
         seq = _SeqCounter()
+        cancel_signal = asyncio.Event()
+        self._cancel_signals[run_id] = cancel_signal
 
         yield RunStarted(
             run_id=run_id,
@@ -144,6 +147,7 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
         try:
             runner = await self._get_runner()
         except Exception as e:
+            self._cancel_signals.pop(run_id, None)
             yield ErrorEvent(
                 run_id=run_id,
                 seq=seq.next(),
@@ -156,6 +160,7 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
         try:
             new_message = _to_content(request.input)
         except Exception as e:
+            self._cancel_signals.pop(run_id, None)
             yield ErrorEvent(
                 run_id=run_id,
                 seq=seq.next(),
@@ -184,6 +189,16 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
                 session_id=session_id,
                 new_message=new_message,
             ):
+                if cancel_signal.is_set():
+                    yield ErrorEvent(
+                        run_id=run_id,
+                        seq=seq.next(),
+                        message="Run cancelled",
+                        recoverable=False,
+                        details={"cancelled": True},
+                    )
+                    return
+
                 # Multi-agent transitions surface as StateUpdate so the UI
                 # can render "now talking to: X". `author` is the agent
                 # that produced this event.
@@ -295,6 +310,8 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
                 details={"exception_type": type(e).__name__},
             )
             return
+        finally:
+            self._cancel_signals.pop(run_id, None)
 
         yield RunCompleted(
             run_id=run_id,
@@ -359,6 +376,13 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
             return HealthStatus(ok=True)
         except Exception as e:
             return HealthStatus(ok=False, details={"error": str(e)})
+
+    async def cancel(self, run_id: str) -> bool:
+        signal = self._cancel_signals.get(run_id)
+        if signal is None or signal.is_set():
+            return False
+        signal.set()
+        return True
 
     async def aclose(self) -> None:
         runner = self._runner

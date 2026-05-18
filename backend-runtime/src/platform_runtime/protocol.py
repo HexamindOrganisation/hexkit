@@ -142,6 +142,25 @@ class UnifiedAgentRuntime(ABC):
         """Liveness probe. Override for richer checks (model reachability, ...)."""
         return HealthStatus(ok=True)
 
+    async def cancel(self, run_id: str) -> bool:
+        """Request cancellation of an in-flight run.
+
+        Returns True if a run with that id was found and signaled, False
+        otherwise. Idempotent: calling twice on the same run is allowed
+        and the second call returns False.
+
+        Cancellation takes effect at the next event boundary inside the
+        cancelled run's `stream()` loop — typically within the time it
+        takes the framework to produce its next event (milliseconds during
+        a token stream). Cancelling a run blocked on a slow non-streaming
+        call may take longer; mid-call interruption is a future
+        enhancement.
+
+        Default implementation returns False (adapter does not support
+        cancellation). Adapters opt in by overriding.
+        """
+        return False
+
     async def aclose(self) -> None:
         """Release any resources held by the adapter. Default no-op."""
         return None

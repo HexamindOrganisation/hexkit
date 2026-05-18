@@ -101,6 +101,19 @@ def create_app(registry: AgentRegistry) -> FastAPI:
         result = await runtime.invoke(body)
         return result.model_dump(mode="json")
 
+    @app.post("/agents/{agent_id}/runs/{run_id}/cancel")
+    async def cancel(agent_id: str, run_id: str) -> dict:
+        """Request cancellation of an in-flight run.
+
+        Returns `{"cancelled": true}` if the run was found and signaled;
+        `{"cancelled": false}` otherwise (already finished, never started,
+        or this adapter doesn't support cancellation). Idempotent — calling
+        twice on the same run returns `false` on the second call.
+        """
+        runtime = _resolve(registry, agent_id)
+        ok = await runtime.cancel(run_id)
+        return {"cancelled": ok}
+
     @app.post("/agents/{agent_id}/stream")
     async def stream(agent_id: str, body: InvokeRequest, request: Request):
         runtime = _resolve(registry, agent_id)

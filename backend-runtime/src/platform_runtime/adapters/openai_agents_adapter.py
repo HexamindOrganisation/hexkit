@@ -76,6 +76,7 @@ class OpenAIAgentsAdapter(UnifiedAgentRuntime):
         self._factory = factory
         self._agent: Agent | None = None
         self._lock = asyncio.Lock()
+        self._cancel_signals: dict[str, asyncio.Event] = {}
 
     # ------------------------------------------------------------------
     # Lazy agent construction
@@ -107,6 +108,8 @@ class OpenAIAgentsAdapter(UnifiedAgentRuntime):
     ) -> AsyncIterator[RuntimeEvent]:
         run_id = request.run_id
         seq = _SeqCounter()
+        cancel_signal = asyncio.Event()
+        self._cancel_signals[run_id] = cancel_signal
 
         # First event: RunStarted. Past this point no exception may escape;
         # everything becomes an ErrorEvent.
@@ -120,6 +123,7 @@ class OpenAIAgentsAdapter(UnifiedAgentRuntime):
         try:
             agent = await self._get_agent()
         except Exception as e:
+            self._cancel_signals.pop(run_id, None)
             yield ErrorEvent(
                 run_id=run_id,
                 seq=seq.next(),
@@ -140,6 +144,16 @@ class OpenAIAgentsAdapter(UnifiedAgentRuntime):
         try:
             result = Runner.run_streamed(agent, request.input)
             async for ev in result.stream_events():
+
+                if cancel_signal.is_set():
+                    yield ErrorEvent(
+                        run_id=run_id,
+                        seq=seq.next(),
+                        message="Run cancelled",
+                        recoverable=False,
+                        details={"cancelled": True},
+                    )
+                    return
 
                 if isinstance(ev, RawResponsesStreamEvent):
                     # Raw OpenAI Responses API stream events. We only
@@ -236,6 +250,8 @@ class OpenAIAgentsAdapter(UnifiedAgentRuntime):
                 details={"exception_type": type(e).__name__},
             )
             return
+        finally:
+            self._cancel_signals.pop(run_id, None)
 
         final_output: Any = None
         if result is not None:
@@ -285,6 +301,13 @@ class OpenAIAgentsAdapter(UnifiedAgentRuntime):
             return HealthStatus(ok=True)
         except Exception as e:
             return HealthStatus(ok=False, details={"error": str(e)})
+
+    async def cancel(self, run_id: str) -> bool:
+        signal = self._cancel_signals.get(run_id)
+        if signal is None or signal.is_set():
+            return False
+        signal.set()
+        return True
 
 
 # ---------------------------------------------------------------------------

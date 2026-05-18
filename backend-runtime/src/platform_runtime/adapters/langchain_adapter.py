@@ -73,6 +73,9 @@ class LangChainAdapter(UnifiedAgentRuntime):
         self._factory = factory
         self._runnable: Runnable | None = None
         self._lock = asyncio.Lock()  # guards lazy factory() call
+        # run_id → cancel signal. Populated when `stream()` begins, popped
+        # in its `finally`. `cancel()` sets the matching event.
+        self._cancel_signals: dict[str, asyncio.Event] = {}
 
     # ------------------------------------------------------------------
     # Lazy runnable construction
@@ -111,6 +114,8 @@ class LangChainAdapter(UnifiedAgentRuntime):
     ) -> AsyncIterator[RuntimeEvent]:
         run_id = request.run_id
         seq = _SeqCounter()
+        cancel_signal = asyncio.Event()
+        self._cancel_signals[run_id] = cancel_signal
 
         # First event: RunStarted. From this point on, no exception may
         # escape this generator — we convert them to ErrorEvent.
@@ -124,6 +129,7 @@ class LangChainAdapter(UnifiedAgentRuntime):
         try:
             runnable = await self._get_runnable()
         except Exception as e:
+            self._cancel_signals.pop(run_id, None)
             yield ErrorEvent(
                 run_id=run_id,
                 seq=seq.next(),
@@ -148,6 +154,15 @@ class LangChainAdapter(UnifiedAgentRuntime):
                 version="v2",
                 config={"run_id": run_id, "metadata": request.context},
             ):
+                if cancel_signal.is_set():
+                    yield ErrorEvent(
+                        run_id=run_id,
+                        seq=seq.next(),
+                        message="Run cancelled",
+                        recoverable=False,
+                        details={"cancelled": True},
+                    )
+                    return
                 name = lc_event.get("event")
                 lc_run_id = lc_event.get("run_id", "")
                 data = lc_event.get("data") or {}
@@ -271,6 +286,8 @@ class LangChainAdapter(UnifiedAgentRuntime):
                 details={"exception_type": type(e).__name__},
             )
             return
+        finally:
+            self._cancel_signals.pop(run_id, None)
 
         yield RunCompleted(
             run_id=run_id,
@@ -354,6 +371,13 @@ class LangChainAdapter(UnifiedAgentRuntime):
             return HealthStatus(ok=True)
         except Exception as e:
             return HealthStatus(ok=False, details={"error": str(e)})
+
+    async def cancel(self, run_id: str) -> bool:
+        signal = self._cancel_signals.get(run_id)
+        if signal is None or signal.is_set():
+            return False
+        signal.set()
+        return True
 
 
 # ---------------------------------------------------------------------------

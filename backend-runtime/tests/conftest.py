@@ -8,6 +8,7 @@ can load fake agents without touching LangChain.
 
 from __future__ import annotations
 
+import asyncio
 import textwrap
 from pathlib import Path
 from typing import AsyncIterator
@@ -16,6 +17,7 @@ import pytest
 
 from platform_runtime.adapters import register_adapter
 from platform_runtime.events import (
+    ErrorEvent,
     MessageCompleted,
     MessageDelta,
     RunCompleted,
@@ -45,9 +47,10 @@ _manifest_mod.SUPPORTED_FRAMEWORKS = frozenset(SUPPORTED_FRAMEWORKS | {"fake"})
 class FakeRuntime(UnifiedAgentRuntime):
     """A scripted runtime that yields a deterministic event sequence.
 
-    The factory's return value is treated as a list of (kind, **kwargs)
-    tuples describing the events to emit, in order. This lets each test
-    pin the exact event stream it wants.
+    The factory's return value is a list of (kind, **kwargs) tuples
+    describing the events to emit, in order. Optionally, a tuple of
+    ("sleep", {"seconds": 0.1}) introduces a delay between events — used
+    by cancel tests to race the cancel request against the stream.
     """
 
     def __init__(self, *, manifest, root: Path, factory) -> None:
@@ -55,9 +58,12 @@ class FakeRuntime(UnifiedAgentRuntime):
         self._root = root
         self._factory = factory
         self._script = factory()
+        self._cancel_signals: dict[str, asyncio.Event] = {}
 
     async def stream(self, request: InvokeRequest) -> AsyncIterator[RuntimeEvent]:
         seq = 0
+        cancel_signal = asyncio.Event()
+        self._cancel_signals[request.run_id] = cancel_signal
 
         def nxt() -> int:
             nonlocal seq
@@ -65,26 +71,48 @@ class FakeRuntime(UnifiedAgentRuntime):
             seq += 1
             return n
 
-        yield RunStarted(
-            run_id=request.run_id,
-            seq=nxt(),
-            agent_id=self._manifest.agent_id,
-            input={"value": request.input},
-        )
-        for kind, payload in self._script:
-            cls = {
-                "delta": MessageDelta,
-                "message_completed": MessageCompleted,
-                "tool_start": ToolStart,
-                "tool_end": ToolEnd,
-            }[kind]
-            yield cls(run_id=request.run_id, seq=nxt(), **payload)
-        yield RunCompleted(
-            run_id=request.run_id,
-            seq=nxt(),
-            agent_id=self._manifest.agent_id,
-            output={"ok": True},
-        )
+        try:
+            yield RunStarted(
+                run_id=request.run_id,
+                seq=nxt(),
+                agent_id=self._manifest.agent_id,
+                input={"value": request.input},
+            )
+            for kind, payload in self._script:
+                if cancel_signal.is_set():
+                    yield ErrorEvent(
+                        run_id=request.run_id,
+                        seq=nxt(),
+                        message="Run cancelled",
+                        recoverable=False,
+                        details={"cancelled": True},
+                    )
+                    return
+                if kind == "sleep":
+                    await asyncio.sleep(payload.get("seconds", 0.0))
+                    continue
+                cls = {
+                    "delta": MessageDelta,
+                    "message_completed": MessageCompleted,
+                    "tool_start": ToolStart,
+                    "tool_end": ToolEnd,
+                }[kind]
+                yield cls(run_id=request.run_id, seq=nxt(), **payload)
+            yield RunCompleted(
+                run_id=request.run_id,
+                seq=nxt(),
+                agent_id=self._manifest.agent_id,
+                output={"ok": True},
+            )
+        finally:
+            self._cancel_signals.pop(request.run_id, None)
+
+    async def cancel(self, run_id: str) -> bool:
+        signal = self._cancel_signals.get(run_id)
+        if signal is None or signal.is_set():
+            return False
+        signal.set()
+        return True
 
     async def tools(self) -> list[ToolDescriptor]:
         return [

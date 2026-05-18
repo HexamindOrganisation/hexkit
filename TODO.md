@@ -43,7 +43,7 @@ Each one exercises the abstraction; expect event-schema tweaks.
 
 ### Control / HITL
 
-- [ ] `cancel(run_id)` on the protocol + `DELETE /runs/{run_id}` route
+- [x] `cancel(run_id)` on the protocol + `POST /agents/{id}/runs/{run_id}/cancel` route (event-boundary cancellation; in-memory state, see README limitations)
 - [ ] `approval.requested` flow: pause, surface to UI, resume endpoint
 - [ ] Tool execution gating ("require approval before tool X")
 
