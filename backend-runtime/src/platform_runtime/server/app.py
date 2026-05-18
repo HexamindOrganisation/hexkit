@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request
@@ -39,16 +40,21 @@ logger = logging.getLogger("platform_runtime.server")
 
 def create_app(registry: AgentRegistry) -> FastAPI:
     """Build a FastAPI app bound to the given registry."""
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        try:
+            yield
+        finally:
+            await registry.aclose()
+
     app = FastAPI(
         title="Platform Runtime",
         description="Unified runtime for heterogeneous AI agent frameworks",
         version="0.1.0",
+        lifespan=lifespan,
     )
     app.state.registry = registry
-
-    @app.on_event("shutdown")
-    async def _shutdown() -> None:
-        await registry.aclose()
 
     # ------------------------------------------------------------------
     # Introspection

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, AsyncIterator, Callable
 from uuid import uuid4
@@ -40,8 +41,10 @@ from ..events import (
     RunCompleted,
     RunStarted,
     RuntimeEvent,
+    StateUpdate,
     ToolEnd,
     ToolStart,
+    TraceSpan,
 )
 from ..manifest import AgentManifest
 from ..protocol import (
@@ -133,6 +136,9 @@ class LangChainAdapter(UnifiedAgentRuntime):
         tool_calls: dict[str, str] = {}  # lc_run_id -> our tool_call_id
         # Track open assistant messages by lc model-run-id.
         message_ids: dict[str, str] = {}
+        # Track open chain spans for trace emission. We record the start
+        # time so the matching on_chain_end can produce a completed span.
+        open_spans: dict[str, _OpenSpan] = {}
 
         final_output: Any = None
 
@@ -196,17 +202,65 @@ class LangChainAdapter(UnifiedAgentRuntime):
                         output=_jsonable(data.get("output")),
                     )
 
-                elif name == "on_chain_end" and not lc_event.get("parent_ids"):
-                    # Root run: `parent_ids == []` identifies the outermost
-                    # chain (LCEL `RunnableSequence`, LangGraph compiled
-                    # graph, custom Runnable wrapper, ...). This is the only
-                    # robust way to capture the run's final output across
-                    # LangChain shapes.
-                    final_output = _jsonable(data.get("output"))
+                elif name == "on_chain_start":
+                    # Open a span for every chain that starts. We do not
+                    # emit anything yet — the matching on_chain_end will
+                    # produce a single completed TraceSpan.
+                    open_spans[lc_run_id] = _OpenSpan(
+                        name=lc_event.get("name", "chain"),
+                        start_ts=_utcnow(),
+                        parent_ids=tuple(lc_event.get("parent_ids") or ()),
+                    )
+
+                elif name == "on_chain_end":
+                    parent_ids = lc_event.get("parent_ids") or []
+
+                    if not parent_ids:
+                        # Root run terminal output. Used to populate
+                        # RunCompleted.output. Robust across LangChain shapes
+                        # (LCEL RunnableSequence, LangGraph CompiledStateGraph,
+                        # custom Runnable wrapper).
+                        final_output = _jsonable(data.get("output"))
+
+                    else:
+                        # State.update: emit only for DIRECT children of the
+                        # root run. For LangGraph these are the graph nodes
+                        # ("model", "tools", ...), and their outputs are the
+                        # state increment. Filtering by depth keeps the
+                        # event stream signal-rich — LCEL noise inside a
+                        # node is not surfaced as state.
+                        if (
+                            len(parent_ids) == 1
+                            and parent_ids[0] == run_id
+                        ):
+                            output = data.get("output")
+                            if output not in (None, {}, [], ""):
+                                yield StateUpdate(
+                                    run_id=run_id,
+                                    seq=seq.next(),
+                                    key=lc_event.get("name", "node"),
+                                    value=_jsonable(output),
+                                )
+
+                    # Close the span and emit TraceSpan for any non-root
+                    # chain. The root is omitted: it is already represented
+                    # by run.started / run.completed.
+                    span = open_spans.pop(lc_run_id, None)
+                    if span is not None and parent_ids:
+                        yield TraceSpan(
+                            run_id=run_id,
+                            seq=seq.next(),
+                            span_id=lc_run_id,
+                            parent_span_id=parent_ids[0] if parent_ids else None,
+                            name=span.name,
+                            start_ts=span.start_ts,
+                            end_ts=_utcnow(),
+                            attributes={"lc_event": "chain"},
+                        )
 
                 # Every other LangChain event is intentionally dropped at
-                # this stage. We can add more mappings (chain.start/end →
-                # trace.span, on_retriever_*, ...) when the UI needs them.
+                # this stage (on_retriever_*, on_prompt_*, ...). They can
+                # be promoted to spans/state when a concrete UI need arises.
 
         except Exception as e:
             yield ErrorEvent(
@@ -315,6 +369,21 @@ class _SeqCounter:
     def next(self) -> int:
         self._n += 1
         return self._n
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class _OpenSpan:
+    """Bookkeeping for a chain span between on_chain_start and on_chain_end."""
+
+    __slots__ = ("name", "start_ts", "parent_ids")
+
+    def __init__(self, name: str, start_ts: datetime, parent_ids: tuple) -> None:
+        self.name = name
+        self.start_ts = start_ts
+        self.parent_ids = parent_ids
 
 
 def _extract_text(obj: Any) -> str:
