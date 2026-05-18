@@ -37,8 +37,16 @@ import traceback
 from typing import Any
 
 # Activate built-in adapters. The decorator registration is what makes
-# `framework: langchain` resolvable inside this child process.
+# `framework: langchain` etc. resolvable inside this child process.
 from .adapters import langchain_adapter  # noqa: F401
+
+# Optional adapters (extras must be installed). Silent on absence — the
+# worker only needs the adapter for THIS agent's framework anyway, and
+# the registry will fail with a clear error if it's missing.
+try:  # pragma: no cover
+    from .adapters import openai_agents_adapter  # noqa: F401
+except ImportError:
+    pass
 from .ipc import (
     WorkerRequest,
     connect_stdin_reader,

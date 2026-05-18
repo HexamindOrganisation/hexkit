@@ -26,6 +26,17 @@ import sys
 import uvicorn
 
 from .adapters import langchain_adapter  # noqa: F401
+
+# Optional adapters: imported best-effort so the platform works with any
+# subset of the framework extras installed. A missing import is a silent
+# absence; downstream code that asks the registry for the adapter will
+# get a clear "no adapter registered for framework X" error pointing the
+# user at the right extras.
+try:  # pragma: no cover - import-time check
+    from .adapters import openai_agents_adapter  # noqa: F401
+except ImportError:
+    pass
+
 from .registry import AgentRegistry, IsolationMode
 from .server import create_app
 

@@ -28,7 +28,7 @@ MANIFEST_FILENAME = "agent.yaml"
 
 # Frameworks the platform knows how to wrap. Adding a new adapter means
 # adding a member here and registering it in the adapter registry.
-SUPPORTED_FRAMEWORKS = frozenset({"langchain"})
+SUPPORTED_FRAMEWORKS = frozenset({"langchain", "openai-agents"})
 
 
 class AgentManifest(BaseModel):

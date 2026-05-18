@@ -36,7 +36,7 @@ Spec calls this out as important; we're in-process today.
 
 Each one exercises the abstraction; expect event-schema tweaks.
 
-- [ ] OpenAI Agents SDK adapter
+- [x] OpenAI Agents SDK adapter
 - [ ] Google ADK adapter
 - [ ] LangGraph / Deepagents
 - [ ] Pydantic AI
