@@ -22,12 +22,6 @@ Items marked **[x]** are done.
 - [x] Emit `state.update` events (LangGraph state diffs after each node) — needed for "agent state" UI panels
 - [x] Unit tests with a fake adapter (proves protocol/registry/server without LC)
 
-### Wrapping
-
-- [ ] `platform wrap ./agent` CLI: scaffolds `agent.yaml` by sniffing imports + entrypoint heuristics
-- [ ] Framework detection helper (langchain/openai-agents/crewai/...) for the CLI
-- [ ] Manifest schema export (`AgentManifest.model_json_schema()` → JSON file for IDE autocomplete)
-
 ### Runtime isolation
 
 Spec calls this out as important; we're in-process today.
@@ -43,10 +37,9 @@ Spec calls this out as important; we're in-process today.
 Each one exercises the abstraction; expect event-schema tweaks.
 
 - [ ] OpenAI Agents SDK adapter
-- [ ] CrewAI adapter
 - [ ] Google ADK adapter
-- [ ] LlamaIndex adapter
-- [ ] AutoGen adapter
+- [ ] LangGraph / Deepagents
+- [ ] Pydantic AI
 
 ### Control / HITL
 
