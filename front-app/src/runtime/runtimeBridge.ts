@@ -58,6 +58,12 @@ export class RuntimeBridge implements AgentBridge {
   private listeners = new Set<(event: AgentEvent) => void>();
   private currentRunId: string | null = null;
   private currentAbort: AbortController | null = null;
+  // Accumulated text per in-flight message_id. Used to finalize orphan
+  // partials when a run ends without a matching `message.completed`.
+  private inFlightPartials = new Map<string, string>();
+  // Prevents duplicate "Run cancelled." when both cancel() and the
+  // runtime's cancelled error event would emit it.
+  private localCancelEmitted = false;
 
   constructor(
     private readonly agentId: string,
@@ -101,31 +107,50 @@ export class RuntimeBridge implements AgentBridge {
         this.emit({ kind: "error", message });
       }
     } finally {
+      this.flushPartials();
       this.emit({ kind: "status", state: "idle" });
       this.currentRunId = null;
       this.currentAbort = null;
+      this.localCancelEmitted = false;
     }
   };
 
-  /** Cancel the in-flight run, if any. Returns true if a cancel was sent. */
   cancel = async (): Promise<boolean> => {
     const runId = this.currentRunId;
     if (!runId) return false;
+
+    // Local-first so the UI reacts instantly and can't race with late
+    // runtime events: abort the stream, finalize any partial bubble,
+    // emit the cancel marker, then tell the runtime to stop.
+    this.currentAbort?.abort();
+    this.flushPartials();
+    this.localCancelEmitted = true;
+    this.emit({
+      kind: "message",
+      role: "system",
+      content: "Run cancelled.",
+    });
+
     try {
       await cancelRun(this.agentId, runId);
-    } catch (e) {
-      // Even if the HTTP call fails, abort the local stream so the user
-      // is freed from the spinner.
-      this.emit({
-        kind: "error",
-        message: `Cancel failed: ${e instanceof Error ? e.message : String(e)}`,
-      });
+    } catch {
+      // The local abort already freed the UI; swallow.
     }
-    // Belt-and-braces: also abort the in-flight fetch. The runtime will
-    // see the disconnect and stop emitting.
-    this.currentAbort?.abort();
     return true;
   };
+
+  private flushPartials(): void {
+    for (const [messageId, content] of this.inFlightPartials) {
+      if (!content) continue;
+      this.emit({
+        kind: "message",
+        role: "assistant",
+        content,
+        messageId,
+      });
+    }
+    this.inFlightPartials.clear();
+  }
 
   // ---- internal ----------------------------------------------------------
 
@@ -150,17 +175,19 @@ export class RuntimeBridge implements AgentBridge {
         // status already emitted in onUserSubmit; nothing more to surface.
         return;
 
-      case "message.delta":
+      case "message.delta": {
+        const prev = this.inFlightPartials.get(event.message_id) ?? "";
+        this.inFlightPartials.set(event.message_id, prev + event.delta);
         this.emit({
           kind: "token",
           text: event.delta,
           messageId: event.message_id,
         });
         return;
+      }
 
       case "message.completed":
-        // The library expects only "assistant" or "system" — collapse the
-        // other roles into system so they still show up.
+        this.inFlightPartials.delete(event.message_id);
         this.emit({
           kind: "message",
           role: event.role === "assistant" ? "assistant" : "system",
@@ -212,7 +239,11 @@ export class RuntimeBridge implements AgentBridge {
         return;
 
       case "error":
+        // Finalize any partial before the terminal marker so it doesn't
+        // render above the agent's last words.
+        this.flushPartials();
         if (event.details && event.details.cancelled === true) {
+          if (this.localCancelEmitted) return;
           this.emit({
             kind: "message",
             role: "system",
