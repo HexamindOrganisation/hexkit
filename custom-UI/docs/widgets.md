@@ -27,6 +27,7 @@ custom widgets, see [extending.md](./extending.md).
 | `form`           | Schema-driven form → dispatcher      | no         | main   |
 | `metrics`        | Strip of stat cards from a data source | no       | main   |
 | `table`          | Scrollable CSV table (head/tail rows)  | no         | main   |
+| `tool-calls`     | Live log of agent tool invocations     | no         | main   |
 
 **Chromeless** widgets opt out of the default `<div class="au-widget-host">`
 border/padding so they sit flush with the page edges.
@@ -818,6 +819,80 @@ Carriage returns (`\r`) are stripped. Trailing empty lines are ignored.
 - `data_source` loading and no payload yet → renders `loading_text`
   (or "Loading table…").
 - `data_source` errored → renders the error message in muted destructive text.
+
+---
+
+## `tool-calls`
+
+Live log of tool invocations made by the agent. Each row corresponds to
+one tool call; the row updates from "running" → "done" / "error" as the
+agent emits events. Rows are click-to-expand and show arguments + output
+JSON.
+
+### YAML
+
+```yaml
+- name: "tool-calls"
+  type: "tool-calls"
+  position: { horizontal: "right", vertical: "middle" }
+  size: { width: 4, height: 480 }
+  title: "Tool calls"           # optional; header label
+  empty_text: "No tools called yet."   # optional
+  max_items: 50                 # optional; oldest rows dropped past this cap
+  default_expanded: false       # optional; if true, rows start expanded
+```
+
+### Wire model
+
+The widget consumes events routed via the `AgentBridge`'s `tool-call`
+event. The bridge emits one payload per phase, keyed by a stable `id`:
+
+```ts
+type ToolCallPayload =
+  | { phase: "start"; id: string; name: string; arguments?: object }
+  | { phase: "end";   id: string; name?: string; output?: unknown; error?: string | null };
+```
+
+The widget folds the inbox history into one row per `id`. `start`
+opens a row in the "running" state (amber pulsing dot). The matching
+`end` finalizes the row to "done" (green) or "error" (red) and reveals
+its output or error message.
+
+### Bridge contract
+
+The bridge sends events using the standard widget-name routing
+described under [Tool-call routing](#tool-call-routing-any-widget):
+
+```ts
+emit({
+  kind: "tool-call",
+  widget: "tool-calls",          // must match the widget's `name`
+  payload: { phase: "start", id: "abc", name: "search", arguments: { q: "x" } },
+});
+```
+
+A widget named anything other than `"tool-calls"` is fine — the bridge
+just needs to know the configured name. The convention `"tool-calls"`
+is what the platform-runtime's [front-app](https://github.com/…) bridge
+uses by default.
+
+### Fields
+
+| Field              | Type    | Notes |
+|--------------------|---------|-------|
+| `title`            | string  | Header label above the list. Optional. |
+| `empty_text`       | string  | Shown before any tool call arrives. |
+| `max_items`        | integer | Hard cap on displayed rows (oldest dropped). Default unlimited. |
+| `default_expanded` | boolean | If true, every row starts with arguments + output visible. Default `false`. |
+
+### Why a dedicated widget
+
+Tool calls used to appear as `[tool] foo(args)` and `[result] foo -> ...`
+system messages in `ai-response`. That mixed tool noise into the
+human-readable transcript. Routing tool events to their own widget keeps
+the chat focused on user/assistant text and lets the UI grow a richer
+tool view (status indicators, JSON pretty-print, expand/collapse)
+without bloating `ai-response`.
 
 ---
 

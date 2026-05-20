@@ -73,15 +73,25 @@ Entire new service. Stateful, security-sensitive. Per spec, separate from runtim
 
 ## UI system
 
-- [x] React YAML-driven widget library (`custom-UI/`)
-- [ ] Standard widget: chat view that consumes the SSE event stream (renders `message.delta` / `tool.start` / `tool.end`)
+### `custom-UI` library
+
+- [x] React YAML-driven widget library
+- [x] Standard widget: chat view (`ai-response` + `ai-chat-input`, message-stream-aware)
+- [x] Standard widget: `tool-calls` panel consuming routed `tool-call` events
 - [ ] Standard widget: tool catalog (from `/tools`)
 - [ ] Standard widget: trace timeline (from `trace.span` events)
 - [ ] Standard widget: state inspector (from `state.update` events)
 - [ ] Standard widget: approval prompt (`approval.requested`)
-- [ ] Auth integration with platform backend
-- [ ] App config loader: fetches YAML from platform backend, renders
-- [ ] `front-app/` shell wiring it all together (login → tenant select → agent select → render)
+
+### `front-app` shell
+
+- [x] Slice 1 — foundation: React Router + AppShell + Nav, placeholder routes
+- [x] Slice 2 — chat E2E: AgentsHome, AgentChat, RuntimeBridge wired to SSE + cancel
+- [x] Slice 3 — per-agent `ui.yaml` served by runtime; default chat as fallback
+- [ ] Slice 4 — secrets CRUD UI + runtime secret store + worker env injection
+- [ ] Slice 5 — settings page (theme, runtime URL, log verbosity); `GET /config` endpoint
+- [ ] Auth integration with platform backend (deferred until platform backend exists)
+- [ ] App config loader fetching layout from platform backend (deferred)
 
 ---
 
@@ -97,25 +107,39 @@ Entire new service. Stateful, security-sensitive. Per spec, separate from runtim
 
 ## Suggested milestones
 
-### M1 — "It runs LangChain agents in prod-ish shape"
+### M1 — "Runtime v0" — **shipped**
 
-Target: 1–2 weeks of focused work.
+- LangChain / LangGraph / DeepAgents adapter (`astream_events`-based; `trace.span`, `state.update`, tool events)
+- OpenAI Agents SDK adapter
+- Google ADK adapter
+- Subprocess isolation + per-agent venvs via `uv`
+- `cancel(run_id)` end-to-end
+- 42-test suite (in-process + subprocess + multi-file + venv)
 
-- Verify LC adapter E2E
-- Subprocess isolation transport
-- `cancel(run_id)` + reconnect/resume on SSE
-- Unit tests
-- Chat widget in `custom-UI/` consuming the SSE stream
+### M2 — "Front-app v0" — **in progress (Slices 1–3 shipped)**
 
-### M2 — "Second framework + control plane skeleton"
+- AgentsHome + AgentChat + cancel in the browser
+- Per-agent `ui.yaml` (Slice 3, shipped)
+- `tool-calls` widget in `agent-ui` lib (shipped)
+- Secrets page + runtime secret store (Slice 4, next)
+- Settings page + `GET /config` (Slice 5)
 
-- OpenAI Agents SDK adapter (forces schema discipline)
-- Platform backend skeleton: auth, tenant, conversation persistence, app registry
-- Front-app shell login → agent picker → chat
+### M3 — "Control plane skeleton"
 
-### M3 — "Observable & multi-tenant"
+- Platform backend service scaffold: auth, tenants, conversation persistence
+- App registry (which agent runs where)
+- Replace in-memory secret store with vaulted secrets
 
-- `trace.span` + `state.update` emission in LC adapter
-- Trace + state widgets
-- Quotas, audit log, secret vault
+### M4 — "Observability + HITL"
+
+- Trace timeline widget consuming `trace.span` events
+- State inspector widget consuming `state.update` events
+- `approval.requested` flow + tool-execution gating
+- OpenTelemetry export from the runtime
+
+### M5 — "Polish"
+
+- Pydantic AI adapter
+- Container isolation runner (Docker)
 - `platform wrap` CLI
+- Quotas, audit log, billing meters

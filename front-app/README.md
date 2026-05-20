@@ -4,9 +4,10 @@ User-facing app for the Unified AI Agent Platform. Talks to
 [platform-runtime](../backend-runtime/) via HTTP+SSE and renders each
 agent's UI with [agent-ui](../custom-UI/).
 
-Current state: **Slice 2 of 5** — the chat E2E. Foundation routes
-(`/secrets`, `/settings`) render placeholders awaiting Slices 4 and 5.
-See [specs.md](specs.md) for the full plan.
+Current state: **Slice 3 of 5** — chat E2E plus per-agent `ui.yaml`
+served by the runtime, with the bundled default chat as the fallback.
+Foundation routes (`/secrets`, `/settings`) render placeholders awaiting
+Slices 4 and 5. See [specs.md](specs.md) for the full plan.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -47,9 +48,16 @@ npm run dev
 ```
 
 Open <http://localhost:5173>. Pick an agent → send a message → watch
-tokens stream. The **Cancel run** button proves the runtime's cancel
-API end to end — clicking it mid-stream produces a `Run cancelled.`
-system message.
+tokens stream into the transcript and tool invocations into the
+right-side `Tool calls` panel. The **Cancel run** button proves the
+runtime's cancel API end to end — clicking it mid-stream produces a
+`Run cancelled.` system message.
+
+The `langgraph-hello` example ships a custom [`ui.yaml`](../backend-runtime/examples/langgraph_hello/ui.yaml)
+with a three-column layout (help · transcript · tool calls), an indigo
+header, and a markdown help card on the left — visible proof that
+per-agent UIs work without front-app changes. Other agents render the
+bundled default chat layout with a small banner noting the fallback.
 
 ### Different runtime host
 
@@ -97,28 +105,35 @@ the translation seam between the runtime's normalized event schema and
 `agent-ui`'s smaller event vocabulary. Future event types (trace timeline,
 state inspector, approval prompts) plug in here.
 
-## What's in Slice 1+2 — and what's not
+## What's shipped (Slices 1-3) — and what's next
 
-**In:**
+**Shipped:**
 
-- React Router v6, persistent AppShell with top nav.
-- `/` AgentsHome: cards grid, loading skeleton, empty state, error banner.
-- `/agents/:id` AgentChat: metadata fetch, RuntimeBridge wiring,
-  default chat layout rendered via agent-ui, working **Cancel run**.
+- React Router v6, persistent `AppShell` with top nav.
+- `/` AgentsHome: cards grid, health pills, capability badges, loading
+  skeleton, empty state, error banner.
+- `/agents/:id` AgentChat: metadata + `ui.yaml` fetched in parallel,
+  `RuntimeBridge` wired to SSE, working **Cancel run** button.
+- Per-agent YAML: `GET /agents/:id/ui` consumed; default chat used as
+  fallback with a small "rendering the default" hint banner.
+- Tool calls routed into the `tool-calls` widget (added to `agent-ui`)
+  instead of polluting the chat transcript as system messages.
 - Typed runtime client (`api.ts`, `sseStream.ts`, `types.ts`,
   `runtimeBridge.ts`) — same boundary every later slice extends.
 
-**Out (placeholders ship, real impl arrives in later slices):**
+**Coming next:**
 
-- Per-agent `ui.yaml` (Slice 3).
-- Secrets CRUD + worker env injection (Slice 4).
-- Settings page (Slice 5).
+- Slice 4 — `/secrets` page + runtime secret store + worker env
+  injection at spawn time. (Spec: [specs.md](specs.md))
+- Slice 5 — `/settings` page + `GET /config` endpoint (theme, runtime
+  URL, log verbosity, version info).
 
-**Out (deferred, per spec):**
+**Deferred (per spec):**
 
 - Multi-turn conversation persistence — needs platform backend.
 - Agent registration via the UI — drop folders into `PLATFORM_AGENTS_DIR`.
-- Markdown / code-block rendering in messages.
+- Markdown / code-block rendering of message bodies (`agent-ui`'s
+  `markdown` widget can be wired into per-agent YAMLs today).
 - Auth.
 
 See [specs.md](specs.md) for the full slice plan and rationale.

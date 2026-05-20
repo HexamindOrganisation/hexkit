@@ -14,10 +14,11 @@ streaming, observability, configuration, UI) so that:
   framework;
 - adding a new framework is one adapter, not a rewrite.
 
-> **Status.** The runtime backend is at **v0** (core complete, isolation
-> shipped, three framework adapters live). The control plane and the
-> production front-app shell are not yet built. See [TODO.md](TODO.md)
-> for the full roadmap.
+> **Status.** Runtime backend at **v0** (core, isolation, cancel API,
+> three framework adapters with LangGraph/DeepAgents aliasing). Front-app
+> at **slice 3 of 5** — chat E2E + per-agent UI YAML works end-to-end;
+> secrets page and settings page are next. Control plane not yet built.
+> See [TODO.md](TODO.md) for the full roadmap.
 
 ---
 
@@ -69,47 +70,62 @@ For the original product spec, see [specs.md](specs.md).
 | Path | Purpose | Status |
 |---|---|---|
 | [backend-runtime/](backend-runtime/) | Execution plane: HTTP server, adapter framework, worker isolation, per-agent venvs. | **v0** — see its [README](backend-runtime/README.md) |
-| [custom-UI/](custom-UI/) | React + TypeScript library that renders a configurable agent UI from YAML. | Library complete; SSE chat widget pending |
-| [front-app/](front-app/) | Production front-end shell wiring auth → tenant select → agent select → UI. | Not started |
+| [custom-UI/](custom-UI/) | React + TypeScript library that renders a configurable agent UI from YAML. Ships chat + `tool-calls` widgets that consume the runtime's event stream. | Library v0, chat-aware widgets live |
+| [front-app/](front-app/) | User-facing app: agent picker → per-agent chat → runtime stream + cancel. Per-agent `ui.yaml` served by the runtime overrides the default chat layout. | **Slices 1–3 shipped**; see [front-app/specs.md](front-app/specs.md) |
 | [specs.md](specs.md) | Original product specification. | Reference |
 | [TODO.md](TODO.md) | Roadmap and milestone tracker. | Live |
 
 ---
 
-## Quick start (runtime + an example agent)
+## Quick start — full stack in two terminals
 
-The runtime backend is the only part you can run end-to-end today. From
-the repo root:
+**Terminal 1 — runtime:**
 
 ```bash
 cd backend-runtime
 python3 -m venv .venv
-.venv/bin/pip install -e '.[langchain]' langchain-openai
+.venv/bin/pip install -e '.[langchain,openai-agents,google-adk]' langchain-openai
 
 export OPENAI_API_KEY=...
 export PLATFORM_AGENTS_DIR=examples
-.venv/bin/python -m platform_runtime
+.venv/bin/python -m platform_runtime    # listens on :8080
 ```
 
-Then in another terminal:
+**Terminal 2 — front-app:**
+
+```bash
+cd front-app
+npm install
+npm run dev                              # listens on :5173
+```
+
+Open <http://localhost:5173>. The home page lists every loaded agent;
+click one to chat. The LangGraph example ships a custom `ui.yaml` (three
+columns: help · transcript · tool-calls panel) so you can see per-agent
+layouts working.
+
+### Bundled example agents
+
+| Example | Framework | Needs |
+|---|---|---|
+| [langchain_hello](backend-runtime/examples/langchain_hello/) | LangChain (`create_agent`) | `OPENAI_API_KEY`, `langchain-openai` |
+| [langgraph_hello](backend-runtime/examples/langgraph_hello/) | Bare `StateGraph` (ships custom `ui.yaml`) | `OPENAI_API_KEY`, `langchain-openai` |
+| [deepagents_hello](backend-runtime/examples/deepagents_hello/) | DeepAgents | `OPENAI_API_KEY`, `langchain-openai`, `deepagents` |
+| [openai_agents_hello](backend-runtime/examples/openai_agents_hello/) | OpenAI Agents SDK | `OPENAI_API_KEY` |
+| [google_adk_hello](backend-runtime/examples/google_adk_hello/) | Google ADK | `GOOGLE_API_KEY` |
+
+### Runtime-only (no UI)
+
+For a CLI-style smoke test, hit the SSE endpoint directly:
 
 ```bash
 curl -N -X POST http://127.0.0.1:8080/agents/langchain-hello/stream \
   -H 'Content-Type: application/json' \
   -d '{"input": {"messages": [{"role": "user", "content": "What time is it?"}]}}'
+
+# Cancel an in-flight run (replace <run_id> with the run_id from the stream)
+curl -X POST http://127.0.0.1:8080/agents/langchain-hello/runs/<run_id>/cancel
 ```
-
-You will see an SSE stream of normalized events (`run.started`,
-`message.delta`, `tool.start`, `tool.end`, `message.completed`,
-`run.completed`).
-
-The bundled examples cover all three currently-supported frameworks:
-
-| Example | Framework | Needs |
-|---|---|---|
-| [langchain_hello](backend-runtime/examples/langchain_hello/) | LangChain | `OPENAI_API_KEY`, `langchain-openai` |
-| [openai_agents_hello](backend-runtime/examples/openai_agents_hello/) | OpenAI Agents SDK | `OPENAI_API_KEY` |
-| [google_adk_hello](backend-runtime/examples/google_adk_hello/) | Google ADK | `GOOGLE_API_KEY` |
 
 See [backend-runtime/README.md](backend-runtime/README.md) for the full
 HTTP API, event schema, and adapter-authoring guide.
@@ -145,14 +161,18 @@ worker boundary.
 
 ## Currently supported frameworks
 
-- **LangChain ≥ 1.0** — including LCEL chains and `create_agent`
-  (LangGraph) outputs.
-- **OpenAI Agents SDK ≥ 0.17** — `Runner.run_streamed` token stream.
+- **LangChain ≥ 1.0** — LCEL chains, `create_agent` (LangGraph)
+  outputs, bare LangGraph `StateGraph(...).compile()`, and DeepAgents
+  graphs all run through one adapter. Manifests can declare
+  `framework: langchain` / `langgraph` / `deepagents` — all three names
+  alias to the same code path.
+- **OpenAI Agents SDK ≥ 0.17** — `Runner.run_streamed` token stream
+  with native tool-call mapping.
 - **Google ADK ≥ 1.33** — `Runner.run_async` event stream, multi-agent
-  handoff, JSON-schema-translated tools.
+  handoff surfaces as `state.update(active_agent)`, JSON-schema-
+  translated tools.
 
-See [TODO.md](TODO.md) for upcoming frameworks (Pydantic AI,
-LangGraph/Deepagents).
+See [TODO.md](TODO.md) for upcoming frameworks (Pydantic AI).
 
 ---
 

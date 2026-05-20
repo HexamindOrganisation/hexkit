@@ -8,9 +8,11 @@ HTTP + SSE API and a normalized event schema. Agents written in any
 supported framework are served identically: same routes, same event
 stream, same UI.
 
-**Status: v0.** Core, isolation, and three framework adapters are
-shipped. Control-plane integration (auth, tenants, persistence) is owned
-by a separate service that does not yet exist.
+**Status: v0.** Core, isolation, three framework adapters (with
+LangGraph/DeepAgents aliasing), cancel API, and per-agent UI YAML
+endpoint are shipped. Control-plane integration (auth, tenants,
+persistence, secrets store) is owned by a separate service that does
+not yet exist.
 
 ```
 HTTP/SSE  ─►  FastAPI server  ─►  Registry  ─►  Adapter  ─►  Framework SDK
@@ -111,8 +113,10 @@ responses are JSON for unary calls and `text/event-stream` for streams.
 | `GET` | `/agents/{id}/metadata` | — | `AgentMetadata` |
 | `GET` | `/agents/{id}/tools` | — | `ToolDescriptor[]` |
 | `GET` | `/agents/{id}/health` | — | `HealthStatus` (200 ok, 503 unhealthy) |
+| `GET` | `/agents/{id}/ui` | — | Raw YAML (`text/yaml`) — agent-supplied UI definition, or `404` if absent |
 | `POST` | `/agents/{id}/invoke` | `InvokeRequest` | `RunCompleted` (drains the stream) |
 | `POST` | `/agents/{id}/stream` | `InvokeRequest` | SSE stream of `RuntimeEvent` |
+| `POST` | `/agents/{id}/runs/{run_id}/cancel` | — | `{ "cancelled": bool }` — idempotent |
 
 ### `InvokeRequest`
 
@@ -271,22 +275,29 @@ both resolve.
 
 ## Supported frameworks
 
-| Framework | Min version | Entrypoint returns | Example |
+| Manifest `framework:` | Min version | Entrypoint returns | Example |
 |---|---|---|---|
-| LangChain | 1.0 | `Runnable` (LCEL chain or `create_agent` result) | [examples/langchain_hello](examples/langchain_hello) |
-| OpenAI Agents SDK | 0.17 | `agents.Agent` | [examples/openai_agents_hello](examples/openai_agents_hello) |
-| Google ADK | 1.33 | `google.adk.Agent` | [examples/google_adk_hello](examples/google_adk_hello) |
+| `langchain` | 1.0 | LCEL `Runnable` or `create_agent` result | [examples/langchain_hello](examples/langchain_hello) |
+| `langgraph` | (langchain ≥ 1.0) | Bare `StateGraph(...).compile()` | [examples/langgraph_hello](examples/langgraph_hello) |
+| `deepagents` | latest | `create_deep_agent(...)` (a compiled LangGraph) | [examples/deepagents_hello](examples/deepagents_hello) |
+| `openai-agents` | 0.17 | `agents.Agent` | [examples/openai_agents_hello](examples/openai_agents_hello) |
+| `google-adk` | 1.33 | `google.adk.Agent` | [examples/google_adk_hello](examples/google_adk_hello) |
 
-### Adapter coverage
+`langchain`, `langgraph`, `deepagents` all dispatch to the same adapter
+(they share the LangChain `Runnable` + `astream_events` substrate). The
+three names exist so manifests read honestly.
 
-|  | LangChain | OpenAI Agents | Google ADK |
+### Adapter event coverage
+
+|  | LangChain / LangGraph / DeepAgents | OpenAI Agents | Google ADK |
 |---|---|---|---|
 | `message.delta` (token streaming) | ✓ | ✓ | ✓ |
+| `message.completed` (skips empty tool-call turns) | ✓ | ✓ | ✓ |
 | `tool.start` / `tool.end` | ✓ | ✓ | ✓ |
-| `message.completed` | ✓ | ✓ | ✓ |
 | `state.update` | ✓ (graph nodes) | ✓ (agent handoff) | ✓ (multi-agent author) |
 | `trace.span` | ✓ (chain spans) |  |  |
 | `approval.requested` |  |  |  |
+| `cancel(run_id)` (event-boundary) | ✓ | ✓ | ✓ |
 | Tool schema → JSON Schema | ✓ | ✓ (native) | ✓ (translated from ADK Schema) |
 
 Gaps are intentional: features get adapter mappings once a consumer needs
@@ -421,7 +432,7 @@ python -m pytest tests/ -q
 python -m pytest tests/ -q -m 'slow'
 ```
 
-The full fast suite is 34 tests in ~35s. Subprocess isolation tests add
+The full fast suite is 42 tests in ~40s. Subprocess isolation tests add
 real `python -m platform_runtime.worker` spawns. The slow venv test
 materializes an actual venv with `six` installed (~7s with pip, ~1s with
 uv).
@@ -501,14 +512,21 @@ directly; in `subprocess`, the worker holds it and the server holds a
 
 - **Control plane.** No auth, RBAC, tenants, secret vault, or
   conversation persistence. The runtime trusts its caller.
-- **Run cancellation.** `cancel(run_id)` is not on the protocol yet; SSE
-  client disconnect drops the queue and lets the worker finish.
 - **Approval flow.** `approval.requested` is in the schema; no adapter
   emits it yet.
+- **Mid-call cancel.** `cancel(run_id)` takes effect at the next event
+  boundary inside the adapter's `stream()` — typically within a token
+  during a model stream. A run blocked on a single non-streaming model
+  or tool call takes longer to release. The wire and HTTP API are
+  stable; tightening cancel to mid-call interruption is a future
+  refinement.
 - **Container isolation.** Docker runner is plumbed for in the design
   (same protocol, different launcher) but not implemented.
 - **Reconnect-with-replay.** `Last-Event-ID` is wire-format-ready but
   the server does not persist runs yet.
+- **Pause-state persistence.** When the approval flow lands it will
+  be in-memory only until the platform backend can persist paused runs
+  across restarts.
 
 ### Versioning
 
