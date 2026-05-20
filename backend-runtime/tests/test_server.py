@@ -54,6 +54,26 @@ def test_unknown_agent_404(client: TestClient) -> None:
     assert r.status_code == 404
 
 
+def test_ui_yaml_returns_404_when_absent(client: TestClient) -> None:
+    """The fake agent fixture ships no ui.yaml — the endpoint must 404
+    so the front-app can fall back to its default chat layout."""
+    r = client.get("/agents/my-fake/ui")
+    assert r.status_code == 404
+
+
+def test_ui_yaml_returns_file_when_present(
+    client: TestClient, fake_agent_dir: Path
+) -> None:
+    """When a ui.yaml exists in the agent's folder, the endpoint returns
+    its bytes verbatim with `text/yaml` content type."""
+    payload = "page:\n  layout_type: grid\nwidgets: []\n"
+    (fake_agent_dir / "ui.yaml").write_text(payload, encoding="utf-8")
+    r = client.get("/agents/my-fake/ui")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/yaml")
+    assert r.text == payload
+
+
 def test_invoke_returns_run_completed(client: TestClient) -> None:
     r = client.post("/agents/my-fake/invoke", json={"input": "hi"})
     assert r.status_code == 200

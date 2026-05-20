@@ -26,6 +26,27 @@ export async function getMetadata(agentId: string): Promise<AgentMetadata> {
   return res.json();
 }
 
+/**
+ * Fetch the per-agent UI definition (raw YAML text).
+ *
+ * Returns `null` on 404 — the agent didn't ship a `ui.yaml`, so the
+ * caller should use its default page config. Any other non-OK status
+ * throws.
+ *
+ * No client-side YAML parsing: `agent-ui` accepts the raw string and
+ * parses it itself, with its own diagnostics surface. Less coupling.
+ */
+export async function getUiYaml(agentId: string): Promise<string | null> {
+  const res = await fetch(
+    `/api/agents/${encodeURIComponent(agentId)}/ui`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`GET /ui failed: ${res.status}`);
+  }
+  return res.text();
+}
+
 export async function cancelRun(
   agentId: string,
   runId: string,

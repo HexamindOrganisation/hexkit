@@ -2,13 +2,25 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AgentUI, type ActionDispatcher } from "agent-ui";
 import { defaultChatPage } from "../config/defaultChatPage.js";
-import { getMetadata } from "../runtime/api.js";
+import { getMetadata, getUiYaml } from "../runtime/api.js";
 import { RuntimeBridge } from "../runtime/runtimeBridge.js";
 import type { AgentMetadata } from "../runtime/types.js";
 
+/** What `<AgentUI/>`'s `config` prop accepts: raw YAML string or a parsed
+ *  JS object. Slice 3 may resolve to either — string when the agent ships
+ *  a `ui.yaml`, object when we fall back to `defaultChatPage`. */
+type UiConfig = string | object;
+
 type State =
   | { kind: "loading" }
-  | { kind: "ready"; metadata: AgentMetadata }
+  | {
+      kind: "ready";
+      metadata: AgentMetadata;
+      ui: UiConfig;
+      /** Whether the UI came from the agent's `ui.yaml` (true) or from
+       *  the front-app's default (false). Surfaced in the corner banner. */
+      custom: boolean;
+    }
   | { kind: "missing" }
   | { kind: "error"; message: string };
 
@@ -35,15 +47,33 @@ export function AgentChat(): JSX.Element {
     if (!agentId) return;
     let cancelled = false;
     setState({ kind: "loading" });
-    getMetadata(agentId)
-      .then((metadata) => {
-        if (!cancelled) setState({ kind: "ready", metadata });
+
+    // Fetch metadata and ui.yaml in parallel. Metadata is required
+    // (drives the framework-aware bridge); ui.yaml is optional (null on
+    // 404 → fall back to the bundled default). We use Promise.allSettled
+    // so a missing ui.yaml doesn't force a metadata retry.
+    Promise.all([
+      getMetadata(agentId),
+      getUiYaml(agentId).catch(() => null),
+    ])
+      .then(([metadata, yaml]) => {
+        if (cancelled) return;
+        if (yaml) {
+          setState({ kind: "ready", metadata, ui: yaml, custom: true });
+        } else {
+          setState({
+            kind: "ready",
+            metadata,
+            ui: defaultChatPage,
+            custom: false,
+          });
+        }
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         const message = e instanceof Error ? e.message : String(e);
-        // The api helper throws a 404-specific marker so we can branch
-        // cleanly between "no such agent" and "everything else".
+        // The api helper bakes the status code into the message so a
+        // single regex distinguishes "no such agent" from other errors.
         if (/\b404\b/.test(message)) {
           setState({ kind: "missing" });
         } else {
@@ -108,13 +138,25 @@ export function AgentChat(): JSX.Element {
 
   // state.kind === "ready"
   return (
-    <div className="flex-1 min-h-0">
-      <AgentUI
-        config={defaultChatPage}
-        agent={bridge}
-        dispatcher={dispatcher}
-        diagnostics="console"
-      />
+    <div className="flex-1 min-h-0 flex flex-col">
+      {!state.custom && <DefaultLayoutHint />}
+      <div className="flex-1 min-h-0">
+        <AgentUI
+          config={state.ui}
+          agent={bridge}
+          dispatcher={dispatcher}
+          diagnostics="console"
+        />
+      </div>
+    </div>
+  );
+}
+
+function DefaultLayoutHint(): JSX.Element {
+  return (
+    <div className="border-b border-border bg-muted/30 px-6 py-1.5 text-[11px] text-muted-foreground">
+      No <code>ui.yaml</code> for this agent — rendering the default chat.
+      Add a <code>ui.yaml</code> next to <code>agent.yaml</code> to customize.
     </div>
   );
 }

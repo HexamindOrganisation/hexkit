@@ -27,7 +27,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sse_starlette.sse import EventSourceResponse
 
 from ..events import RuntimeEvent
@@ -83,6 +83,31 @@ def create_app(registry: AgentRegistry) -> FastAPI:
         runtime = _resolve(registry, agent_id)
         tools = await runtime.tools()
         return [t.model_dump(mode="json") for t in tools]
+
+    @app.get("/agents/{agent_id}/ui", response_class=PlainTextResponse)
+    async def get_ui(agent_id: str):
+        """Return the agent's `ui.yaml` file (as raw YAML text) if present.
+
+        Agents ship their UI definition next to `agent.yaml` — convention,
+        not validation: the platform never parses the YAML server-side.
+        The front-app hands it to `agent-ui` which validates and renders
+        it client-side.
+
+        Returns 404 when the file is absent; clients fall back to a
+        default chat layout.
+        """
+        loaded = registry.get(agent_id)
+        ui_path = loaded.root / "ui.yaml"
+        if not ui_path.is_file():
+            raise HTTPException(
+                status_code=404, detail="No ui.yaml for this agent"
+            )
+        # Read once per request. Small files (kB), no caching needed yet —
+        # if this becomes hot, ETag/If-None-Match is the right fix.
+        return PlainTextResponse(
+            ui_path.read_text(encoding="utf-8"),
+            media_type="text/yaml",
+        )
 
     @app.get("/agents/{agent_id}/health")
     async def get_health(agent_id: str) -> dict:

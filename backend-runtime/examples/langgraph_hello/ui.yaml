@@ -1,0 +1,63 @@
+# Custom UI for this agent. Served by GET /agents/langgraph-hello/ui.
+# The front-app falls back to its default chat layout when this file is absent.
+#
+# Layout:
+#
+#   ┌─────────────────────┬──────────────────────────────────────┐
+#   │ page-header         │              | Cancel run            │  high
+#   ├─────────────────────┼──────────────────────────────────────┤
+#   │                     │                                      │
+#   │  markdown help      │  ai-response (transcript)            │  middle
+#   │                     │                                      │
+#   ├─────────────────────┴──────────────────────────────────────┤
+#   │  ai-chat-input                                             │  low
+#   └────────────────────────────────────────────────────────────┘
+
+page:
+  layout_type: grid
+  main_color: "#6366F1"   # indigo accent; per-agent visual identity
+
+widgets:
+  - name: header
+    type: page-header
+    position: { horizontal: left, vertical: high }
+    size: { width: 9, height: auto }
+    title: LangGraph Hello
+    subtitle: Bare StateGraph · model + tool nodes
+
+  - name: actions
+    type: button-group
+    position: { horizontal: right, vertical: high }
+    size: { width: 3, height: auto }
+    buttons:
+      - { label: "Cancel run", action: "cancel-run", variant: "destructive" }
+
+  - name: help
+    type: markdown
+    position: { horizontal: left, vertical: middle }
+    size: { width: 4, height: 480 }
+    text: |
+      ### Try it
+      Ask anything. The agent has one tool:
+
+      - `echo(text)` — echoes its argument.
+
+      Watch the transcript on the right. Tool calls appear as
+      `[tool] echo(...)` and `[result] echo -> ...` system messages.
+
+      Click **Cancel run** mid-stream to test the cancel API.
+
+  - name: transcript
+    type: ai-response
+    position: { horizontal: right, vertical: middle }
+    size: { width: 8, height: 480 }
+    empty_text: "Send a message to start a run."
+    thinking_indicator: dots
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Ask the LangGraph agent…"
+    submit_label: Send
+    rows: 2
