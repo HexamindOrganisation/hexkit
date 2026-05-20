@@ -80,6 +80,10 @@ class AgentMetadata(BaseModel):
     version: str = "0.0.0"
     description: str = ""
     capabilities: AgentCapabilities = Field(default_factory=AgentCapabilities)
+    # Names of UI-triggered actions the agent exposes via `actions.py`.
+    # The front-end uses this to gate `dispatcher.has?.(name)` checks and
+    # to know which actions can be forwarded to the runtime.
+    actions: list[str] = Field(default_factory=list)
     extra: dict[str, Any] = Field(default_factory=dict)
 
 

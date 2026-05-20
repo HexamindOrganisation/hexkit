@@ -31,6 +31,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Iterable
 
+from .actions import (
+    ActionError,
+    ActionHost,
+    LocalActionHost,
+    RemoteActionHost,
+    load_action_callables,
+)
 from .adapters import get_adapter_class
 from .adapters.remote_adapter import RemoteAdapter
 from .manifest import MANIFEST_FILENAME, AgentManifest, ManifestError, load_manifest
@@ -66,6 +73,10 @@ class LoadedAgent:
     manifest: AgentManifest
     root: Path
     runtime: UnifiedAgentRuntime
+    # `None` when the manifest declares no actions. In-process mode holds
+    # a `LocalActionHost`; subprocess mode holds a `RemoteActionHost` that
+    # forwards over the same supervisor the runtime uses.
+    actions: ActionHost | None = None
 
 
 class AgentRegistry:
@@ -138,14 +149,47 @@ class AgentRegistry:
 
         if self._isolation is IsolationMode.IN_PROCESS:
             runtime = self._build_in_process(manifest, root)
+            actions = self._build_local_actions(manifest, root)
         elif self._isolation is IsolationMode.SUBPROCESS:
             runtime = self._build_subprocess(manifest, root)
+            actions = self._build_remote_actions(manifest, runtime)
         else:
             raise RegistryError(f"Unknown isolation mode: {self._isolation}")
 
-        loaded = LoadedAgent(manifest=manifest, root=root, runtime=runtime)
+        loaded = LoadedAgent(
+            manifest=manifest, root=root, runtime=runtime, actions=actions
+        )
         self._agents[manifest.agent_id] = loaded
         return loaded
+
+    @staticmethod
+    def _build_local_actions(
+        manifest: AgentManifest, root: Path
+    ) -> ActionHost | None:
+        if not manifest.actions:
+            return None
+        try:
+            callables = load_action_callables(manifest, root)
+        except ActionError as e:
+            raise RegistryError(str(e)) from e
+        return LocalActionHost(declared=manifest.actions, callables=callables)
+
+    @staticmethod
+    def _build_remote_actions(
+        manifest: AgentManifest, runtime: UnifiedAgentRuntime
+    ) -> ActionHost | None:
+        if not manifest.actions:
+            return None
+        # The runtime in subprocess mode is the RemoteAdapter; we reach
+        # into its supervisor so action RPCs share the same wire and
+        # lifecycle as runtime RPCs.
+        sup = getattr(runtime, "_sup", None)
+        if not isinstance(sup, WorkerSupervisor):
+            raise RegistryError(
+                "Subprocess mode expected a RemoteAdapter-backed runtime "
+                "for action proxying."
+            )
+        return RemoteActionHost(declared=manifest.actions, supervisor=sup)
 
     def _build_in_process(
         self, manifest: AgentManifest, root: Path
@@ -249,11 +293,15 @@ class AgentRegistry:
 
     async def aclose(self) -> None:
         for loaded in self._agents.values():
-            try:
-                await loaded.runtime.aclose()
-            except Exception:
-                # Best-effort shutdown; one bad adapter must not block others.
-                pass
+            for closeable in (loaded.actions, loaded.runtime):
+                if closeable is None:
+                    continue
+                try:
+                    await closeable.aclose()
+                except Exception:
+                    # Best-effort shutdown; one bad component must not
+                    # block teardown of the others.
+                    pass
         self._agents.clear()
 
     # ------------------------------------------------------------------

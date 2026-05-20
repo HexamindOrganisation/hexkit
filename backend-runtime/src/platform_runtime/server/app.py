@@ -30,6 +30,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sse_starlette.sse import EventSourceResponse
 
+from ..actions import ActionError
 from ..events import RuntimeEvent
 from ..protocol import InvokeRequest
 from ..registry import AgentRegistry, RegistryError
@@ -126,6 +127,35 @@ def create_app(registry: AgentRegistry) -> FastAPI:
         result = await runtime.invoke(body)
         return result.model_dump(mode="json")
 
+    @app.post("/agents/{agent_id}/actions/{action_name}")
+    async def invoke_action(
+        agent_id: str, action_name: str, body: dict | None = None
+    ) -> dict:
+        """Run a UI-triggered action declared in the agent's manifest.
+
+        Request body is `{ "args": { ... } }` (or absent — args default
+        to an empty dict). The response envelope is
+        `{ "result": <handler return value>, "events": [...] }`. The
+        front-end re-emits `events` through the bridge as `tool-call`
+        AgentEvents so the matching widget inbox receives the payload.
+        """
+        loaded = _resolve_loaded(registry, agent_id)
+        if loaded.actions is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agent '{agent_id}' declares no actions",
+            )
+        args = (body or {}).get("args", {})
+        if not isinstance(args, dict):
+            raise HTTPException(
+                status_code=400, detail="`args` must be a JSON object"
+            )
+        try:
+            result = await loaded.actions.invoke(action_name, args)
+        except ActionError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return result.model_dump(mode="json")
+
     @app.post("/agents/{agent_id}/runs/{run_id}/cancel")
     async def cancel(agent_id: str, run_id: str) -> dict:
         """Request cancellation of an in-flight run.
@@ -190,6 +220,14 @@ def _resolve(registry: AgentRegistry, agent_id: str):
     except RegistryError as e:
         # Convert to HTTPException so FastAPI returns a clean 404 BEFORE
         # the body parser tries to validate (matters for POST routes).
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+def _resolve_loaded(registry: AgentRegistry, agent_id: str):
+    """Like `_resolve` but returns the full `LoadedAgent` (for action access)."""
+    try:
+        return registry.get(agent_id)
+    except RegistryError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
 

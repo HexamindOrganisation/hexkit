@@ -59,6 +59,10 @@ class AgentManifest(BaseModel):
     capabilities: AgentCapabilities = Field(default_factory=AgentCapabilities)
     requirements: list[str] = Field(default_factory=list)
     env: list[str] = Field(default_factory=list)
+    # Names of UI-triggered action handlers defined in `actions.py` next
+    # to this manifest. Each name must be a callable in that file. The
+    # `actions.py` file is only required to exist if this list is non-empty.
+    actions: list[str] = Field(default_factory=list)
     extra: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("framework")

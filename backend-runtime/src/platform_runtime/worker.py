@@ -36,6 +36,12 @@ import sys
 import traceback
 from typing import Any
 
+from .actions import (
+    ActionError,
+    LocalActionHost,
+    load_action_callables,
+)
+
 # Activate built-in adapters. The decorator registration is what makes
 # `framework: langchain` etc. resolvable inside this child process.
 from .adapters import langchain_adapter  # noqa: F401
@@ -89,7 +95,11 @@ async def _emit(frame: dict[str, Any]) -> None:
 # Per-request handlers
 # ---------------------------------------------------------------------------
 
-async def _handle(req: WorkerRequest, runtime: UnifiedAgentRuntime) -> None:
+async def _handle(
+    req: WorkerRequest,
+    runtime: UnifiedAgentRuntime,
+    actions: LocalActionHost | None,
+) -> None:
     """Dispatch one request and emit the appropriate response frame(s).
 
     All exceptions from inside this function become `error` frames tagged
@@ -127,6 +137,36 @@ async def _handle(req: WorkerRequest, runtime: UnifiedAgentRuntime) -> None:
                 return
             ok = await runtime.cancel(target_run_id)
             await _emit(frame_result(req.id, {"cancelled": ok}))
+
+        elif req.method == "action":
+            name = req.params.get("name")
+            args = req.params.get("args") or {}
+            if not isinstance(name, str):
+                await _emit(
+                    frame_error(
+                        req.id,
+                        "action requires params.name (str)",
+                        "ValueError",
+                    )
+                )
+                return
+            if actions is None:
+                await _emit(
+                    frame_error(
+                        req.id,
+                        "This agent declares no actions",
+                        "ActionError",
+                    )
+                )
+                return
+            try:
+                result = await actions.invoke(
+                    name, args if isinstance(args, dict) else {}
+                )
+            except ActionError as e:
+                await _emit(frame_error(req.id, str(e), "ActionError"))
+                return
+            await _emit(frame_result(req.id, result.model_dump(mode="json")))
 
         elif req.method == "invoke":
             ir = InvokeRequest.model_validate(req.params)
@@ -174,10 +214,26 @@ async def _main(agent_dir: str) -> int:
         return 2
 
     runtime = loaded.runtime
+
+    actions: LocalActionHost | None = None
+    if loaded.manifest.actions:
+        try:
+            callables = load_action_callables(loaded.manifest, loaded.root)
+        except ActionError as e:
+            logger.exception("Failed to load actions module")
+            write_frame_sync(
+                sys.stdout.buffer, frame_fatal(f"ActionError: {e}")
+            )
+            return 2
+        actions = LocalActionHost(
+            declared=loaded.manifest.actions, callables=callables
+        )
+
     logger.info(
-        "Worker ready: agent_id=%s framework=%s",
+        "Worker ready: agent_id=%s framework=%s actions=%s",
         loaded.manifest.agent_id,
         loaded.manifest.framework,
+        loaded.manifest.actions or "[]",
     )
 
     # Step 2: handshake.
@@ -211,7 +267,7 @@ async def _main(agent_dir: str) -> int:
 
         # Dispatch concurrently. Multiple in-flight streams are fine — the
         # `id` tag is what keeps their frames separable on the wire.
-        task = asyncio.create_task(_handle(req, runtime))
+        task = asyncio.create_task(_handle(req, runtime, actions))
         inflight.add(task)
         task.add_done_callback(inflight.discard)
 

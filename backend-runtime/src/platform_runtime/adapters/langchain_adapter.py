@@ -368,6 +368,7 @@ class LangChainAdapter(UnifiedAgentRuntime):
             version=self._manifest.version,
             description=self._manifest.description,
             capabilities=self._manifest.capabilities,
+            actions=list(self._manifest.actions),
             extra=self._manifest.extra,
         )
 

@@ -58,6 +58,7 @@ WorkerMethod = Literal[
     "metadata",
     "health",
     "cancel",
+    "action",
     "close",
 ]
 
