@@ -36,7 +36,7 @@ widgets:
     type: markdown
     position: { horizontal: left, vertical: middle }
     size: { width: 4, height: 480 }
-    text: |
+    content: |
       ### Try it
       Ask anything. The agent has one tool:
 
