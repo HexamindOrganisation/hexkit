@@ -6,13 +6,6 @@ type Health =
   | { kind: "unhealthy"; detail: string }
   | { kind: "error" };
 
-/**
- * Tiny status pill backed by a one-shot `GET /health` call per agent.
- *
- * Health is intentionally lightweight on the runtime side (it does not
- * call the model), so polling N agents on AgentsHome is cheap. We still
- * do it lazily — one fetch per mounted pill, no global polling loop.
- */
 export function HealthPill({ agentId }: { agentId: string }): JSX.Element {
   const [state, setState] = useState<Health>({ kind: "loading" });
 
@@ -25,14 +18,12 @@ export function HealthPill({ agentId }: { agentId: string }): JSX.Element {
           details?: { error?: string };
         };
         if (cancelled) return;
-        if (body.ok) {
-          setState({ kind: "ok" });
-        } else {
+        if (body.ok) setState({ kind: "ok" });
+        else
           setState({
             kind: "unhealthy",
             detail: body.details?.error ?? "unhealthy",
           });
-        }
       })
       .catch(() => {
         if (!cancelled) setState({ kind: "error" });
@@ -43,42 +34,46 @@ export function HealthPill({ agentId }: { agentId: string }): JSX.Element {
   }, [agentId]);
 
   if (state.kind === "loading") {
-    return <Pill tone="muted">checking…</Pill>;
+    return <Dot tone="muted" label="checking" pulse />;
   }
-  if (state.kind === "ok") {
-    return <Pill tone="ok">healthy</Pill>;
-  }
-  if (state.kind === "unhealthy") {
-    return (
-      <Pill tone="warn" title={state.detail}>
-        unhealthy
-      </Pill>
-    );
-  }
-  return <Pill tone="error">unreachable</Pill>;
+  if (state.kind === "ok") return <Dot tone="ok" label="healthy" />;
+  if (state.kind === "unhealthy")
+    return <Dot tone="warn" label="unhealthy" title={state.detail} />;
+  return <Dot tone="error" label="unreachable" />;
 }
 
-function Pill({
+function Dot({
   tone,
-  children,
+  label,
   title,
+  pulse,
 }: {
   tone: "ok" | "warn" | "error" | "muted";
-  children: React.ReactNode;
+  label: string;
   title?: string;
+  pulse?: boolean;
 }): JSX.Element {
-  const cls = {
-    ok: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
-    warn: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
-    error: "bg-destructive/15 text-destructive border-destructive/30",
-    muted: "bg-muted text-muted-foreground border-border",
+  const colors = {
+    ok: "bg-emerald-400 shadow-[0_0_0_3px_hsl(var(--background))]",
+    warn: "bg-amber-400 shadow-[0_0_0_3px_hsl(var(--background))]",
+    error: "bg-red-400 shadow-[0_0_0_3px_hsl(var(--background))]",
+    muted: "bg-muted-foreground/50",
+  }[tone];
+  const text = {
+    ok: "text-emerald-300",
+    warn: "text-amber-300",
+    error: "text-red-300",
+    muted: "text-muted-foreground",
   }[tone];
   return (
     <span
       title={title}
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${cls}`}
+      className={`inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider ${text}`}
     >
-      {children}
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${colors} ${pulse ? "animate-pulse" : ""}`}
+      />
+      {label}
     </span>
   );
 }
