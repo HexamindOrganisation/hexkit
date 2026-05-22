@@ -33,6 +33,7 @@ from uuid import uuid4
 # installed; the core package does not import this module directly.
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 from ..events import (
     ErrorEvent,
@@ -148,9 +149,11 @@ class LangChainAdapter(UnifiedAgentRuntime):
 
         final_output: Any = None
 
+        translated_input = _translate_input(request.input)
+
         try:
             async for lc_event in runnable.astream_events(
-                request.input,
+                translated_input,
                 version="v2",
                 config={"run_id": run_id, "metadata": request.context},
             ):
@@ -482,3 +485,16 @@ def _tool_input_schema(tool: BaseTool) -> dict[str, Any]:
         return schema_cls.model_json_schema()
     except Exception:
         return {}
+
+def _translate_input(input: dict[str, list[dict[str, str]]]) -> dict[str, list[Any]]:
+    res = {"messages": []}
+    for message in input.get("messages", []):
+        role = message.get("role")
+        content = message.get("content", "")
+        if role == "user":
+            res["messages"].append(HumanMessage(content=content))
+        elif role == "assistant":
+            res["messages"].append(AIMessage(content=content))
+        elif role == "system":
+            res["messages"].append(SystemMessage(content=content))
+    return res

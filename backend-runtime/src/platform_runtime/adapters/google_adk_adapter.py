@@ -41,6 +41,7 @@ from google.adk import Agent, Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools import FunctionTool
 from google.genai import types as genai_types
+from google.adk.events import Event
 
 from ..events import (
     ErrorEvent,
@@ -63,6 +64,11 @@ from ..protocol import (
 )
 from . import register_adapter
 
+# Normalized roles → ADK Content roles. ADK has no `Content(role="system")`;
+# system instructions belong on the Agent (`instruction=...`) not in the
+# message list, so we drop `system` here rather than silently injecting it
+# as a user turn (which would confuse the model).
+_ADK_ROLES = {"user": "user", "assistant": "model"}
 
 @register_adapter("google-adk")
 class GoogleADKAdapter(UnifiedAgentRuntime):
@@ -156,25 +162,43 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
             )
             return
 
-        # Convert the platform's free-form input into an ADK Content.
-        try:
-            new_message = _to_content(request.input)
-        except Exception as e:
-            self._cancel_signals.pop(run_id, None)
-            yield ErrorEvent(
-                run_id=run_id,
-                seq=seq.next(),
-                message=f"Could not convert input to Content: {e}",
-                recoverable=False,
-            )
-            return
-
         # Identifiers ADK needs. We use the platform run_id as the session
         # id so each run is isolated; user_id is pulled from the request
         # context (control-plane caller may populate it), defaulting to
         # "anonymous". A future multi-turn API will reuse session_id.
         user_id = str(request.context.get("user_id") or "anonymous")
         session_id = run_id
+
+        # Translate the normalized input ({messages: [{role, content}, ...]})
+        # into an ADK session (all prior turns) + a `new_message` (the last
+        # user turn). Errors here are caller-facing — bad input shape.
+        try:
+            messages = list((request.input or {}).get("messages") or [])
+            if not messages:
+                raise ValueError("input.messages is empty")
+            last = messages[-1]
+            if last.get("role") != "user":
+                raise ValueError(
+                    f"last message must have role='user'; got {last.get('role')!r}"
+                )
+            await self._populate_session(
+                user_id=user_id,
+                session_id=session_id,
+                history=messages[:-1],
+            )
+            new_message = genai_types.Content(
+                role="user",
+                parts=[genai_types.Part(text=str(last.get("content", "")))],
+            )
+        except Exception as e:
+            self._cancel_signals.pop(run_id, None)
+            yield ErrorEvent(
+                run_id=run_id,
+                seq=seq.next(),
+                message=f"Could not convert input to ADK session + new_message: {e}",
+                recoverable=False,
+            )
+            return
 
         # Per-run id maps. function_call.id ↔ our tool_call_id.
         tool_call_ids: dict[str, str] = {}
@@ -385,6 +409,55 @@ class GoogleADKAdapter(UnifiedAgentRuntime):
         signal.set()
         return True
 
+    # ------------------------------------------------------------------
+    # Session population
+    # ------------------------------------------------------------------
+
+    async def _populate_session(
+        self,
+        *,
+        user_id: str,
+        session_id: str,
+        history: list[dict[str, Any]],
+    ) -> None:
+        """Create a fresh ADK session and replay `history` into it.
+
+        Called once per `stream()` invocation. `history` is the list of
+        prior turns (everything except the final user message, which is
+        passed separately as `new_message` to `runner.run_async`).
+
+        Messages whose role doesn't map to an ADK `Content` role are
+        dropped (today: "system" and "tool"). System prompts belong on
+        the Agent's `instruction=` attribute, set in the user's
+        `build_agent()`; carrying them in history would either confuse
+        the model or duplicate the static instruction.
+        """
+        assert self._session_service is not None
+        assert self._agent is not None
+
+        agent_name = self._agent.name
+        app_name = self._manifest.agent_id
+
+        session = await self._session_service.create_session(
+            app_name=app_name,
+            user_id=user_id,
+            session_id=session_id,
+        )
+
+        for msg in history:
+            adk_role = _ADK_ROLES.get(msg.get("role"))
+            if adk_role is None:
+                continue
+            ev = Event(
+                author=adk_role if adk_role == "user" else agent_name,
+                invocation_id="replay",
+                content=genai_types.Content(
+                    role=adk_role,
+                    parts=[genai_types.Part(text=str(msg.get("content", "")))],
+                ),
+            )
+            await self._session_service.append_event(session=session, event=ev)
+
     async def aclose(self) -> None:
         runner = self._runner
         if runner is not None:
@@ -414,35 +487,6 @@ class _SeqCounter:
     def next(self) -> int:
         self._n += 1
         return self._n
-
-
-def _to_content(value: Any) -> genai_types.Content:
-    """Convert the platform's free-form `input` into an ADK Content.
-
-    Accepts:
-        - `str`                                  → wrapped as one text part
-        - dict with `input` / `content` / `text` → unwrap and wrap as above
-        - a `genai_types.Content`                → passed through
-        - anything else                          → `repr()` as text
-    """
-    if isinstance(value, genai_types.Content):
-        return value
-    if isinstance(value, str):
-        text = value
-    elif isinstance(value, dict):
-        for key in ("input", "content", "text"):
-            v = value.get(key)
-            if isinstance(v, str):
-                text = v
-                break
-        else:
-            text = repr(value)
-    else:
-        text = repr(value)
-    return genai_types.Content(
-        role="user",
-        parts=[genai_types.Part(text=text)],
-    )
 
 
 def _coerce_args(value: Any) -> dict[str, Any]:

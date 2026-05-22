@@ -140,9 +140,11 @@ class OpenAIAgentsAdapter(UnifiedAgentRuntime):
         # (e.g. think → tool-call → final reply). Each gets its own id.
         current_message_id: str | None = None
 
+        translated_input = _translate_input(request.input)
+
         result = None
         try:
-            result = Runner.run_streamed(agent, request.input)
+            result = Runner.run_streamed(agent, translated_input)
             async for ev in result.stream_events():
 
                 if cancel_signal.is_set():
@@ -424,3 +426,7 @@ def _extract_message_text(item: Any) -> str:
                 parts.append(part["text"])
         return "".join(parts)
     return ""
+
+def _translate_input(input: dict[str, list[dict[str, str]]]) -> dict[str, list[Any]]:
+    res = [{"role": m.get("role", ""), "content": m.get("content", "")} for m in input.get("messages", [])]
+    return res
