@@ -17,7 +17,7 @@ mode is `SUBPROCESS` (see Piece 3).
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from pydantic import TypeAdapter
 
@@ -74,6 +74,24 @@ class RemoteAdapter(UnifiedAgentRuntime):
     async def cancel(self, run_id: str) -> bool:
         raw = await self._sup.rpc("cancel", {"run_id": run_id})
         return bool(raw.get("cancelled", False))
+
+    async def resume(
+        self,
+        run_id: str,
+        approval_id: str,
+        decision: str,
+        payload: dict[str, Any] | None = None,
+    ) -> bool:
+        raw = await self._sup.rpc(
+            "resume",
+            {
+                "run_id": run_id,
+                "approval_id": approval_id,
+                "decision": decision,
+                "payload": payload,
+            },
+        )
+        return bool(raw.get("resolved", False))
 
     async def aclose(self) -> None:
         await self._sup.stop()

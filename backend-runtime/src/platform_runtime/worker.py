@@ -138,6 +138,27 @@ async def _handle(
             ok = await runtime.cancel(target_run_id)
             await _emit(frame_result(req.id, {"cancelled": ok}))
 
+        elif req.method == "resume":
+            run_id = req.params.get("run_id")
+            approval_id = req.params.get("approval_id")
+            decision = req.params.get("decision")
+            payload = req.params.get("payload")
+            if not (
+                isinstance(run_id, str)
+                and isinstance(approval_id, str)
+                and isinstance(decision, str)
+            ):
+                await _emit(
+                    frame_error(
+                        req.id,
+                        "resume requires params.run_id, approval_id, decision",
+                        "ValueError",
+                    )
+                )
+                return
+            ok = await runtime.resume(run_id, approval_id, decision, payload)
+            await _emit(frame_result(req.id, {"resolved": ok}))
+
         elif req.method == "action":
             name = req.params.get("name")
             args = req.params.get("args") or {}

@@ -555,10 +555,10 @@ directly; in `subprocess`, the worker holds it and the server holds a
 - **Approval flow.** The `approval_requested` / `approval_resolved` events,
   the `resume()` protocol hook, and the `POST .../approvals/{id}` endpoint
   are implemented, and the reference `FakeRuntime` exercises a real
-  suspend/resume loop. What's pending: wiring it into the framework
-  adapters' policy layer (no framework adapter emits approvals yet) and
-  resume support over the subprocess IPC wire (`RemoteAdapter` inherits the
-  default `resume() -> False`).
+  suspend/resume loop in **both** isolation modes — `resume()` is carried
+  over the subprocess IPC wire (`RemoteAdapter.resume` → worker `resume`
+  method). What's pending: wiring it into the framework adapters' policy
+  layer (no framework adapter emits approvals yet).
 - **Mid-call cancel.** `cancel(run_id)` takes effect at the next event
   boundary inside the adapter's `stream()` — typically within a token
   during a model stream. A run blocked on a single non-streaming model
