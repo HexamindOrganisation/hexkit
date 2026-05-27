@@ -58,8 +58,10 @@ runtime is stateless and horizontally scalable; the platform backend owns
 all state, security, and tenant-shaped concerns.
 
 The UI never talks framework concepts. Adapters normalize framework events
-into a fixed schema (`message.delta`, `tool.start`, `state.update`,
-`trace.span`, …); the UI consumes that schema.
+into a fixed schema (`block_delta`, `tool_start`, `state_update`,
+`trace_span`, …); the UI consumes that schema. The schema is a shared
+contract with the Fortify runtime — see
+[backend-runtime/README.md](backend-runtime/README.md#event-schema).
 
 For the original product spec, see [specs.md](specs.md).
 
@@ -146,11 +148,12 @@ schema with an `extra` slot for framework-specific knobs.
 Translates the framework's stream into the platform's normalized event
 schema. Adding a new framework = writing one adapter.
 
-**Event schema.** Closed set of typed events
-(`message.delta`, `message.completed`, `tool.start`, `tool.end`,
-`trace.span`, `state.update`, `approval.requested`, `error`,
-`run.started`, `run.completed`). The UI and observability layers consume
-events generically.
+**Event schema.** Typed events grouped into a Fortify-shared core
+(`run_start`, `block_start`/`block_delta`/`block_end`, `tool_start`/
+`tool_update`/`tool_end`, `run_end`, `error`), platform observability
+extensions (`state_update`, `trace_span`), and human-in-the-loop
+(`approval_requested`, `approval_resolved`). The UI and observability
+layers consume events generically.
 
 **Isolation.** Agents can run in-process (low overhead, trusted code) or
 in per-agent subprocesses with their own Python venv installed from the
@@ -169,7 +172,7 @@ worker boundary.
 - **OpenAI Agents SDK ≥ 0.17** — `Runner.run_streamed` token stream
   with native tool-call mapping.
 - **Google ADK ≥ 1.33** — `Runner.run_async` event stream, multi-agent
-  handoff surfaces as `state.update(active_agent)`, JSON-schema-
+  handoff surfaces as `state_update(active_agent)`, JSON-schema-
   translated tools.
 
 See [TODO.md](TODO.md) for upcoming frameworks (Pydantic AI).

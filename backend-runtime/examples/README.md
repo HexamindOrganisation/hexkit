@@ -42,7 +42,7 @@ curl http://127.0.0.1:8080/agents/langchain-hello/tools
 curl http://127.0.0.1:8080/agents/langchain-hello/health
 ```
 
-Non-streaming invoke (returns the terminal `RunCompleted` event):
+Non-streaming invoke (returns the terminal `RunEndEvent`):
 
 ```bash
 curl -X POST http://127.0.0.1:8080/agents/langchain-hello/invoke \
@@ -61,12 +61,14 @@ curl -N -X POST http://127.0.0.1:8080/agents/langchain-hello/stream \
 You should see a sequence like:
 
 ```
-event: run.started
-event: message.delta       (× many — token stream from the model deciding to call the tool)
-event: message.completed   (the tool-call message)
-event: tool.start          (name: get_current_time)
-event: tool.end
-event: message.delta       (× many — the model's final answer)
-event: message.completed
-event: run.completed
+event: run_start
+event: block_start         (the model's reasoning/decision text opens)
+event: block_delta         (× many — token stream)
+event: block_end
+event: tool_start          (tool_name: get_current_time)
+event: tool_end
+event: block_start         (the final answer opens)
+event: block_delta         (× many)
+event: block_end
+event: run_end
 ```

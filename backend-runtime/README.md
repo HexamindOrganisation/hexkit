@@ -91,13 +91,16 @@ curl -N -X POST http://127.0.0.1:8080/agents/langchain-hello/stream \
 You will see a typed SSE stream:
 
 ```
-event: run.started
-event: message.delta       (×N — token stream)
-event: tool.start          (name: get_current_time)
-event: tool.end
-event: message.delta       (×N — final answer)
-event: message.completed
-event: run.completed
+event: run_start
+event: block_start         (text block opens)
+event: block_delta         (×N — token stream)
+event: block_end
+event: tool_start          (tool_name: get_current_time)
+event: tool_end
+event: block_start         (final answer)
+event: block_delta         (×N)
+event: block_end
+event: run_end
 ```
 
 ---
@@ -114,9 +117,10 @@ responses are JSON for unary calls and `text/event-stream` for streams.
 | `GET` | `/agents/{id}/tools` | — | `ToolDescriptor[]` |
 | `GET` | `/agents/{id}/health` | — | `HealthStatus` (200 ok, 503 unhealthy) |
 | `GET` | `/agents/{id}/ui` | — | Raw YAML (`text/yaml`) — agent-supplied UI definition, or `404` if absent |
-| `POST` | `/agents/{id}/invoke` | `InvokeRequest` | `RunCompleted` (drains the stream) |
-| `POST` | `/agents/{id}/stream` | `InvokeRequest` | SSE stream of `RuntimeEvent` |
+| `POST` | `/agents/{id}/invoke` | `InvokeRequest` | `RunEndEvent` (drains the stream) |
+| `POST` | `/agents/{id}/stream` | `InvokeRequest` | SSE stream of `StreamEvent` |
 | `POST` | `/agents/{id}/runs/{run_id}/cancel` | — | `{ "cancelled": bool }` — idempotent |
+| `POST` | `/agents/{id}/runs/{run_id}/approvals/{approval_id}` | `{ "decision", "decided_by"?, "payload"? }` | `{ "resolved": bool }` — resume a HITL pause |
 
 ### `InvokeRequest`
 
@@ -145,41 +149,68 @@ the event id as the SSE `id` (usable as `Last-Event-ID` for reconnect),
 and the full event payload as JSON:
 
 ```
-event: message.delta
+event: block_delta
 id:    a1b2c3...
-data:  {"id":"...","run_id":"...","ts":"...","seq":3,
-        "type":"message.delta","message_id":"...","delta":"hello"}
+data:  {"event_id":"...","run_id":"...","root_run_id":"...","sequence":4,
+        "timestamp":"...","event_type":"block_delta","block_id":"...",
+        "block_type":"text","text":"hello","role":"assistant"}
 ```
 
 ---
 
 ## Event schema
 
-The closed set of normalized events. Every adapter speaks this vocabulary;
-the UI consumes it framework-blind.
+The normalized events. Every adapter speaks this vocabulary; the UI
+consumes it framework-blind. The schema is a **shared contract with the
+Fortify runtime** (`coolagents`): the core is adopted verbatim from
+`fortify.streaming.events` so a Fortify-wrapped agent plugs in without
+translation. Events are grouped below by origin.
 
-| Type | Emitted when | Key fields |
+**Core** (identical to Fortify):
+
+| `event_type` | Emitted when | Key fields |
 |---|---|---|
-| `run.started` | First event of every run. | `agent_id`, `input` |
-| `message.delta` | Streaming assistant text chunk. | `message_id`, `delta` |
-| `message.completed` | Final form of a message. | `message_id`, `role`, `content` |
-| `tool.start` | Tool invocation begins. | `tool_call_id`, `name`, `arguments` |
-| `tool.end` | Tool invocation returns. | `tool_call_id`, `name`, `output` |
-| `state.update` | Agent state changed (e.g. multi-agent handoff). | `key`, `value` |
-| `trace.span` | A traced span finished. | `span_id`, `parent_span_id`, `name`, `start_ts`, `end_ts` |
-| `approval.requested` | HITL pause requested. | `approval_id`, `reason`, `payload` |
+| `run_start` | First event of every run. | `query`, `agent_id`, `input` |
+| `block_start` | A content block opens (text / reasoning / tool_call). | `block_id`, `block_type`, `role` |
+| `block_delta` | Streaming chunk within a block. | `block_id`, `block_type`, `text` |
+| `block_end` | A block is finalized. | `block_id`, `block_type` |
+| `tool_start` | Tool invocation begins. | `tool_id`, `tool_name`, `arguments` |
+| `tool_update` | Intermediate progress from a running tool. | `tool_id`, `tool_name`, `text` |
+| `tool_end` | Tool invocation returns. | `tool_id`, `tool_name`, `state`, `output_summary`, `output` |
+| `run_end` | Last event of every run. | `result` (`AgentRunResult`), `output` |
 | `error` | Recoverable or fatal error during the run. | `message`, `recoverable`, `details` |
-| `run.completed` | Last event of every run. | `agent_id`, `output` |
 
-Every event carries common envelope fields:
+**Platform extensions** (additive; Fortify never emits these — its streams
+simply never produce them and consumers degrade gracefully):
 
-- `id` — unique event id (used as SSE `id`)
+| `event_type` | Emitted when | Key fields |
+|---|---|---|
+| `state_update` | Agent state changed (e.g. multi-agent handoff). | `key`, `value` |
+| `trace_span` | A traced span finished. | `span_id`, `parent_span_id`, `name`, `start_ts`, `end_ts` |
+
+**Human-in-the-loop** (new on both sides; proposed for joint adoption):
+
+| `event_type` | Emitted when | Key fields |
+|---|---|---|
+| `approval_requested` | Run suspends awaiting an out-of-band decision. | `approval_id`, `source` (`policy`/`agent`), `kind` (`authorize`/`input`), `reason`, `tool_name`, `arguments` |
+| `approval_resolved` | A pending approval was decided and the run resumed. | `approval_id`, `decision`, `decided_by` |
+
+Every event carries common envelope fields (`RunNode` + `BaseStreamEvent`):
+
+- `event_id` — unique event id (used as SSE `id`)
 - `run_id` — groups events from one invocation
-- `seq` — monotonic per-run counter starting at 0
-- `ts` — ISO-8601 server timestamp
-- `type` — discriminator
+- `root_run_id` / `parent_run_id` / `depth` — run-tree ancestry; a flat
+  in-process run sets `root_run_id == run_id`, `parent_run_id == null`,
+  `depth == 0`
+- `sequence` — monotonic per-run counter starting at 1. Persisted steps
+  share the counter, so emitted event `sequence` values are strictly
+  increasing but **not** contiguous
+- `timestamp` — ISO-8601 server timestamp
+- `event_type` — discriminator
 
-The full Pydantic schema lives in
+`run_end` carries an `AgentRunResult` (`message` + persisted `steps`:
+`text_step` / `reasoning_step` / `tool_call_step`) alongside the structured
+terminal `output`. The full Pydantic schema lives in
 [`events.py`](src/platform_runtime/events.py).
 
 ---
@@ -291,14 +322,19 @@ three names exist so manifests read honestly.
 
 |  | LangChain / LangGraph / DeepAgents | OpenAI Agents | Google ADK |
 |---|---|---|---|
-| `message.delta` (token streaming) | ✓ | ✓ | ✓ |
-| `message.completed` (skips empty tool-call turns) | ✓ | ✓ | ✓ |
-| `tool.start` / `tool.end` | ✓ | ✓ | ✓ |
-| `state.update` | ✓ (graph nodes) | ✓ (agent handoff) | ✓ (multi-agent author) |
-| `trace.span` | ✓ (chain spans) |  |  |
-| `approval.requested` |  |  |  |
+| `block_*` text streaming (open / delta / end) | ✓ | ✓ | ✓ |
+| empty tool-call turns produce no text block | ✓ | ✓ | ✓ |
+| `tool_start` / `tool_end` | ✓ | ✓ | ✓ |
+| `state_update` | ✓ (graph nodes) | ✓ (agent handoff) | ✓ (multi-agent author) |
+| `trace_span` | ✓ (chain spans) |  |  |
+| `approval_requested` / `approval_resolved` |  |  |  |
 | `cancel(run_id)` (event-boundary) | ✓ | ✓ | ✓ |
 | Tool schema → JSON Schema | ✓ | ✓ (native) | ✓ (translated from ADK Schema) |
+
+Reasoning blocks (`block_type: reasoning`) and `tool_update` are in the
+schema but no adapter emits them yet. HITL approval events are emitted by
+the reference `FakeRuntime` (see [`tests/test_approvals.py`](tests/test_approvals.py));
+wiring them into the framework adapters' policy layer is pending.
 
 Gaps are intentional: features get adapter mappings once a consumer needs
 them. Adapter code is small enough to extend in a single PR.
@@ -386,7 +422,7 @@ Adding framework `X`:
    @register_adapter("x")
    class XAdapter(UnifiedAgentRuntime):
        def __init__(self, *, manifest, root, factory): ...
-       async def stream(self, request): ...      # yields RuntimeEvent
+       async def stream(self, request): ...      # yields StreamEvent
        async def tools(self): ...                # list[ToolDescriptor]
        async def metadata(self): ...             # AgentMetadata
        # health/aclose have defaults; override if needed
@@ -402,14 +438,17 @@ Adding framework `X`:
 The protocol's contract — written in
 [`protocol.py`](src/platform_runtime/protocol.py):
 
-- The first yielded event is `RunStarted`.
-- The last yielded event is `RunCompleted` *or* `ErrorEvent`.
-- `seq` is monotonically increasing per run, starting at 0.
+- The first yielded event is `RunStartEvent`.
+- The last yielded event is `RunEndEvent` *or* `ErrorEvent`.
+- `sequence` is monotonically increasing per run, starting at 1.
 - Every event carries `request.run_id`.
 - After the first yield, no exception may escape — all failures become
   `ErrorEvent`.
 
-The existing adapters
+In practice adapters don't build events by hand: they drive a
+[`RunEmitter`](src/platform_runtime/run_emitter.py), which assigns
+`sequence`, manages the block lifecycle, accumulates persisted steps, and
+assembles the terminal `AgentRunResult`. The existing adapters
 ([`langchain_adapter.py`](src/platform_runtime/adapters/langchain_adapter.py),
 [`openai_agents_adapter.py`](src/platform_runtime/adapters/openai_agents_adapter.py),
 [`google_adk_adapter.py`](src/platform_runtime/adapters/google_adk_adapter.py))
@@ -432,7 +471,7 @@ python -m pytest tests/ -q
 python -m pytest tests/ -q -m 'slow'
 ```
 
-The full fast suite is 42 tests in ~40s. Subprocess isolation tests add
+The full fast suite is 61 tests in ~60s. Subprocess isolation tests add
 real `python -m platform_runtime.worker` spawns. The slow venv test
 materializes an actual venv with `six` installed (~7s with pip, ~1s with
 uv).
@@ -449,7 +488,8 @@ Markers:
 
 ```
 src/platform_runtime/
-  events.py                  Normalized event schema (Pydantic)
+  events.py                  Normalized event schema (Pydantic); shared contract with Fortify
+  run_emitter.py             Emit-side helper: block lifecycle, step accumulation, sequencing
   protocol.py                UnifiedAgentRuntime ABC + request/descriptor models
   manifest.py                AgentManifest + YAML loader + validation
   registry.py                Discovery, isolation-mode dispatch, sys.path setup
@@ -483,7 +523,7 @@ FastAPI route handler  ─►  registry.get("X").runtime           (RemoteAdapte
                               │ worker process                 │
                               │   reads request frame          │
                               │   adapter.stream(request)      │
-                              │   yields RuntimeEvent          │
+                              │   yields StreamEvent           │
                               │   each event → JSON-lines on   │
                               │   stdout, tagged with corr-id  │
                               └────────────────────────────────┘
@@ -512,8 +552,13 @@ directly; in `subprocess`, the worker holds it and the server holds a
 
 - **Control plane.** No auth, RBAC, tenants, secret vault, or
   conversation persistence. The runtime trusts its caller.
-- **Approval flow.** `approval.requested` is in the schema; no adapter
-  emits it yet.
+- **Approval flow.** The `approval_requested` / `approval_resolved` events,
+  the `resume()` protocol hook, and the `POST .../approvals/{id}` endpoint
+  are implemented, and the reference `FakeRuntime` exercises a real
+  suspend/resume loop. What's pending: wiring it into the framework
+  adapters' policy layer (no framework adapter emits approvals yet) and
+  resume support over the subprocess IPC wire (`RemoteAdapter` inherits the
+  default `resume() -> False`).
 - **Mid-call cancel.** `cancel(run_id)` takes effect at the next event
   boundary inside the adapter's `stream()` — typically within a token
   during a model stream. A run blocked on a single non-streaming model
@@ -532,7 +577,7 @@ directly; in `subprocess`, the worker holds it and the server holds a
 
 Event schema and manifest schema are at v1 implicitly. A `manifest_version`
 field will arrive the first time a breaking change is needed; the event
-schema's discriminated-union design (`type` field) lets us add event
+schema's discriminated-union design (`event_type` field) lets us add event
 types without breaking existing consumers.
 
 See [TODO.md](../TODO.md) for the full prioritized list.

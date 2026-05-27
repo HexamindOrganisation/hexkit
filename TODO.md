@@ -18,8 +18,9 @@ Items marked **[x]** are done.
 - [x] FastAPI + SSE server
 - [x] LangChain adapter (basic)
 - [x] Verify LangChain adapter end-to-end with real key (deltas, tool events, completed output)
-- [x] Emit `trace.span` events (LangGraph node entry/exit) — needed before observability UI
-- [x] Emit `state.update` events (LangGraph state diffs after each node) — needed for "agent state" UI panels
+- [x] Emit `trace_span` events (LangGraph node entry/exit) — needed before observability UI
+- [x] Emit `state_update` events (LangGraph state diffs after each node) — needed for "agent state" UI panels
+- [x] Migrate event schema to the Fortify-shared shape (block model, `RunNode` hierarchy, `event_type` discriminator); keep `trace_span`/`state_update` as additive extensions
 - [x] Unit tests with a fake adapter (proves protocol/registry/server without LC)
 
 ### Runtime isolation
@@ -44,7 +45,9 @@ Each one exercises the abstraction; expect event-schema tweaks.
 ### Control / HITL
 
 - [x] `cancel(run_id)` on the protocol + `POST /agents/{id}/runs/{run_id}/cancel` route (event-boundary cancellation; in-memory state, see README limitations)
-- [ ] `approval.requested` flow: pause, surface to UI, resume endpoint
+- [x] `approval_requested`/`approval_resolved` events, `resume()` protocol hook, `POST .../approvals/{id}` endpoint, and a reference suspend/resume loop in `FakeRuntime`
+- [ ] `approval_requested` flow: wire into framework adapters' policy layer (no framework adapter emits it yet) + resume over subprocess IPC
+- [ ] `approval_requested` flow: surface to UI (front-app translate + approval prompt widget)
 - [ ] Tool execution gating ("require approval before tool X")
 
 ### UI-triggered actions
@@ -100,7 +103,7 @@ Stack: FastAPI + SQLAlchemy + **PostgreSQL** + Alembic.
 - [ ] Tenant model + tenant-scoped resources
 - [ ] System-default API keys (admin-configured) with per-user override
 - [ ] Password reset / email verification / OAuth providers
-- [ ] Durable event sink (persist full `RuntimeEvent` stream, not just final text)
+- [ ] Durable event sink (persist full `StreamEvent` stream, not just final text)
 - [ ] Streaming reconnect / replay (`Last-Event-ID`)
 - [ ] App registry (which agents are deployed to which tenant, by version)
 - [ ] YAML app config storage (per-tenant widget layout overrides)
@@ -121,9 +124,9 @@ Stack: FastAPI + SQLAlchemy + **PostgreSQL** + Alembic.
 - [x] Standard widget: chat view (`ai-response` + `ai-chat-input`, message-stream-aware)
 - [x] Standard widget: `tool-calls` panel consuming routed `tool-call` events
 - [ ] Standard widget: tool catalog (from `/tools`)
-- [ ] Standard widget: trace timeline (from `trace.span` events)
-- [ ] Standard widget: state inspector (from `state.update` events)
-- [ ] Standard widget: approval prompt (`approval.requested`)
+- [ ] Standard widget: trace timeline (from `trace_span` events)
+- [ ] Standard widget: state inspector (from `state_update` events)
+- [ ] Standard widget: approval prompt (`approval_requested`)
 
 ### `front-app` shell — v0 (OpenWebUI-ISO, end-user oriented)
 
@@ -165,7 +168,7 @@ Everything else (pages, layout, components, config) was deleted.
 - [ ] Logging / structured logs in both backends
 - [ ] OpenTelemetry export (traces → Jaeger/Tempo, metrics → Prometheus)
 - [ ] CI: lint, type-check (mypy/pyright), tests, build
-- [ ] Versioning policy: `RuntimeEvent` schema version, manifest schema version
+- [ ] Versioning policy: `StreamEvent` schema version, manifest schema version
 
 ---
 
@@ -173,7 +176,7 @@ Everything else (pages, layout, components, config) was deleted.
 
 ### M1 — "Runtime v0" — **shipped**
 
-- LangChain / LangGraph / DeepAgents adapter (`astream_events`-based; `trace.span`, `state.update`, tool events)
+- LangChain / LangGraph / DeepAgents adapter (`astream_events`-based; `trace_span`, `state_update`, tool events)
 - OpenAI Agents SDK adapter
 - Google ADK adapter
 - Subprocess isolation + per-agent venvs via `uv`
@@ -215,9 +218,9 @@ Sub-slices, each independently demoable:
 
 ### M4 — "Observability + HITL"
 
-- Trace timeline widget consuming `trace.span` events
-- State inspector widget consuming `state.update` events
-- `approval.requested` flow + tool-execution gating
+- Trace timeline widget consuming `trace_span` events
+- State inspector widget consuming `state_update` events
+- `approval_requested` flow + tool-execution gating
 - `dispatcher.subscribe` live data feeds (`/actions/:name/stream`)
 - OpenTelemetry export from the runtime
 

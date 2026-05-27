@@ -244,16 +244,15 @@ The platform is fundamentally event-driven.
 
 The runtime emits standardized events instead of returning framework-native responses.
 
-Example event types:
+Event types (the normalized schema, shared with the Fortify runtime — see
+[backend-runtime/README.md](backend-runtime/README.md#event-schema)):
 
-* message.delta
-* message.completed
-* tool.start
-* tool.end
-* trace.span
-* state.update
-* error
-* approval.requested
+Core: `run_start`, `block_start`, `block_delta`, `block_end`, `tool_start`,
+`tool_update`, `tool_end`, `run_end`, `error`.
+
+Platform observability extensions: `state_update`, `trace_span`.
+
+Human-in-the-loop: `approval_requested`, `approval_resolved`.
 
 The UI and observability systems consume these events generically.
 

@@ -157,6 +157,12 @@ src/
   runtime/
     types.ts                        RuntimeEvent, AgentMetadata, Secret,
                                      RuntimeConfig
+                                     (NOTE: still the pre-migration event
+                                     shape; the runtime now emits the
+                                     Fortify-shared schema — event_type,
+                                     block model, RunNode hierarchy. types.ts
+                                     + runtimeBridge.translate migration is
+                                     pending. See backend-runtime README.)
     api.ts                          listAgents, getMetadata, getUiYaml,
                                      getHealth, cancelRun, getSecrets,
                                      putSecret, deleteSecret, getConfig

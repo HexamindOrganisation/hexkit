@@ -100,6 +100,15 @@ src/
     runtimeBridge.ts                AgentBridge over the runtime
 ```
 
+> **Pending migration.** The runtime's event schema has moved to the
+> Fortify-shared shape (`event_type` discriminator, block model, `RunNode`
+> hierarchy — see
+> [backend-runtime/README.md](../backend-runtime/README.md#event-schema)).
+> This front-app still consumes the previous `RuntimeEvent` shape
+> (`message.delta` / `tool.start` / `seq` / …); `types.ts` and
+> `runtimeBridge.translate` have not yet been updated. Until they are, the
+> references below describe the old vocabulary.
+
 The interesting file is [runtimeBridge.ts](src/runtime/runtimeBridge.ts) —
 the translation seam between the runtime's normalized event schema and
 `agent-ui`'s smaller event vocabulary. Future event types (trace timeline,
