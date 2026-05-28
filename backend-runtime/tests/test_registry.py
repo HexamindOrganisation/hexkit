@@ -61,7 +61,7 @@ def test_discover_finds_nested(tmp_path: Path, fake_agent_dir: Path) -> None:
 
     reg = AgentRegistry()
     loaded = reg.discover(parent)
-    ids = sorted(l.manifest.agent_id for l in loaded)
+    ids = sorted(entry.manifest.agent_id for entry in loaded)
     assert ids == ["one", "two"]
 
 

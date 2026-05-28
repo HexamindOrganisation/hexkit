@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 from platform_runtime.adapters.langchain_adapter import translate_input

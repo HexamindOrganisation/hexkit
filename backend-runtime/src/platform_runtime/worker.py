@@ -263,7 +263,6 @@ async def _main(agent_dir: str) -> int:
     # Step 3: request loop.
     reader = await connect_stdin_reader()
     inflight: set[asyncio.Task[Any]] = set()
-    close_requested = False
 
     while True:
         line = await reader.readline()
@@ -283,7 +282,6 @@ async def _main(agent_dir: str) -> int:
         if req.method == "close":
             # Confirm + exit. We do not start new handlers after this.
             await _emit(frame_result(req.id, {"closed": True}))
-            close_requested = True
             break
 
         # Dispatch concurrently. Multiple in-flight streams are fine — the

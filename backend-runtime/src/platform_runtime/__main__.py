@@ -29,9 +29,9 @@ import sys
 sys.stdout.write("[platform_runtime] starting (importing adapters)…\n")
 sys.stdout.flush()
 
-import uvicorn
+import uvicorn  # noqa: E402
 
-from .adapters import langchain_adapter  # noqa: F401
+from .adapters import langchain_adapter  # noqa: E402, F401
 
 # Optional adapters: imported best-effort so the platform works with any
 # subset of the framework extras installed. A missing import is a silent
@@ -39,17 +39,17 @@ from .adapters import langchain_adapter  # noqa: F401
 # get a clear "no adapter registered for framework X" error pointing the
 # user at the right extras.
 try:  # pragma: no cover - import-time check
-    from .adapters import openai_agents_adapter  # noqa: F401
+    from .adapters import openai_agents_adapter  # noqa: E402, F401
 except ImportError:
     pass
 
 try:  # pragma: no cover - import-time check
-    from .adapters import google_adk_adapter  # noqa: F401
+    from .adapters import google_adk_adapter  # noqa: E402, F401
 except ImportError:
     pass
 
-from .registry import AgentRegistry, IsolationMode
-from .server import create_app
+from .registry import AgentRegistry, IsolationMode  # noqa: E402
+from .server import create_app  # noqa: E402
 
 
 def main() -> None:
