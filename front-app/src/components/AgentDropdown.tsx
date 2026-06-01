@@ -34,7 +34,10 @@ export function AgentDropdown() {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-secondary"
       >
-        <AgentGlyph color={agent.main_color} name={agent.name} size={22} />
+        {/* keyed by agent id so the bloom/settle replays on every switch */}
+        <span key={agent.id} className="hx-avatar inline-flex">
+          <AgentGlyph color={agent.main_color} name={agent.name} size={22} />
+        </span>
         <span className="text-sm font-semibold">{agent.name}</span>
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>

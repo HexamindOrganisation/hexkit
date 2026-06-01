@@ -71,6 +71,9 @@ export const builtinWidgets: AnyWidgetDefinition[] = [
     schema: AiChatInputWidgetSchema,
     component: AiChatInputWidgetComponent,
     chromeless: true,
+    // HexaUI: the composer is constant chrome pinned to the bottom of the chat
+    // area (the transcript scrolls above it), not a widget in the content flow.
+    slot: "footer",
   }),
   defineWidget<AiResponseWidget>({
     type: "ai-response",

@@ -19,7 +19,11 @@ export PLATFORM_AGENT_BACKEND_URL="http://127.0.0.1:8080"
 cleanup() { fuser -k 8080/tcp 8000/tcp 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
 
-echo "starting agent-server :8080 …"
+# Set AGENT_ENABLE_LLM=1 to route the `probe` agent to the real OpenAI-backed
+# LLMAgent when an openai_api_key is forwarded (else it falls back to echo).
+export AGENT_ENABLE_LLM="${AGENT_ENABLE_LLM:-0}"
+
+echo "starting agent-server :8080 (AGENT_ENABLE_LLM=$AGENT_ENABLE_LLM) …"
 PYTHONPATH=demo/agent-server/src \
   backend-runtime/.venv/bin/python -m agent_server &
 

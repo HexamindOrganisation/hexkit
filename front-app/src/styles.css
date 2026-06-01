@@ -14,6 +14,59 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
 }
 
+/* HexaUI shell: AgentUI fills the chat area under the 58px top bar; the
+ * transcript (main slot) scrolls while the composer (footer slot) stays pinned
+ * to the bottom. Overrides the library's standalone `min-height:100vh` default
+ * — scoped to this app, so other agent-ui consumers are unaffected. */
+.au-root {
+  min-height: 0;
+  height: 100%;
+}
+.au-main-slot {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.au-footer-slot {
+  padding: 10px 24px 18px;
+}
+
+/* Agent switch: a soft accent bloom behind the top-bar glyph as it settles in.
+ * Transform/opacity only; replays because the wrapper is keyed by agent id. */
+.hx-avatar {
+  position: relative;
+}
+.hx-avatar::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 8px;
+  background: var(--accent-color, hsl(var(--primary)));
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  animation: hx-bloom 0.62s ease-out both;
+}
+.hx-avatar > * {
+  position: relative;
+  animation: hx-settle 0.42s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes hx-bloom {
+  0% { opacity: 0; transform: scale(0.3); }
+  32% { opacity: 0.42; }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+@keyframes hx-settle {
+  from { transform: scale(0.82); }
+  to { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-avatar::before,
+  .hx-avatar > * {
+    animation: none;
+  }
+}
+
 ::selection {
   background-color: hsl(var(--primary) / 0.25);
   color: hsl(var(--foreground));

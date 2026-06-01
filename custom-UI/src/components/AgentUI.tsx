@@ -11,6 +11,7 @@ import { WidgetRegistry } from "../registry/register.js";
 import { builtinWidgets } from "../registry/builtin.js";
 import type { AnyWidgetDefinition } from "../registry/types.js";
 import { AgentUIProvider } from "../runtime/context.js";
+import type { ConversationMessage } from "../runtime/context.js";
 import { GridRoot } from "./layout/GridRoot.js";
 import { FlexRoot } from "./layout/FlexRoot.js";
 import { SidebarRoot } from "./layout/SidebarRoot.js";
@@ -25,6 +26,8 @@ export interface AgentUIProps {
   widgets?: WidgetRegistry | AnyWidgetDefinition[];
   agent?: AgentBridge;
   theme?: Partial<ThemeTokens>;
+  /** Seed the transcript with a previously-saved conversation's messages. */
+  initialMessages?: ConversationMessage[];
   diagnostics?: "overlay" | "console" | "silent";
   onError?: (diagnostics: Diagnostic[]) => void;
 }
@@ -41,6 +44,7 @@ export function AgentUI(props: AgentUIProps): JSX.Element {
     widgets,
     agent,
     theme,
+    initialMessages,
     diagnostics = "overlay",
     onError,
   } = props;
@@ -119,6 +123,7 @@ export function AgentUI(props: AgentUIProps): JSX.Element {
     <AgentUIProvider
       dispatcher={dispatcher}
       {...(agent && { agent })}
+      {...(initialMessages && { initialMessages })}
       knownWidgetNames={widgetNames}
     >
       <div

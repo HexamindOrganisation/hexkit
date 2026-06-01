@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import { AppShell } from "./layout/AppShell";
 import { ChatPage } from "./pages/ChatPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 /**
  * Single-user: no login/signup, no route guard. Everything lives inside the
@@ -15,6 +16,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <ChatPage /> },
       { path: "c/:id", element: <ChatPage /> },
+      { path: "settings", element: <SettingsPage /> },
     ],
   },
 ]);

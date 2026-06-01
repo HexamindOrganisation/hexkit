@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Plus, Settings } from "lucide-react";
 
 import { useActiveAgent } from "../hooks/useActiveAgent";
 import { AgentGlyph } from "../components/AgentGlyph";
@@ -104,12 +104,25 @@ export function Sidebar({
         </ul>
       </nav>
 
-      {/* User footer */}
+      {/* User footer + settings */}
       <div className="flex items-center gap-2 border-t border-border px-3 py-3">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
           D
         </span>
-        {!collapsed && <span className="text-sm text-muted-foreground">dev01</span>}
+        {!collapsed && (
+          <span className="flex-1 truncate text-sm text-muted-foreground">
+            dev01
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => navigate("/settings")}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
+          aria-label="Settings"
+          title="Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
       </div>
     </aside>
   );

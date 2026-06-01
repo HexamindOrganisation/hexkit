@@ -1,9 +1,10 @@
 import { useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { AgentUI } from "agent-ui";
+import { AgentUI, type ConversationMessage } from "agent-ui";
 
 import { getAgentUiYaml } from "../api/agents";
+import { listMessages } from "../api/conversations";
 import { useActiveAgent } from "../hooks/useActiveAgent";
 import { RuntimeBridge } from "../runtime/runtimeBridge";
 import { makeDispatcher } from "../runtime/dispatcher";
@@ -13,13 +14,13 @@ import { makeDispatcher } from "../runtime/dispatcher";
  * RuntimeBridge wired to the proxy. The agent's `main_color` (theme.accent)
  * recolors the whole layout.
  *
- * Keying: `<AgentUI>` remounts on agent switch or a fresh session (the `n`
- * query param), but NOT on lazy conversation-creation — so a live stream that
- * creates its conversation mid-flight isn't torn down. `conversationId` is read
- * through a ref so the next send targets the right conversation.
- *
- * Known gap (M4): selecting an existing conversation doesn't yet replay its
- * stored messages into the transcript — the bridge only renders live runs.
+ * Keying: `<AgentUI>` is keyed by `agentId:conversationId:nonce`. It remounts on
+ * agent switch, conversation select (→ seeds that conversation's stored
+ * messages), or a fresh session (`n` query param) — but NOT on lazy
+ * conversation-creation, because `onConversationCreated` does not navigate (the
+ * URL stays on `/`, so `conversationId` and the key are unchanged), keeping the
+ * in-flight stream alive. `conversationId` is read through a ref so the next
+ * send targets the right conversation.
  */
 export function ChatPage() {
   const { agent, agentId, conversationId } = useActiveAgent();
@@ -38,6 +39,23 @@ export function ChatPage() {
     queryFn: () => getAgentUiYaml(agentId!),
   });
 
+  // Stored messages for an existing conversation — seed the transcript on select.
+  const { data: history } = useQuery({
+    queryKey: ["messages", conversationId],
+    enabled: !!conversationId,
+    queryFn: () => listMessages(conversationId!),
+  });
+
+  const initialMessages: ConversationMessage[] | undefined = useMemo(() => {
+    if (!history) return undefined;
+    return history.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      timestamp: Date.parse(m.created_at) || Date.now(),
+    }));
+  }, [history]);
+
   const bridge = useMemo(
     () =>
       new RuntimeBridge({
@@ -52,16 +70,20 @@ export function ChatPage() {
         },
         canSubmit: () => null,
       }),
-    // Fresh bridge per agent / per new session.
-    [agentId, sessionNonce, qc],
+    // Fresh bridge per agent / conversation / new session.
+    [agentId, conversationId, sessionNonce, qc],
   );
 
   const dispatcher = useMemo(
     () => makeDispatcher(() => convRef.current),
-    [agentId, sessionNonce],
+    [agentId, conversationId, sessionNonce],
   );
 
-  if (!agent || yaml === undefined) {
+  // Wait for history too when a conversation is selected, so the transcript
+  // seeds in one mount rather than flashing empty then filling.
+  const historyPending = !!conversationId && history === undefined;
+
+  if (!agent || yaml === undefined || historyPending) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         Loading…
@@ -77,13 +99,14 @@ export function ChatPage() {
   }
 
   return (
-    <div className="h-full overflow-auto">
+    <div className="h-full overflow-hidden">
       <AgentUI
-        key={`${agentId}:${sessionNonce}`}
+        key={`${agentId}:${conversationId ?? "new"}:${sessionNonce}`}
         config={yaml}
         dispatcher={dispatcher}
         agent={bridge}
         theme={{ mode: "dark", accent: agent.main_color }}
+        {...(initialMessages && { initialMessages })}
         diagnostics="console"
       />
     </div>

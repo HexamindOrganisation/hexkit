@@ -59,6 +59,13 @@ export interface AgentUIProviderProps {
   agent?: AgentBridge;
   /** Widget names known to the render plan; used to warn on stray tool-calls. */
   knownWidgetNames: readonly string[];
+  /**
+   * Seed the conversation log with previously-saved messages (e.g. when the
+   * host loads an existing conversation). Used as the initial state; the
+   * provider remounts per conversation, so this is sufficient — live submits
+   * and replies append to it.
+   */
+  initialMessages?: ConversationMessage[];
   onEvent?: (event: AgentEvent) => void;
   onDiagnostic?: (d: Diagnostic) => void;
   children: ReactNode;
@@ -68,6 +75,7 @@ export function AgentUIProvider({
   dispatcher,
   agent,
   knownWidgetNames,
+  initialMessages,
   onEvent,
   onDiagnostic,
   children,
@@ -76,7 +84,9 @@ export function AgentUIProvider({
   const inboxSubsRef = useRef<Map<string, Set<() => void>>>(new Map());
   const containerSubsRef = useRef<Set<(e: AgentEvent) => void>>(new Set());
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
-  const [conversation, setConversation] = useState<ConversationMessage[]>([]);
+  const [conversation, setConversation] = useState<ConversationMessage[]>(
+    initialMessages ?? [],
+  );
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | undefined
   >(undefined);

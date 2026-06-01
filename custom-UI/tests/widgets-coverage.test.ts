@@ -113,9 +113,9 @@ describe("widget schema coverage", () => {
     }
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
-    // 11 main-slot widgets + 1 footer-slot widget (page-footer)
-    expect(plan.value.widgets).toHaveLength(11);
-    expect(plan.value.footer).toHaveLength(1);
+    // 10 main-slot widgets + 2 footer-slot widgets (page-footer, ai-chat-input)
+    expect(plan.value.widgets).toHaveLength(10);
+    expect(plan.value.footer).toHaveLength(2);
   });
 
   it("rejects an invalid form field discriminator", () => {

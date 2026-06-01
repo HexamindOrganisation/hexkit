@@ -7,6 +7,7 @@ import {
   type ConversationMessage,
 } from "../runtime/context.js";
 import type { AgentEvent } from "../runtime/agentBridge.js";
+import { renderMarkdown } from "../lib/markdown.js";
 
 interface PartialMessage {
   id: string;
@@ -132,8 +133,8 @@ function Turn({
             style={{ background: ACCENT }}
           />
         </div>
-        <div className="whitespace-pre-wrap break-words text-[15px] leading-[1.68] text-foreground">
-          {content}
+        <div className="prose prose-sm max-w-none break-words text-[15px] leading-[1.68] text-foreground">
+          {renderMarkdown(content)}
           {streaming && <span className="hx-caret" aria-hidden />}
         </div>
       </div>
