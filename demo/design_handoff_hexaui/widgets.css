@@ -1,0 +1,259 @@
+/* ============================================================
+   widgets.css — agent-ui native widgets, restyled in the HexaUI
+   design language. Every rule reads from the theme.css token set
+   so a widget inherits the active agent accent automatically.
+
+   shadcn token  →  HexaUI token
+   ----------------------------------------
+   background    →  --bg
+   card/popover  →  --surface
+   muted         →  --surface-2 / --bg-2
+   border        →  --line / --line-2
+   foreground    →  --text
+   muted-fg      →  --text-2 / --text-3
+   primary/accent→  --accent      (= page.main_color = agent color)
+   destructive   →  --danger
+   radius        →  --r-md
+   ============================================================ */
+
+.hexa { --danger: #c4787f; --ok: #7f9a6c; --warn: #c79a52; }
+.hexa[data-theme="light"] { --danger: #b9555f; --ok: #5d784a; --warn: #b07d2c; }
+
+/* ---- widget host (the default chrome each non-chromeless widget gets) ---- */
+.hexa .w-host {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 16px;
+  min-width: 0;
+}
+.hexa .w-host.chromeless { background: transparent; border: 0; padding: 0; border-radius: 0; }
+.hexa .w-cap { display:flex; align-items:center; gap:8px; }
+.hexa .w-cap .lbl { padding: 0; }
+.hexa .w-head {
+  display:flex; align-items:center; gap:10px;
+  padding: 0 0 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line-2);
+}
+
+/* ============================================================
+   page-header
+   ============================================================ */
+.hexa .w-pageheader { display:flex; align-items:center; gap:14px; }
+.hexa .w-pageheader .ph-title { font-size: 21px; font-weight: 600; letter-spacing:-.02em; color: var(--text); line-height:1.15; }
+.hexa .w-pageheader .ph-sub { font-size: 13px; color: var(--text-2); margin-top: 3px; }
+.hexa .w-pageheader .ph-tick { width: 22px; height: 3px; border-radius: 2px; background: var(--accent); margin-top: 9px; }
+
+/* ============================================================
+   button-group — shadcn variants in HexaUI tokens
+   ============================================================ */
+.hexa .w-btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  height: 34px; padding: 0 14px; border-radius: var(--r-sm);
+  font-family: var(--font-sans); font-size: 13.5px; font-weight: 500;
+  border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+  transition: background .12s, border-color .12s, color .12s, opacity .12s;
+}
+.hexa .w-btn.sm { height: 28px; padding: 0 10px; font-size: 12.5px; }
+.hexa .w-btn.lg { height: 40px; padding: 0 18px; font-size: 14.5px; }
+.hexa .w-btn.icon { width: 34px; padding: 0; }
+.hexa .w-btn-default     { background: var(--accent); color: var(--bg); }
+.hexa .w-btn-default:hover{ background: var(--accent-2); }
+.hexa .w-btn-secondary   { background: var(--surface-2); color: var(--text); }
+.hexa .w-btn-secondary:hover { background: var(--surface-3); }
+.hexa .w-btn-outline     { border-color: var(--line); color: var(--text); }
+.hexa .w-btn-outline:hover { background: var(--surface-2); }
+.hexa .w-btn-ghost       { color: var(--text-2); }
+.hexa .w-btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+.hexa .w-btn-destructive { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+.hexa .w-btn-destructive:hover { background: color-mix(in srgb, var(--danger) 24%, transparent); }
+.hexa .w-btn-link        { color: var(--accent); padding: 0; height: auto; }
+.hexa .w-btn-link:hover  { text-decoration: underline; }
+
+/* ============================================================
+   metrics — stat-card strip
+   ============================================================ */
+.hexa .w-metrics { display:grid; gap: 12px; }
+.hexa .w-metric {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--surface); padding: 13px 15px; min-width: 0;
+}
+.hexa .w-metric .m-label { font-family: var(--font-sans); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); }
+.hexa .w-metric .m-row { display:flex; align-items:baseline; gap: 8px; margin-top: 7px; }
+.hexa .w-metric .m-value { font-size: 25px; font-weight: 600; letter-spacing:-.02em; color: var(--text); line-height: 1;
+  font-variant-numeric: tabular-nums; }
+.hexa .w-metric .m-hint { font-size: 11.5px; color: var(--text-3); margin-top: 6px; }
+.hexa .w-delta { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hexa .w-delta.up   { color: var(--ok); }
+.hexa .w-delta.down { color: var(--danger); }
+
+/* ============================================================
+   table — scrollable CSV
+   ============================================================ */
+.hexa .w-table-wrap { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+.hexa table.w-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hexa table.w-table th {
+  position: sticky; top: 0; z-index: 1; text-align: left; font-weight: 600;
+  background: var(--bg-2); color: var(--text-2);
+  padding: 9px 13px; border-bottom: 1px solid var(--line);
+  font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+}
+.hexa table.w-table td { padding: 8px 13px; color: var(--text); border-bottom: 1px solid var(--line-2); }
+.hexa table.w-table tr:last-child td { border-bottom: 0; }
+.hexa table.w-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.hexa table.w-table .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.hexa .w-table-foot { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); margin-top: 8px; letter-spacing: .03em; }
+
+/* ============================================================
+   tool-calls — live invocation log
+   ============================================================ */
+.hexa .w-tools { display:flex; flex-direction:column; gap: 7px; }
+.hexa .w-tool {
+  border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--bg-2); overflow: hidden;
+}
+.hexa .w-tool-row { display:flex; align-items:center; gap: 10px; padding: 9px 11px; cursor: pointer; }
+.hexa .w-tool-row:hover { background: var(--surface-2); }
+.hexa .w-tool .t-name { font-family: var(--font-mono); font-size: 12.5px; color: var(--text); }
+.hexa .w-tool .t-args { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); }
+.hexa .w-tool .t-toggle { margin-left: auto; font-family: var(--font-mono); font-size: 10px; letter-spacing:.1em; text-transform: uppercase; color: var(--text-3); }
+.hexa .w-tool .t-body { border-top: 1px solid var(--line-2); padding: 10px 12px; }
+.hexa .w-tool pre { margin: 4px 0 0; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6;
+  color: var(--text-2); background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+  border-radius: var(--r-sm); padding: 8px 10px; overflow-x: auto; white-space: pre-wrap; }
+.hexa .w-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.hexa .w-dot.running { background: var(--warn); animation: w-pulse 1.2s ease-in-out infinite; }
+.hexa .w-dot.done    { background: var(--accent); }
+.hexa .w-dot.error   { background: var(--danger); }
+@keyframes w-pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* ============================================================
+   ai-chat-input — textarea + stacked send / cancel
+   ============================================================ */
+.hexa .w-chatinput { display:flex; gap: 10px; align-items: stretch;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow); padding: 12px; transition: border-color .15s; }
+.hexa .w-chatinput.focus { border-color: var(--accent-line); }
+.hexa .w-chatinput textarea, .hexa .w-chatinput .ta {
+  flex: 1; border: 0; outline: 0; background: transparent; resize: none;
+  font-family: var(--font-sans); font-size: 15px; line-height: 1.5; color: var(--text);
+  padding: 5px 4px; min-height: 46px;
+}
+.hexa .w-chatinput .ta.ph { color: var(--text-3); }
+.hexa .w-chatinput .ci-btns { display:flex; flex-direction:column; gap: 7px; justify-content: flex-end; }
+.hexa .w-ci-send { width: 36px; height: 36px; border-radius: var(--r-pill); border: 0; cursor: pointer;
+  background: var(--accent); color: var(--bg); display:flex; align-items:center; justify-content:center; }
+.hexa .w-ci-send.idle { opacity: .4; }
+.hexa .w-ci-cancel { width: 36px; height: 36px; border-radius: var(--r-pill); cursor: pointer;
+  background: transparent; border: 1px solid var(--line); color: var(--text-3);
+  display:flex; align-items:center; justify-content:center; }
+.hexa .w-ci-cancel.live { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+
+/* ============================================================
+   ai-response — transcript (reuses .msg / .ucard / .bubble-meta)
+   ============================================================ */
+.hexa .w-resp { display:flex; flex-direction:column; gap: 18px; }
+.hexa .w-resp .sys { align-self: center; font-style: italic; font-size: 12.5px; color: var(--text-3); }
+.hexa .w-resp .abubble { background: var(--surface); border: 1px solid var(--line);
+  border-left: 2px solid var(--accent); border-radius: var(--r-md); padding: 11px 15px;
+  font-family: var(--font-serif); font-size: 15.5px; line-height: 1.6; color: var(--text); max-width: 84%; }
+.hexa .w-resp .abubble.partial { opacity: .72; }
+
+/* ============================================================
+   ai-history — past conversations list
+   ============================================================ */
+.hexa .w-history { display:flex; flex-direction:column; gap: 3px; }
+.hexa .w-newchat { display:flex; align-items:center; gap: 9px; height: 34px; padding: 0 11px;
+  border-radius: var(--r-sm); border: 1px dashed var(--line); color: var(--text-2);
+  font-size: 13.5px; cursor: pointer; margin-bottom: 8px; }
+.hexa .w-newchat:hover { background: var(--surface-2); color: var(--text); border-style: solid; }
+.hexa .w-convo { padding: 9px 11px; border-radius: var(--r-sm); cursor: pointer; }
+.hexa .w-convo:hover { background: var(--surface-2); }
+.hexa .w-convo.active { background: var(--accent-weak); }
+.hexa .w-convo .c-title { font-size: 13.5px; font-weight: 500; color: var(--text); }
+.hexa .w-convo .c-prev { font-size: 12px; color: var(--text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hexa .w-convo .c-time { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); letter-spacing: .04em; }
+
+/* ============================================================
+   file-tree
+   ============================================================ */
+.hexa .w-tree { font-size: 13.5px; }
+.hexa .w-node { display:flex; align-items:center; gap: 8px; height: 30px; padding: 0 8px; border-radius: var(--r-sm); cursor: pointer; color: var(--text-2); }
+.hexa .w-node:hover { background: var(--surface-2); color: var(--text); }
+.hexa .w-node .n-chev { color: var(--text-3); transition: transform .12s; display:flex; }
+.hexa .w-node .n-chev.open { transform: rotate(90deg); }
+.hexa .w-node .n-ic { color: var(--text-3); display:flex; }
+.hexa .w-node .n-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hexa .w-node .n-size { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); }
+.hexa .w-node .n-actions { display:flex; gap: 1px; opacity: 0; }
+.hexa .w-node:hover .n-actions { opacity: 1; }
+.hexa .w-node .n-act { width: 24px; height: 24px; border-radius: var(--r-sm); display:flex; align-items:center; justify-content:center; color: var(--text-3); }
+.hexa .w-node .n-act:hover { background: var(--surface-3); color: var(--text); }
+
+/* ============================================================
+   markdown — safe rich text
+   ============================================================ */
+.hexa .w-md { color: var(--text); font-size: 14.5px; line-height: 1.66; }
+.hexa .w-md h2 { font-family: var(--font-serif); font-size: 20px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 10px; }
+.hexa .w-md h3 { font-size: 15px; font-weight: 600; margin: 18px 0 8px; color: var(--text); }
+.hexa .w-md p { margin: 0 0 12px; color: var(--text-2); }
+.hexa .w-md strong { color: var(--text); font-weight: 600; }
+.hexa .w-md a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-line); }
+.hexa .w-md code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; color: var(--text); }
+.hexa .w-md pre { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 12px 14px; margin: 0 0 12px; overflow-x: auto; }
+.hexa .w-md pre code { background: none; padding: 0; color: var(--text-2); line-height: 1.6; }
+.hexa .w-md ul { margin: 0 0 12px; padding-left: 20px; color: var(--text-2); }
+.hexa .w-md li { margin: 4px 0; }
+.hexa .w-md blockquote { margin: 0 0 12px; padding: 4px 0 4px 14px; border-left: 2px solid var(--line); color: var(--text-3); font-style: italic; }
+.hexa .w-md hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+
+/* ============================================================
+   form — schema-driven controls
+   ============================================================ */
+.hexa .w-form { display:grid; gap: 16px; }
+.hexa .w-field { display:flex; flex-direction:column; gap: 6px; min-width: 0; }
+.hexa .w-field .f-label { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.hexa .w-field .f-label .req { color: var(--accent); margin-left: 2px; }
+.hexa .w-field .f-help { font-size: 11.5px; color: var(--text-3); }
+.hexa .w-input, .hexa .w-select, .hexa .w-textarea {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-sm);
+  color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 9px 11px; outline: none;
+  transition: border-color .12s; width: 100%;
+}
+.hexa .w-input:focus, .hexa .w-select:focus, .hexa .w-textarea:focus { border-color: var(--accent-line); }
+.hexa .w-input::placeholder, .hexa .w-textarea::placeholder { color: var(--text-3); }
+.hexa .w-textarea { resize: none; line-height: 1.5; }
+.hexa .w-select { appearance: none; background-image:
+  linear-gradient(45deg, transparent 50%, var(--text-3) 50%), linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position: calc(100% - 16px) center, calc(100% - 11px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+.hexa .w-check { display:flex; align-items:center; gap: 9px; cursor: pointer; font-size: 14px; color: var(--text); }
+.hexa .w-check .box { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); background: var(--bg-2);
+  display:flex; align-items:center; justify-content:center; flex: 0 0 auto; }
+.hexa .w-check.on .box { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.hexa .w-form-foot { display:flex; align-items:center; gap: 10px; margin-top: 4px; }
+.hexa .w-form-msg { font-size: 12.5px; color: var(--ok); }
+
+/* ============================================================
+   page-footer
+   ============================================================ */
+.hexa .w-footer { text-align: center; font-size: 12px; color: var(--text-3); padding: 12px 0; border-top: 1px solid var(--line-2); }
+
+/* ---- agent transition: accent recolor ripples through every widget ---- */
+.hexa .w-recolor { transition: none; } /* accents are var-driven; recolor is instant + smoothed by .bloom */
+
+/* ============================================================
+   prototype integration — agent widgets around the live chat
+   ============================================================ */
+.hexa .chatwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.hexa .chatrow { flex: 1; min-height: 0; display: flex; }
+.hexa .agent-top { padding: 16px 24px 4px; flex: 0 0 auto; }
+.hexa .agent-side { flex: 0 0 340px; border-left: 1px solid var(--line-2); display: flex; flex-direction: column; min-height: 0; }
+.hexa .agent-side .as-head { padding: 16px 18px 11px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line-2); }
+.hexa .agent-side .as-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 18px 18px; }
+.hexa .agent-side .as-body::-webkit-scrollbar { width: 9px; }
+.hexa .agent-side .as-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; border: 3px solid transparent; background-clip: padding-box; }
+/* when a side panel is present, the thread no longer needs the full 720 — let it breathe */
+.hexa .chatrow .thread .thread-inner { max-width: 680px; }
+/* agent glyph beside each shared-history row */
+.hexa .recent { gap: 9px; }
+.hexa .recent .r-glyph { flex: 0 0 auto; }
+.hexa .recent .r-title { overflow: hidden; text-overflow: ellipsis; }

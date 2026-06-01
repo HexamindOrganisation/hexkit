@@ -1,0 +1,20 @@
+[project]
+name = "hexa-events"
+version = "0.1.0"
+description = "HexaUI streaming event schema + emit-side helpers (the wire contract)"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hexa_events"]

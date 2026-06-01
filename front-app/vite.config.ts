@@ -1,13 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// All requests to /api/* are forwarded to the runtime backend so the browser
-// stays single-origin and we don't need CORS headers on the runtime.
+// All requests to /api/* are forwarded to the platform backend so the
+// browser stays single-origin and we don't need CORS headers on either
+// service. The platform backend in turn proxies a subset of routes to the
+// runtime.
 //
-// Override the target with PLATFORM_RUNTIME_URL when running the runtime on
-// a different host.
-const RUNTIME_URL =
-  process.env.PLATFORM_RUNTIME_URL ?? "http://127.0.0.1:8080";
+// Override the target with PLATFORM_BACKEND_URL when running the backend
+// somewhere other than the default :8000.
+const BACKEND_URL =
+  process.env.PLATFORM_BACKEND_URL ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
   plugins: [react()],
@@ -15,7 +17,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: RUNTIME_URL,
+        target: BACKEND_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
         // SSE / streaming responses must not be buffered by the proxy.

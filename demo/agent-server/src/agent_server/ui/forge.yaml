@@ -1,0 +1,34 @@
+# Forge — Code & build. Served by GET /agents/forge/ui.
+page:
+  layout_type: grid
+  main_color: "#56809e"
+
+widgets:
+  - name: files
+    type: file-tree
+    position: { horizontal: left, vertical: high }
+    size: { width: 4, height: 520 }
+    on_select: "open_file"
+    empty_text: "No files yet."
+    nodes:
+      - id: "src"
+        name: "src"
+        type: "folder"
+        children:
+          - { id: "src/main.py", name: "main.py", type: "file" }
+          - { id: "src/utils.py", name: "utils.py", type: "file" }
+      - { id: "README.md", name: "README.md", type: "file" }
+
+  - name: transcript
+    type: ai-response
+    position: { horizontal: center, vertical: high }
+    size: { width: 8, height: 520 }
+    empty_text: "Ask Forge to write or explain code."
+    thinking_indicator: dots
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Ask Forge…"
+    rows: 2

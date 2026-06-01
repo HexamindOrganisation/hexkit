@@ -1,28 +1,34 @@
+import { getToken } from "../api/client";
+
 import type { RuntimeEvent } from "./types.js";
 
+
 /**
- * POST a JSON body to an SSE endpoint and yield typed events as they arrive.
+ * Open the platform backend's chat SSE stream and yield typed events.
  *
- * Browser-native `EventSource` only supports GET, so we use `fetch()` with a
- * `ReadableStream` and parse the SSE framing ourselves. The parser tolerates
- * both `\n` and `\r\n` line endings (sse-starlette uses `\r\n`).
+ * `fetch()` + `ReadableStream` because browser `EventSource` is GET-only.
+ * The parser tolerates `\n` and `\r\n` (sse-starlette uses `\r\n`).
  *
- * The function is an async generator: callers consume events with
- * `for await (const ev of streamRun(...))` and break out (or call
- * `controller.abort()`) to stop early. The generator's `try/finally` is
- * what cleans up the underlying response stream.
+ * The generator's `try/finally` releases the reader lock so an early `break`
+ * (e.g. on cancel) cleanly tears the response down.
  */
-export async function* streamRun(
-  agentId: string,
-  body: unknown,
+export async function* streamChat(
+  conversationId: string,
+  content: string,
   signal?: AbortSignal,
 ): AsyncGenerator<RuntimeEvent, void, void> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(
-    `/api/agents/${encodeURIComponent(agentId)}/stream`,
+    `/api/conversations/${encodeURIComponent(conversationId)}/messages`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers,
+      body: JSON.stringify({ content }),
       ...(signal && { signal }),
     },
   );
@@ -40,8 +46,8 @@ export async function* streamRun(
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
-      // SSE frames are separated by a blank line. Split on the first
-      // double-newline; keep any trailing partial frame in the buffer.
+      // SSE frames are separated by a blank line. Split, parse, and keep any
+      // partial trailing frame for the next chunk.
       for (;;) {
         const sepIndex = buffer.search(/\r?\n\r?\n/);
         if (sepIndex === -1) break;
@@ -63,8 +69,6 @@ function parseFrame(block: string): RuntimeEvent | null {
   for (const line of block.split(/\r?\n/)) {
     if (line.startsWith("data:")) {
       data = line.slice(5).trim();
-      // We only need the JSON payload; the `event:` and `id:` lines are
-      // redundant once parsed (the JSON carries the same `type` and `id`).
     }
   }
   if (!data) return null;

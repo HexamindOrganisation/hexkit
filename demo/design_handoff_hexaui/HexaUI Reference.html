@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HexaUI — Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Libre+Baskerville:wght@400;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="theme.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #161617; }
+  #root { height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="hx-goo"><feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b" /><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" /></filter>
+</defs></svg>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="reference.jsx"></script>
+
+<script type="text/babel">
+const APP_W = 1280, APP_H = 800;
+
+function App() {
+  const {
+    LandingScreen, ChatScreen,
+    ColorScale, AgentRoster, TypeSpecimen, TokensSpec,
+    ComposerSpec, ChipsButtonsSpec, MenuSpec, MessagesSpec, StatesSpec,
+  } = window;
+
+  return (
+    <DesignCanvas>
+      <DCSection id="screens" title="Screens" subtitle="The locked direction: warm-neutral chrome, the active agent as the only color, serif greeting over a quiet grotesk UI. Two anchor states — empty session and active conversation.">
+        <DCArtboard id="scr-landing" label="Landing — empty session · dark · Probe" width={APP_W} height={APP_H}><LandingScreen theme="dark" agentId="probe" /></DCArtboard>
+        <DCArtboard id="scr-chat" label="Conversation — active · dark · Atlas" width={APP_W} height={APP_H}><ChatScreen theme="dark" agentId="atlas" /></DCArtboard>
+        <DCArtboard id="scr-landing-light" label="Landing — light · Probe" width={APP_W} height={APP_H}><LandingScreen theme="light" agentId="probe" /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="foundations" title="Foundations" subtitle="The tokens every screen is built from — color, type, and form.">
+        <DCArtboard id="color-dark" label="Color — dark scale" width={680} height={520}><ColorScale theme="dark" /></DCArtboard>
+        <DCArtboard id="color-light" label="Color — light scale" width={680} height={520}><ColorScale theme="light" /></DCArtboard>
+        <DCArtboard id="accent" label="Accent — agent roster" width={760} height={420}><AgentRoster theme="dark" /></DCArtboard>
+        <DCArtboard id="type" label="Typography" width={760} height={520}><TypeSpecimen theme="dark" /></DCArtboard>
+        <DCArtboard id="tokens" label="Radii, spacing & elevation" width={680} height={500}><TokensSpec theme="dark" /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="components" title="Components" subtitle="The reusable parts, in their resting and active states.">
+        <DCArtboard id="composer" label="Composer — input (no agent selector)" width={760} height={460}><ComposerSpec theme="dark" /></DCArtboard>
+        <DCArtboard id="controls" label="Chips, buttons & avatars" width={680} height={460}><ChipsButtonsSpec theme="dark" /></DCArtboard>
+        <DCArtboard id="menu" label="Agent picker menu" width={620} height={560}><MenuSpec theme="dark" /></DCArtboard>
+        <DCArtboard id="messages" label="Messages — user & agent" width={760} height={560}><MessagesSpec theme="dark" /></DCArtboard>
+        <DCArtboard id="states" label="Agent state — thinking & streaming" width={820} height={560}><StatesSpec theme="dark" /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Orbit — Planning & orchestration (Google ADK). Served by GET /agents/orbit/ui.
+page:
+  layout_type: grid
+  main_color: "#b0714f"
+
+widgets:
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: high }
+    size: { width: 8, height: 520 }
+    empty_text: "Ask Orbit to plan something."
+    thinking_indicator: dots
+
+  - name: tool-calls
+    type: tool-calls
+    position: { horizontal: right, vertical: high }
+    size: { width: 4, height: 520 }
+    title: Steps
+    empty_text: "Plan steps appear here."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Ask Orbit…"
+    rows: 2

@@ -1,0 +1,39 @@
+# Atlas — Operations copilot. Served by GET /agents/atlas/ui.
+page:
+  layout_type: grid
+  main_color: "#4f74c9"
+
+widgets:
+  - name: ops-metrics
+    type: metrics
+    position: { horizontal: left, vertical: high }
+    size: { width: 12, height: auto }
+    columns: 3
+    data_source:
+      action: "load_ops_metrics"
+    empty_text: "Metrics load when connected."
+    metrics:
+      - { id: "open_incidents", label: "Open incidents", format: "number" }
+      - { id: "uptime", label: "Uptime", format: "percent", precision: 2 }
+      - { id: "p95_latency", label: "p95 latency", format: "duration", suffix: " ms" }
+
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: middle }
+    size: { width: 8, height: 460 }
+    empty_text: "Ask Atlas about operations."
+    thinking_indicator: dots
+
+  - name: tool-calls
+    type: tool-calls
+    position: { horizontal: right, vertical: middle }
+    size: { width: 4, height: 460 }
+    title: Tool calls
+    empty_text: "Tool invocations appear here."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Ask Atlas…"
+    rows: 2
