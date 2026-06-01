@@ -14,7 +14,7 @@ from fastapi import FastAPI
 
 from .. import runtime_client
 from ..auth.implicit_user import seed_implicit_user
-from ..db import dispose_engine, init_engine
+from ..db import Base, dispose_engine, init_engine
 from ..routes import chat as chat_routes
 from ..routes import conversations as conversations_routes
 from ..routes import folders as folders_routes
@@ -29,7 +29,12 @@ logger = logging.getLogger("platform_backend.server")
 def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
-        init_engine()
+        engine = init_engine()
+        # Dev convenience: on SQLite, create tables on startup so the demo runs
+        # with zero infra (no Postgres/Alembic). Postgres still uses migrations.
+        if engine.url.get_backend_name() == "sqlite":
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
         # Single-user: seed the one implicit account so every route's
         # `current_user` resolves without auth. Idempotent upsert.
         await seed_implicit_user()

@@ -26,6 +26,13 @@ export const PageSchema = {
   type: "object",
   properties: {
     layout_type: { enum: ["grid", "flex", "sidebar", "tabs"] },
+    /**
+     * The active agent's signature color — the ONE variable that recolors the
+     * whole page (HexaUI's core principle). Bridges to shadcn `--primary` /
+     * `--ring` (and the legacy `--accent` agent usage). Takes precedence over
+     * `theme.accent`. Hex (`#RGB`, `#RRGGBB`, `#RRGGBBAA`).
+     */
+    main_color: { type: "string", pattern: "^#[0-9a-fA-F]{3,8}$" },
     theme: ThemeSchema,
     main_menu: { type: "array", items: MainMenuItemSchema },
   },

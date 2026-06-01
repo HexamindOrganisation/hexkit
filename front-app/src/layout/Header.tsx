@@ -1,68 +1,37 @@
-import { useMatch, useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Menu } from "lucide-react";
+import { History, MoreHorizontal } from "lucide-react";
 
-import { Conversation, listConversations } from "../api/conversations";
 import { AgentDropdown } from "../components/AgentDropdown";
-import { useSelectedAgentId } from "../hooks/useSelectedAgentId";
-
-import { UserMenu } from "./UserMenu";
-
+import { useActiveAgent } from "../hooks/useActiveAgent";
 
 /**
- * Top bar. Houses the brand, conversation title (when applicable), agent
- * dropdown (locked on `/c/:id`, editable on `/`), and the user menu.
+ * Top bar (constant chrome): agent picker on the left, the session title in
+ * muted text, global actions on the right. Agent identity lives here — there
+ * is no standalone page-header widget.
  */
-export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const convMatch = useMatch("/c/:id");
-  const settingsMatch = useMatch("/settings");
-  const conversations = useQuery({
-    queryKey: ["conversations"],
-    queryFn: listConversations,
-  });
-  const { agentId, locked } = useSelectedAgentId();
-
-  const activeConv: Conversation | undefined =
-    convMatch !== null
-      ? (conversations.data ?? []).find((c) => c.id === convMatch.params.id)
-      : undefined;
-
-  function onAgentChange(next: string) {
-    if (locked) return; // shouldn't happen — dropdown is disabled
-    // Stay on /, just update the search param so the chat page picks it up.
-    const sp = new URLSearchParams(searchParams);
-    sp.set("agent", next);
-    setSearchParams(sp, { replace: true });
-    // If the user is on /settings, jump back to / so the change is visible.
-    if (settingsMatch) navigate(`/?${sp.toString()}`);
-  }
+export function Header() {
+  const { conversation } = useActiveAgent();
+  const title = conversation?.title ?? "New session";
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-3">
+    <header className="flex h-[58px] shrink-0 items-center gap-3 border-b border-border px-3">
+      <AgentDropdown />
+      <span className="min-w-0 flex-1 truncate text-sm text-[var(--hx-text-3,hsl(var(--muted-foreground)))]">
+        {title}
+      </span>
       <button
-        onClick={onToggleSidebar}
-        className="rounded p-1 hover:bg-muted md:hidden"
-        aria-label="Toggle sidebar"
+        type="button"
+        className="rounded-md p-2 text-muted-foreground hover:bg-secondary"
+        aria-label="History"
       >
-        <Menu className="h-4 w-4" />
+        <History className="h-4 w-4" />
       </button>
-      <div className="text-sm font-semibold tracking-tight">Platform</div>
-
-      <div className="flex-1 truncate text-sm text-muted-foreground">
-        {activeConv?.title ?? (settingsMatch ? "" : "New chat")}
-      </div>
-
-      {!settingsMatch && (
-        <AgentDropdown
-          value={agentId}
-          onChange={onAgentChange}
-          disabled={locked}
-        />
-      )}
-
-      <UserMenu />
+      <button
+        type="button"
+        className="rounded-md p-2 text-muted-foreground hover:bg-secondary"
+        aria-label="More"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
     </header>
   );
 }

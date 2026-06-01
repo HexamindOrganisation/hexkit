@@ -1,11 +1,18 @@
 /*
- * agent-ui shadcn base layer.
+ * agent-ui shadcn base layer — themed to HexaUI.
  *
  * Consumer usage (from your app's CSS entry):
  *   @import "agent-ui/shadcn.css";
  *
  * Pair with the Tailwind preset:
  *   presets: [require("agent-ui/tailwind-preset")]
+ *
+ * The shadcn HSL tokens are mapped onto the HexaUI neutral scale (Spec §2), so
+ * every native widget inherits the HexaUI look automatically. The ONE color in
+ * the product is the active agent's hue: `page.main_color` → `--primary` /
+ * `--ring` (set inline at the page root by the theme bridge) and a raw hex
+ * `--accent-color` for links / carets / status dots. Chrome stays monochrome —
+ * shadcn `--accent` (hover surface) is a neutral, not the agent color.
  */
 @tailwind base;
 @tailwind components;
@@ -13,73 +20,113 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* ----- HexaUI light neutral scale (Spec §2) ----- */
+    --background: 0 0% 100%; /* --bg #ffffff */
+    --foreground: 216 14% 11%; /* --text #191c21 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card: 0 0% 100%; /* --surface #ffffff */
+    --card-foreground: 216 14% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 216 14% 11%;
 
-    --primary: 210 75% 52%;
+    /* Agent color (default = Probe teal). Overridden inline from main_color. */
+    --primary: 174 43% 43%;
     --primary-foreground: 0 0% 100%;
+    --accent-color: #3f9d94;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 14% 95%; /* --surface-2 #f0f1f3 */
+    --secondary-foreground: 216 14% 11%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 218 7% 39%; /* --text-2 #5c616a */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* shadcn `accent` = neutral hover surface (NOT the agent color). */
+    --accent: 220 14% 95%;
+    --accent-foreground: 216 14% 11%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 354 42% 53%; /* --danger light #b9555f */
+    --destructive-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --border: 216 12% 89%; /* --line over #fff */
+    --input: 216 12% 89%;
+    --ring: 174 43% 43%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 210 75% 52%;
+    --radius: 0.6875rem; /* --r-md 11px */
 
-    --radius: 0.5rem;
+    /* ----- HexaUI raw tokens (for widget chrome that needs them) ----- */
+    --hx-bg: #ffffff;
+    --hx-bg-2: #f5f6f7;
+    --hx-surface: #ffffff;
+    --hx-surface-2: #f0f1f3;
+    --hx-surface-3: #e7e9ec;
+    --hx-text-3: #969ba3;
+    --hx-line: rgba(20, 24, 31, 0.11);
+    --hx-line-2: rgba(20, 24, 31, 0.05);
+    --hx-ok: #5d784a;
+    --hx-danger: #b9555f;
+    --hx-warn: #c79a52;
+    --r-sm: 7px;
+    --r-md: 11px;
+    --r-lg: 16px;
+    --r-pill: 999px;
+    --hx-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 12px 34px rgba(0, 0, 0, 0.1);
+
+    --font-ui: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, sans-serif;
+    --font-display: "Source Serif 4", "Libre Baskerville", Newsreader, Georgia,
+      serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* ----- HexaUI dark neutral scale (Spec §2) ----- */
+    --background: 240 2% 12%; /* --bg #1e1e1f */
+    --foreground: 220 9% 93%; /* --text #ecedef */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 1% 16%; /* --surface #282829 */
+    --card-foreground: 220 9% 93%;
+    --popover: 240 1% 16%;
+    --popover-foreground: 220 9% 93%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 75% 60%;
+    --primary: 174 43% 47%;
     --primary-foreground: 0 0% 100%;
+    --accent-color: #3f9d94;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 2% 20%; /* --surface-2 #323234 */
+    --secondary-foreground: 220 9% 93%;
+    --muted: 240 2% 20%;
+    --muted-foreground: 222 7% 66%; /* --text-2 #a3a6ac */
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 240 2% 20%;
+    --accent-foreground: 220 9% 93%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --destructive: 354 39% 62%; /* --danger dark #c4787f */
+    --destructive-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --border: 240 3% 22%; /* --line over #1e1e1f */
+    --input: 240 3% 22%;
+    --ring: 174 43% 47%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224 76% 60%;
+    /* ----- HexaUI raw tokens (dark) ----- */
+    --hx-bg: #1e1e1f;
+    --hx-bg-2: #181819;
+    --hx-surface: #282829;
+    --hx-surface-2: #323234;
+    --hx-surface-3: #3d3d40;
+    --hx-text-3: #6e7177;
+    --hx-line: rgba(240, 242, 245, 0.1);
+    --hx-line-2: rgba(240, 242, 245, 0.055);
+    --hx-ok: #7f9a6c;
+    --hx-danger: #c4787f;
+    --hx-warn: #c79a52;
+    --hx-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 34px rgba(0, 0, 0, 0.34);
   }
 
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    /* Inter ligatures + alt-zero. Falls back gracefully if the font isn't loaded. */
-    font-feature-settings: "cv11", "ss01", "rlig", "calt";
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-ui);
+    font-feature-settings: "ss01", "cv11";
   }
 }

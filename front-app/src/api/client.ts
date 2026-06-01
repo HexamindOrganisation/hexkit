@@ -50,33 +50,20 @@ async function parseError(resp: Response): Promise<HttpError> {
   return new HttpError(resp.status, body, detail);
 }
 
-/**
- * On 401, clear the token and hard-nav to /login. A hard nav (not a
- * react-router push) is intentional: it tears down any stale React state
- * that assumed an authenticated session.
- */
-function on401(): void {
-  clearToken();
-  if (window.location.pathname !== "/login") {
-    window.location.assign("/login");
-  }
-}
-
 export async function authedFetch(
   input: string,
   init: RequestInit = {},
 ): Promise<Response> {
+  // Single-user: the proxy seeds an implicit user and requires no auth, so we
+  // attach a token only if one happens to be present (multi-user can return
+  // later) and never redirect on 401.
   const token = getToken();
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const resp = await fetch(input, { ...init, headers });
-  if (resp.status === 401) {
-    on401();
-  }
-  return resp;
+  return fetch(input, { ...init, headers });
 }
 
 // JSON helpers ---------------------------------------------------------------

@@ -31,7 +31,10 @@ export function resolveTheme(
 ): ResolvedTheme {
   const theme = page.theme;
   const mode = override.mode ?? theme?.mode ?? "light";
-  const accent = override.accent ?? theme?.accent;
+  // `page.main_color` is the active agent's color — the single variable that
+  // recolors the page. It wins over `theme.accent`; an explicit override wins
+  // over both.
+  const accent = override.accent ?? page.main_color ?? theme?.accent;
 
   const cssVars: Record<string, string> = {};
 
@@ -40,6 +43,11 @@ export function resolveTheme(
     if (hsl) {
       cssVars["--primary"] = hsl;
       cssVars["--ring"] = hsl;
+      // The agent color is the only color: tints links, focus rings, the
+      // streaming caret, metric deltas, tool dots. Widgets read it via
+      // `--accent-color` (a raw hex) where shadcn's HSL `--accent` (a neutral
+      // hover surface) would be wrong.
+      cssVars["--accent-color"] = accent;
       const fgHsl = hexToHsl(contrastFg(accent));
       if (fgHsl) cssVars["--primary-foreground"] = fgHsl;
     }

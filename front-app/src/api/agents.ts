@@ -1,35 +1,24 @@
 import { authedFetch, getJson } from "./client";
 
-export interface AgentCapabilities {
-  streaming: boolean;
-  tools: boolean;
-  state: boolean;
-  approvals: boolean;
-  multi_turn: boolean;
-}
-
-export interface AgentMetadata {
-  agent_id: string;
+/**
+ * Roster entry from the proxy's `GET /agents` (HexaUI contract). `main_color`
+ * is the agent's signature hue — the one color that recolors the page.
+ */
+export interface AgentSummary {
+  id: string;
   name: string;
-  framework: string;
-  version: string;
-  description: string;
-  capabilities: AgentCapabilities;
-  actions: string[];
-  extra: Record<string, unknown>;
+  role: string;
+  main_color: string;
+  ui_url: string;
 }
 
-export function listAgents(): Promise<AgentMetadata[]> {
-  return getJson<AgentMetadata[]>("/api/agents");
-}
-
-export function getAgentMetadata(agentId: string): Promise<AgentMetadata> {
-  return getJson<AgentMetadata>(`/api/agents/${agentId}/metadata`);
+export function listAgents(): Promise<AgentSummary[]> {
+  return getJson<AgentSummary[]>("/api/agents");
 }
 
 /**
- * Returns the agent's YAML body, or `null` if the agent ships no `ui.yaml`
- * (the front-app falls back to its bundled default chat config).
+ * Returns the agent's `ui.yaml` body, or `null` if the agent ships none
+ * (the shell falls back to a default chat layout).
  */
 export async function getAgentUiYaml(agentId: string): Promise<string | null> {
   const resp = await authedFetch(`/api/agents/${agentId}/ui`);
