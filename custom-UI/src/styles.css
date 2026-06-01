@@ -289,6 +289,14 @@
   color: var(--accent-color, hsl(var(--primary)));
 }
 
+/* Chat avatar shows the active agent's initial. The host sets the letter as a
+ * quoted-string CSS var (e.g. `--hx-assistant-initial: "P"`); the widget is
+ * agent-agnostic so it reads it via inherited custom property. */
+.hx-chat-avatar::before {
+  content: var(--hx-assistant-initial, "");
+  line-height: 1;
+}
+
 /* Liquid metaball loader: three blurred dots gooed together (#hx-goo filter
  * rendered by the ai-response widget). */
 .hx-goo {

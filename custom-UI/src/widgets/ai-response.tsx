@@ -122,7 +122,7 @@ function Turn({
     <div className="flex gap-3.5">
       <span
         aria-hidden
-        className="mt-0.5 h-[30px] w-[30px] shrink-0 rounded-[8px]"
+        className="hx-chat-avatar mt-0.5 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[8px] text-[12px] font-semibold text-white"
         style={{ background: ACCENT }}
       />
       <div className="min-w-0 flex-1">
@@ -158,7 +158,7 @@ function Thinking({
     <div className="flex gap-3.5">
       <span
         aria-hidden
-        className="mt-0.5 h-[30px] w-[30px] shrink-0 animate-pulse rounded-[8px]"
+        className="hx-chat-avatar mt-0.5 flex h-[30px] w-[30px] shrink-0 animate-pulse items-center justify-center rounded-[8px] text-[12px] font-semibold text-white"
         style={{ background: ACCENT }}
       />
       <div className="flex flex-col gap-2">

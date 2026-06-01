@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { CSSProperties, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { AgentUI, type ConversationMessage } from "agent-ui";
@@ -98,8 +98,15 @@ export function ChatPage() {
     );
   }
 
+  // The chat avatar (in the agent-agnostic ai-response widget) reads the active
+  // agent's initial from this inherited, quoted-string CSS var.
+  const initial = (agent.name?.trim().charAt(0) ?? "").toUpperCase();
+
   return (
-    <div className="h-full overflow-hidden">
+    <div
+      className="h-full overflow-hidden"
+      style={{ "--hx-assistant-initial": `"${initial}"` } as CSSProperties}
+    >
       <AgentUI
         key={`${agentId}:${conversationId ?? "new"}:${sessionNonce}`}
         config={yaml}
