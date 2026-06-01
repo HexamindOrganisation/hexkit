@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Folder as FolderIcon, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { deleteFolder, Folder, renameFolder } from "../api/folders";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { PortalMenu } from "./PortalMenu";
 import {
   dragHasConversation,
   readDraggedConversationId,
@@ -12,8 +13,9 @@ import {
 /**
  * A collapsible folder in the sidebar. Liquid expand/collapse via grid-rows
  * (`.hx-collapse`), a rotating chevron, inline rename, delete (which moves its
- * conversations back to the root, server-side via FK SET NULL), and a drop
- * target — drag a conversation onto it to move it in.
+ * conversations back to the root, server-side via FK SET NULL), a portal menu
+ * (so it isn't clipped or covered), and a drop target — drag a conversation
+ * onto it to move it in.
  */
 export function FolderListItem({
   folder,
@@ -36,23 +38,7 @@ export function FolderListItem({
   const [draft, setDraft] = useState(folder.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   const renameMut = useMutation({
     mutationFn: (name: string) => renameFolder(folder.id, name),
@@ -74,12 +60,12 @@ export function FolderListItem({
   }
 
   return (
-    <div ref={ref}>
+    <div>
       <div
         className={[
           "group relative flex items-center gap-1 rounded-md transition-shadow",
           dragOver
-            ? "ring-2 ring-inset ring-[var(--accent-color,hsl(var(--primary)))] bg-secondary/50"
+            ? "bg-secondary/50 ring-2 ring-inset ring-[var(--accent-color,hsl(var(--primary)))]"
             : "",
         ].join(" ")}
         onDragOver={(e) => {
@@ -89,7 +75,6 @@ export function FolderListItem({
           if (!dragOver) setDragOver(true);
         }}
         onDragLeave={(e) => {
-          // Ignore leaves into descendants.
           if (e.currentTarget.contains(e.relatedTarget as Node)) return;
           setDragOver(false);
         }}
@@ -138,6 +123,7 @@ export function FolderListItem({
 
         {!renaming && (
           <button
+            ref={btnRef}
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             aria-expanded={menuOpen}
@@ -148,31 +134,34 @@ export function FolderListItem({
           </button>
         )}
 
-        {menuOpen && (
-          <div className="hx-pop absolute right-1 top-9 z-30 w-40 overflow-hidden rounded-lg border border-border bg-popover py-1 text-sm shadow-xl">
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(folder.name);
-                setRenaming(true);
-                setMenuOpen(false);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-secondary"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Rename
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setConfirmDelete(true);
-                setMenuOpen(false);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-destructive transition-colors hover:bg-secondary"
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Delete
-            </button>
-          </div>
-        )}
+        <PortalMenu
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          anchorRef={btnRef}
+          width={160}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(folder.name);
+              setRenaming(true);
+              setMenuOpen(false);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-secondary"
+          >
+            <Pencil className="h-3.5 w-3.5" /> Rename
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmDelete(true);
+              setMenuOpen(false);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-destructive transition-colors hover:bg-secondary"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </button>
+        </PortalMenu>
       </div>
 
       {/* Liquid expand/collapse — grid-rows 0fr↔1fr, inner overflow hidden. */}

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { useActiveAgent } from "../hooks/useActiveAgent";
-import { accentVars } from "../lib/color";
+import { accentVars, hexToHslTriplet } from "../lib/color";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 
@@ -16,6 +16,18 @@ export function AppShell() {
   const { agent } = useActiveAgent();
   const [collapsed, setCollapsed] = useState(false);
   const accent = agent?.main_color ?? "#3f9d94";
+
+  // Mirror the accent onto <html> so portaled UI (menus rendered on
+  // document.body, outside this subtree) still tints to the active agent.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--accent-color", accent);
+    const triplet = hexToHslTriplet(accent);
+    if (triplet) {
+      root.style.setProperty("--primary", triplet);
+      root.style.setProperty("--ring", triplet);
+    }
+  }, [accent]);
 
   return (
     <div

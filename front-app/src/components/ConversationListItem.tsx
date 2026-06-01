@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Check, FolderInput, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
@@ -11,6 +11,7 @@ import {
 import { Folder } from "../api/folders";
 import { AgentGlyph } from "./AgentGlyph";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { PortalMenu } from "./PortalMenu";
 
 /** dataTransfer type carrying a dragged conversation's id (drop = move). */
 export const CONVERSATION_DND_TYPE = "application/x-hexa-conversation-id";
@@ -27,9 +28,9 @@ export function dragHasConversation(e: React.DragEvent): boolean {
 
 /**
  * A conversation row in the shared sidebar history: agent-color glyph + title,
- * with a hover ⋯ menu for rename / move-to-folder / delete, and HTML5
- * drag-and-drop (drag onto a folder or the root list to move it). HexaUI-styled
- * with the liquid micro-motion (pop menu, press, settle on appear).
+ * with a hover ⋯ menu (rename / move-to-folder / delete) rendered in a portal
+ * so it never clips or paints behind neighbouring rows, plus HTML5
+ * drag-and-drop (drag onto a folder or the root list to move it).
  */
 export function ConversationListItem({
   conv,
@@ -51,29 +52,12 @@ export function ConversationListItem({
   const [draft, setDraft] = useState(conv.title ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-        setMoveOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMenuOpen(false);
-        setMoveOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setMoveOpen(false);
+  };
 
   const updateMut = useMutation({
     mutationFn: (body: Parameters<typeof updateConversation>[1]) =>
@@ -117,7 +101,7 @@ export function ConversationListItem({
   }
 
   return (
-    <div ref={ref} className="group relative">
+    <div className="group relative">
       <div
         role="button"
         tabIndex={0}
@@ -142,6 +126,7 @@ export function ConversationListItem({
           {title}
         </span>
         <button
+          ref={btnRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();
@@ -155,57 +140,55 @@ export function ConversationListItem({
         </button>
       </div>
 
-      {menuOpen && (
-        <div className="hx-pop absolute right-1 top-9 z-30 w-48 overflow-hidden rounded-lg border border-border bg-popover py-1 text-sm shadow-xl">
-          <MenuItem
-            icon={<Pencil className="h-3.5 w-3.5" />}
-            label="Rename"
-            onClick={() => {
-              setDraft(conv.title ?? "");
-              setRenaming(true);
-              setMenuOpen(false);
-            }}
-          />
-          <MenuItem
-            icon={<FolderInput className="h-3.5 w-3.5" />}
-            label="Move to folder…"
-            onClick={() => setMoveOpen((o) => !o)}
-            expanded={moveOpen}
-          />
-          {moveOpen && (
-            <div className="hx-pop border-y border-border/60 bg-secondary/30 py-1">
+      <PortalMenu open={menuOpen} onClose={closeMenu} anchorRef={btnRef} width={192}>
+        <MenuItem
+          icon={<Pencil className="h-3.5 w-3.5" />}
+          label="Rename"
+          onClick={() => {
+            setDraft(conv.title ?? "");
+            setRenaming(true);
+            closeMenu();
+          }}
+        />
+        <MenuItem
+          icon={<FolderInput className="h-3.5 w-3.5" />}
+          label="Move to folder…"
+          onClick={() => setMoveOpen((o) => !o)}
+          expanded={moveOpen}
+        />
+        {moveOpen && (
+          <div className="hx-pop border-y border-border/60 bg-secondary/30 py-1">
+            <FolderChoice
+              label="No folder"
+              active={conv.folder_id === null}
+              onClick={() => {
+                updateMut.mutate({ clear_folder: true });
+                closeMenu();
+              }}
+            />
+            {folders.map((f) => (
               <FolderChoice
-                label="No folder"
-                active={conv.folder_id === null}
+                key={f.id}
+                label={f.name}
+                active={conv.folder_id === f.id}
                 onClick={() => {
-                  updateMut.mutate({ clear_folder: true });
-                  setMenuOpen(false);
+                  updateMut.mutate({ folder_id: f.id });
+                  closeMenu();
                 }}
               />
-              {folders.map((f) => (
-                <FolderChoice
-                  key={f.id}
-                  label={f.name}
-                  active={conv.folder_id === f.id}
-                  onClick={() => {
-                    updateMut.mutate({ folder_id: f.id });
-                    setMenuOpen(false);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-          <MenuItem
-            icon={<Trash2 className="h-3.5 w-3.5" />}
-            label="Delete"
-            destructive
-            onClick={() => {
-              setConfirmDelete(true);
-              setMenuOpen(false);
-            }}
-          />
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+        <MenuItem
+          icon={<Trash2 className="h-3.5 w-3.5" />}
+          label="Delete"
+          destructive
+          onClick={() => {
+            setConfirmDelete(true);
+            closeMenu();
+          }}
+        />
+      </PortalMenu>
 
       <ConfirmDialog
         open={confirmDelete}

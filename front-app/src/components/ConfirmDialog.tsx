@@ -1,10 +1,12 @@
 import { CSSProperties, ReactNode, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 
 /**
- * A minimal modal for destructive confirmations. No portal — relies on a
- * z-index ceiling we control inside the app shell. Closes on backdrop click
- * or Escape.
+ * A minimal modal for destructive confirmations. Rendered in a portal on
+ * `document.body` so it always overlays the whole app, regardless of where it's
+ * mounted (e.g. inside a folder's clipped/transformed sidebar subtree). Closes
+ * on backdrop click or Escape.
  */
 export function ConfirmDialog({
   open,
@@ -34,10 +36,10 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       onClick={onCancel}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm"
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -66,6 +68,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
