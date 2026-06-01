@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { CSSProperties, ReactNode, useEffect } from "react";
 
 
 /**
@@ -37,26 +37,29 @@ export function ConfirmDialog({
   return (
     <div
       onClick={onCancel}
-      className="fixed inset-0 z-30 flex items-center justify-center bg-background/70 p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
+        style={{ "--hx-pop-origin": "center", boxShadow: "var(--hx-shadow)" } as CSSProperties}
+        className="hx-pop w-full max-w-sm rounded-xl border border-border bg-card p-5"
       >
         <h2 className="mb-2 text-sm font-semibold tracking-tight">{title}</h2>
         <div className="mb-5 text-sm text-muted-foreground">{body}</div>
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="rounded px-3 py-1.5 text-sm hover:bg-muted"
+            className="hx-srow rounded-md px-3 py-1.5 text-sm hover:bg-secondary"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             className={
-              "rounded px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 " +
-              (destructive ? "bg-destructive" : "bg-primary")
+              "hx-srow rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90 " +
+              (destructive
+                ? "bg-destructive text-white"
+                : "bg-primary text-primary-foreground")
             }
           >
             {confirmLabel}

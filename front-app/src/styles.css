@@ -60,10 +60,69 @@ body {
   from { transform: scale(0.82); }
   to { transform: scale(1); }
 }
+/* Liquid conversation/folder management micro-motion. */
+
+/* Menus + dialogs bloom in: a quick scale-from-near-1 + fade. */
+.hx-pop {
+  animation: hx-pop 0.14s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  transform-origin: var(--hx-pop-origin, top right);
+}
+@keyframes hx-pop {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* New rows (folder / conversation) settle in. */
+.hx-appear {
+  animation: hx-appear 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes hx-appear {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Folder expand/collapse: a content-agnostic liquid height via grid-rows.
+ * The inner element must be `overflow: hidden`. */
+.hx-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.24s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+.hx-collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+.hx-collapse > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Rotating disclosure chevron. */
+.hx-chev {
+  transition: transform 0.2s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+.hx-chev[data-open="true"] {
+  transform: rotate(90deg);
+}
+
+/* Sidebar rows: smooth hover + a gentle press. */
+.hx-srow {
+  transition: background-color 0.14s ease, transform 0.08s ease;
+}
+.hx-srow:active {
+  transform: scale(0.985);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hx-avatar::before,
-  .hx-avatar > * {
+  .hx-avatar > *,
+  .hx-pop,
+  .hx-appear {
     animation: none;
+  }
+  .hx-collapse,
+  .hx-chev,
+  .hx-srow {
+    transition: none;
   }
 }
 

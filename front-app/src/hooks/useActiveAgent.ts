@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 
 import { listAgents, type AgentSummary } from "../api/agents";
 import { listConversations, type Conversation } from "../api/conversations";
+import { listFolders } from "../api/folders";
 
 export function useAgents() {
   return useQuery({ queryKey: ["agents"], queryFn: listAgents });
@@ -10,6 +11,10 @@ export function useAgents() {
 
 export function useConversations() {
   return useQuery({ queryKey: ["conversations"], queryFn: listConversations });
+}
+
+export function useFolders() {
+  return useQuery({ queryKey: ["folders"], queryFn: listFolders });
 }
 
 /**
