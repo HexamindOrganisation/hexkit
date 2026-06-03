@@ -307,14 +307,20 @@ body {
   padding: 5px 9px; outline: 0; width: 100%; max-width: 360px;
 }
 
-.hxf .fconfirm { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-2); }
+.hxf .fconfirm { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
 .hxf .fconfirm b { color: var(--text); font-weight: 600; }
 .hxf .fconfirm .del-btn {
   height: 28px; padding: 0 11px; border-radius: var(--r-sm); border: 0; cursor: pointer;
-  font-size: 12.5px; font-weight: 500; color: #fff;
+  font-size: 12.5px; font-weight: 500; color: #fff; flex: 0 0 auto;
   background: var(--danger); transition: filter .12s;
 }
 .hxf .fconfirm .del-btn:hover { filter: brightness(1.1); }
+/* Confirm state: the "Delete?" + cancel + Delete group is wider than the 96px
+ * Actions column, so it overflows left. Light the whole row and hide the
+ * adjacent "Added" cell it overflows into, so the prompt reads cleanly with no
+ * text collision. */
+.hxf .frow.menu-open::after { opacity: 1; }
+.hxf .frow.menu-open .fadded { visibility: hidden; }
 
 .hxf .files-empty { text-align: center; padding: 70px 20px; color: var(--text-3); }
 .hxf .files-empty .fe-glyph {
