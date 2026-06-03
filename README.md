@@ -1,199 +1,130 @@
-# Unified AI Agent Platform
+# HexaUI
 
-A platform for building, deploying, and serving AI agents across multiple
-underlying agent frameworks (LangChain, OpenAI Agents SDK, Google ADK, …)
-behind a single coherent runtime protocol, event schema, and UI surface.
+A **UI/UX-first multi-agent chat platform**. Developers bring their own
+streaming agent backend (any framework); HexaUI provides the chat experience —
+a configurable, YAML-driven UI, conversation history, folders, file attachments,
+encrypted secrets — and a thin proxy that normalizes any framework's event
+stream into one schema the UI renders.
 
-The platform decouples **what the agent does** (framework-native code
-written by the agent author) from **how the agent runs** (isolation,
-streaming, observability, configuration, UI) so that:
+> **The pivot.** This repo began as a *unified agent runtime* (a backend that
+> wrapped LangChain/OpenAI/Google-ADK behind one protocol). That product was
+> dropped. HexaUI keeps the good parts — the event schema + the YAML widget
+> library — and refocuses on the **UI and the developer contract**. The old
+> runtime lives in [`legacy/`](legacy/) for reference only.
 
-- agent authors keep writing idiomatic framework code;
-- platform consumers (frontends, observability, the control plane) see one
-  normalized event stream and one HTTP API regardless of the underlying
-  framework;
-- adding a new framework is one adapter, not a rewrite.
-
-> **Status.** Runtime backend at **v0** (core, isolation, cancel API,
-> three framework adapters with LangGraph/DeepAgents aliasing). Front-app
-> at **slice 3 of 5** — chat E2E + per-agent UI YAML works end-to-end;
-> secrets page and settings page are next. Control plane not yet built.
-> See [TODO.md](TODO.md) for the full roadmap.
+Core design principle: **the active agent's color is the only color in the
+product**, driven from a single variable (`page.main_color` → `--accent`).
 
 ---
 
-## Architecture
-
-Two backend domains plus a UI library, deliberately separated:
+## How it fits together
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Front-end (browser)                            │
-│   front-app shell  ─►  custom-UI widgets (YAML-driven, SSE-aware)   │
-└──────────────────────────────────┬──────────────────────────────────┘
-                                   │ HTTP + SSE
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│   Platform backend (control plane)         [not yet built]          │
-│   auth · RBAC · tenants · secrets · conversation persistence ·      │
-│   app registry · YAML config · observability · quotas · billing     │
-└──────────────────────────────────┬──────────────────────────────────┘
-                                   │ HTTP
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│   Runtime backend (execution plane)                  [v0 shipped]   │
-│   FastAPI + SSE  ─►  Registry  ─►  Adapter (in-process or remote)   │
-│                                          │                          │
-│                                          ▼                          │
-│                                 Per-agent worker process            │
-│                                  (own venv, own deps)               │
-│                                          │                          │
-│                                          ▼                          │
-│                                  framework SDK (LC / OAI / ADK / …) │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│  front-app (React/Vite shell)                                 │
+│   folding sidebar · agent picker · composer                   │
+│   └─ mounts custom-UI <AgentUI>, rendered from the agent's    │
+│      ui.yaml (widgets + theme)                                │
+└───────────────────────────────┬───────────────────────────────┘
+                                │ HTTP + SSE  (single origin)
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│  demo/proxy  (FastAPI · single-user)                          │
+│   auth-less implicit user · conversations · folders · files   │
+│   · Fernet-encrypted keys · per-framework translators that    │
+│   normalize native events → the rich hexa SSE schema          │
+└───────────────────────────────┬───────────────────────────────┘
+                                │ HTTP + SSE  (the developer contract)
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│  demo/agent-server  (reference developer backend)             │
+│   each agent declares a `framework` and forwards that          │
+│   framework's NATIVE events, tagged. You replace this with     │
+│   your own backend (CONTRACT.md).                              │
+└───────────────────────────────────────────────────────────────┘
 ```
 
-The architecture mirrors modern data-plane / control-plane splits: the
-runtime is stateless and horizontally scalable; the platform backend owns
-all state, security, and tenant-shaped concerns.
-
-The UI never talks framework concepts. Adapters normalize framework events
-into a fixed schema (`block_delta`, `tool_start`, `state_update`,
-`trace_span`, …); the UI consumes that schema. The schema is a shared
-contract with the Fortify runtime — see
-[backend-runtime/README.md](backend-runtime/README.md#event-schema).
-
-For the original product spec, see [specs.md](specs.md).
+The developer never reshapes their events into our schema and never writes UI
+code: they implement five HTTP endpoints and forward their framework's native
+events; the **proxy translates** and the **UI renders from YAML**. See
+[demo/CONTRACT.md](demo/CONTRACT.md).
 
 ---
 
 ## Repository layout
 
-| Path | Purpose | Status |
+| Path | Purpose |
+|---|---|
+| [custom-UI/](custom-UI/) | The product's heart: a React + TS library that renders a configurable agent UI from YAML (`<AgentUI>` + 11 built-in widgets). Theme bridge, streaming chat, the actions/`data_source` system. |
+| [demo/](demo/) | The runnable reference stack: [`proxy/`](demo/proxy/) (platform backend), [`agent-server/`](demo/agent-server/) (a contract-conformant developer backend with 4 sample agents), [`packages/hexa-events/`](demo/packages/hexa-events/) (the internal event schema), [`scripts/`](demo/scripts/) (run + smoke checks). |
+| [front-app/](front-app/) | The HexaUI shell that consumes `custom-UI` and talks to the proxy. |
+| [legacy/](legacy/) | The dropped unified-runtime backend (`backend-runtime`), kept for reference. Not part of the live product. |
+| [demo/CONTRACT.md](demo/CONTRACT.md) | The developer contract — the one document an integrator reads. |
+| [demo/HANDOFF.md](demo/HANDOFF.md) | Implementation handoff / architecture notes. |
+
+---
+
+## Quick start
+
+Two backends (proxy + agent-server) on a throwaway SQLite DB, plus the web app.
+
+```bash
+# One-time — create the backend venvs from their pyprojects (needs `uv`).
+bash demo/scripts/setup.sh
+
+# Terminal 1 — backends (WSL). Set AGENT_ENABLE_LLM=1 for real LLM replies.
+AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh    # agent-server :8080, proxy :8000
+
+# Terminal 2 — web app
+cd front-app && npm install && npm run dev               # http://localhost:5173
+```
+
+Open <http://localhost:5173>, pick an agent, and chat. To get real model replies
+rather than the deterministic echo/canned fallback, set your provider key in
+**Settings** (OpenAI for Probe, Google for Orbit) — the proxy forwards it to the
+agent backend per run, never persisting it in plaintext.
+
+The bundled agents demonstrate the contract end to end:
+
+| Agent | Framework | Showcases |
 |---|---|---|
-| [backend-runtime/](backend-runtime/) | Execution plane: HTTP server, adapter framework, worker isolation, per-agent venvs. | **v0** — see its [README](backend-runtime/README.md) |
-| [custom-UI/](custom-UI/) | React + TypeScript library that renders a configurable agent UI from YAML. Ships chat + `tool-calls` widgets that consume the runtime's event stream. | Library v0, chat-aware widgets live |
-| [front-app/](front-app/) | User-facing app: agent picker → per-agent chat → runtime stream + cancel. Per-agent `ui.yaml` served by the runtime overrides the default chat layout. | **Slices 1–3 shipped**; see [front-app/specs.md](front-app/specs.md) |
-| [specs.md](specs.md) | Original product specification. | Reference |
-| [TODO.md](TODO.md) | Roadmap and milestone tracker. | Live |
+| **Probe** | `native` (OpenAI) | the simple real-LLM chat |
+| **Orbit** | `google-adk` (Gemini) | a real LLM **plus** the widget actions + `data_source` workspace |
+| **Atlas** | `langchain` | the LangChain translator (canned native events) |
+| **Forge** | `openai-agents` | the OpenAI Agents translator (canned native events) |
 
 ---
 
-## Quick start — full stack in two terminals
+## The two things a developer configures
 
-**Terminal 1 — runtime:**
+1. **`ui.yaml`** — which widgets, where, and the accent color. Placed/served by
+   the developer backend (`GET /agents/{id}/ui`).
+2. **A backend** conforming to [demo/CONTRACT.md](demo/CONTRACT.md): five
+   endpoints; stream framework-native events tagged `{framework, event}`.
 
-```bash
-cd backend-runtime
-python3 -m venv .venv
-.venv/bin/pip install -e '.[langchain,openai-agents,google-adk]' langchain-openai
-
-export OPENAI_API_KEY=...
-export PLATFORM_AGENTS_DIR=examples
-.venv/bin/python -m platform_runtime    # listens on :8080
-```
-
-**Terminal 2 — front-app:**
-
-```bash
-cd front-app
-npm install
-npm run dev                              # listens on :5173
-```
-
-Open <http://localhost:5173>. The home page lists every loaded agent;
-click one to chat. The LangGraph example ships a custom `ui.yaml` (three
-columns: help · transcript · tool-calls panel) so you can see per-agent
-layouts working.
-
-### Bundled example agents
-
-| Example | Framework | Needs |
-|---|---|---|
-| [langchain_hello](backend-runtime/examples/langchain_hello/) | LangChain (`create_agent`) | `OPENAI_API_KEY`, `langchain-openai` |
-| [langgraph_hello](backend-runtime/examples/langgraph_hello/) | Bare `StateGraph` (ships custom `ui.yaml`) | `OPENAI_API_KEY`, `langchain-openai` |
-| [deepagents_hello](backend-runtime/examples/deepagents_hello/) | DeepAgents | `OPENAI_API_KEY`, `langchain-openai`, `deepagents` |
-| [openai_agents_hello](backend-runtime/examples/openai_agents_hello/) | OpenAI Agents SDK | `OPENAI_API_KEY` |
-| [google_adk_hello](backend-runtime/examples/google_adk_hello/) | Google ADK | `GOOGLE_API_KEY` |
-
-### Runtime-only (no UI)
-
-For a CLI-style smoke test, hit the SSE endpoint directly:
-
-```bash
-curl -N -X POST http://127.0.0.1:8080/agents/langchain-hello/stream \
-  -H 'Content-Type: application/json' \
-  -d '{"input": {"messages": [{"role": "user", "content": "What time is it?"}]}}'
-
-# Cancel an in-flight run (replace <run_id> with the run_id from the stream)
-curl -X POST http://127.0.0.1:8080/agents/langchain-hello/runs/<run_id>/cancel
-```
-
-See [backend-runtime/README.md](backend-runtime/README.md) for the full
-HTTP API, event schema, and adapter-authoring guide.
-
----
-
-## Concepts in one minute
-
-**Agent.** A folder with an `agent.yaml` manifest and a Python entrypoint
-exposing a factory callable. The factory returns a framework-native object
-(LangChain Runnable, OpenAI `Agent`, ADK `Agent`, …).
-
-**Manifest.** Declares the framework, entrypoint, capabilities, optional
-`requirements`. Validated at load time; portable; framework-agnostic
-schema with an `extra` slot for framework-specific knobs.
-
-**Adapter.** Per-framework class implementing `UnifiedAgentRuntime`.
-Translates the framework's stream into the platform's normalized event
-schema. Adding a new framework = writing one adapter.
-
-**Event schema.** Typed events grouped into a Fortify-shared core
-(`run_start`, `block_start`/`block_delta`/`block_end`, `tool_start`/
-`tool_update`/`tool_end`, `run_end`, `error`), platform observability
-extensions (`state_update`, `trace_span`), and human-in-the-loop
-(`approval_requested`, `approval_resolved`). The UI and observability
-layers consume events generically.
-
-**Isolation.** Agents can run in-process (low overhead, trusted code) or
-in per-agent subprocesses with their own Python venv installed from the
-manifest's `requirements`. Dependency conflicts and crashes stop at the
-worker boundary.
-
----
-
-## Currently supported frameworks
-
-- **LangChain ≥ 1.0** — LCEL chains, `create_agent` (LangGraph)
-  outputs, bare LangGraph `StateGraph(...).compile()`, and DeepAgents
-  graphs all run through one adapter. Manifests can declare
-  `framework: langchain` / `langgraph` / `deepagents` — all three names
-  alias to the same code path.
-- **OpenAI Agents SDK ≥ 0.17** — `Runner.run_streamed` token stream
-  with native tool-call mapping.
-- **Google ADK ≥ 1.33** — `Runner.run_async` event stream, multi-agent
-  handoff surfaces as `state_update(active_agent)`, JSON-schema-
-  translated tools.
-
-See [TODO.md](TODO.md) for upcoming frameworks (Pydantic AI).
+Beyond the chat turn (which the platform owns), widget behavior is just two
+declarative primitives — **`action`** (do something → `POST /actions/{name}`)
+and **`data_source`** (display something, refreshed by re-pull). The backend
+stays UI-agnostic; the YAML is the only wiring layer. See CONTRACT §5b.
 
 ---
 
 ## Development
 
-Each subdirectory is independently versioned and developed.
-
 ```bash
-# runtime backend
-cd backend-runtime && python3 -m venv .venv && .venv/bin/pip install -e '.[langchain,openai-agents,google-adk]'
-.venv/bin/python -m pytest tests/ -q
+# UI library (the core)
+cd custom-UI && npm install && npm test && npm run build
 
-# UI library
-cd custom-UI && npm install && npm test
+# Web app
+cd front-app && npm install && npx tsc --noEmit && npx vite build
+
+# Backend contract smoke checks (WSL; venvs live in demo/proxy + demo/agent-server)
+PYTHONPATH=demo/proxy/src:demo/agent-server/src:demo/packages/hexa-events/src \
+  demo/proxy/.venv/bin/python demo/scripts/e2e_check.py
 ```
 
-The runtime backend's full test suite (34 tests, including subprocess
-isolation) runs in <40s.
+See [demo/scripts/README.md](demo/scripts/README.md) for all smoke checks and
+[custom-UI/docs/](custom-UI/docs/) for the widget catalog and YAML reference.
 
 ---
 

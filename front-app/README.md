@@ -1,148 +1,70 @@
 # front-app
 
-User-facing app for the Unified AI Agent Platform. Talks to
-[platform-runtime](../backend-runtime/) via HTTP+SSE and renders each
-agent's UI with [agent-ui](../custom-UI/).
-
-Current state: **Slice 3 of 5** — chat E2E plus per-agent `ui.yaml`
-served by the runtime, with the bundled default chat as the fallback.
-Foundation routes (`/secrets`, `/settings`) render placeholders awaiting
-Slices 4 and 5. See [specs.md](specs.md) for the full plan.
+The **HexaUI shell** — the user-facing web app. It wraps the
+[`agent-ui`](../custom-UI/) library (`<AgentUI>`, rendered from each agent's
+`ui.yaml`) in constant chrome and talks to the [proxy](../demo/proxy/) over
+HTTP + SSE through a single origin (`/api/*`).
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Brand    Agents · Secrets · Settings        (persistent shell) │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   Routes (React Router v6):                                     │
-│     /                  AgentsHome   grid of agent cards         │
-│     /agents/:id        AgentChat    agent-ui rendered chat      │
-│     /secrets           SecretsPage  placeholder (Slice 4)       │
-│     /settings          SettingsPage placeholder (Slice 5)       │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                       Vite proxy /api/* → http://127.0.0.1:8080
-                              │
-                              ▼
-                       platform-runtime
+┌──────────────────────────────────────────────────────────────┐
+│  Sidebar (folding)              Header (agent picker)         │
+│   New session · Files · Settings                              │
+│   cross-agent history grouped by folders                      │
+├──────────────────────────────────────────────────────────────┤
+│  MAIN — <AgentUI> from the agent's ui.yaml                    │
+│   greeting (empty state) → chat: transcript + composer        │
+└──────────────────────────────────────────────────────────────┘
+                              │  Vite proxy /api/* → http://127.0.0.1:8000
+                              ▼                         (demo/proxy)
 ```
+
+Single-user: no login. The active agent's `main_color` is the only accent in
+the product.
 
 ## Run it
 
-In one terminal, the runtime (with at least one agent loaded):
-
 ```bash
-cd ../backend-runtime
-export OPENAI_API_KEY=...
-export PLATFORM_AGENTS_DIR=examples
-.venv/bin/python -m platform_runtime
-```
+# backends (from repo root, WSL) — see demo/scripts
+AGENT_ENABLE_LLM=1 bash ../demo/scripts/run-backends.sh   # proxy :8000, agent-server :8080
 
-In another:
-
-```bash
-cd front-app
+# this app
 npm install
-npm run dev
+npm run dev                                               # http://localhost:5173
 ```
 
-Open <http://localhost:5173>. Pick an agent → send a message → watch
-tokens stream into the transcript and tool invocations into the
-right-side `Tool calls` panel. The **Cancel run** button proves the
-runtime's cancel API end to end — clicking it mid-stream produces a
-`Run cancelled.` system message.
+Open <http://localhost:5173>, pick an agent from the top bar, and send a
+message. Add a provider key in **Settings** for real model replies (otherwise
+agents fall back to a deterministic echo). The Vite dev server proxies `/api/*`
+to the platform backend; override with `PLATFORM_BACKEND_URL` if it's elsewhere.
 
-The `langgraph-hello` example ships a custom [`ui.yaml`](../backend-runtime/examples/langgraph_hello/ui.yaml)
-with a three-column layout (help · transcript · tool calls), an indigo
-header, and a markdown help card on the left — visible proof that
-per-agent UIs work without front-app changes. Other agents render the
-bundled default chat layout with a small banner noting the fallback.
+## Routes
 
-### Different runtime host
+| Path | Page |
+|---|---|
+| `/` | Greeting (empty state) → chat once a message is sent (lazy conversation create) |
+| `/c/:id` | An existing conversation |
+| `/files` | The file library (upload / rename / delete; attach from the composer) |
+| `/settings` | Per-user API keys (Fernet-encrypted server-side) |
 
-```bash
-PLATFORM_RUNTIME_URL=http://127.0.0.1:9090 npm run dev
-```
-
-The Vite proxy uses this for `/api/*` rewrites.
-
-## File layout
+## Layout
 
 ```
 src/
-  main.tsx                          React entry
-  App.tsx                           Router root
-  styles.css                        Tailwind + agent-ui CSS imports
-
-  layout/
-    AppShell.tsx                    persistent nav + <Outlet/>
-    Nav.tsx                         top-bar tab navigation
-
-  pages/
-    AgentsHome.tsx                  cards grid + states
-    AgentChat.tsx                   agent-ui rendered with RuntimeBridge
-    SecretsPage.tsx                 placeholder (Slice 4)
-    SettingsPage.tsx                placeholder (Slice 5)
-
-  components/
-    AgentCard.tsx                   one card on the home page
-    HealthPill.tsx                  per-card health badge
-    CapabilityBadges.tsx            streaming / tools / state / approvals
-
-  config/
-    defaultChatPage.ts              agent-ui page config (JS object)
-
+  router.tsx              routes inside the AppShell
+  layout/                 AppShell, Header, Sidebar (chrome)
+  pages/                  ChatPage (mounts <AgentUI>), FilesPage, SettingsPage
+  components/             Greeting, conversation/folder rows, key rows, dialogs
+  hooks/                  useActiveAgent (derives agent/conversation from URL)
+  api/                    typed REST client (agents, conversations, files, keys)
   runtime/
-    types.ts                        mirrored RuntimeEvent / AgentMetadata
-    api.ts                          REST helpers (typed)
-    sseStream.ts                    fetch + SSE → AsyncGenerator
-    runtimeBridge.ts                AgentBridge over the runtime
+    sseStream.ts          fetch + SSE → AsyncGenerator
+    runtimeBridge.ts      AgentBridge over the proxy (the translation seam)
+    types.ts              mirrors the proxy's hexa event schema
+  lib/                    color/theme helpers, file-format helpers
 ```
 
-> **Pending migration.** The runtime's event schema has moved to the
-> Fortify-shared shape (`event_type` discriminator, block model, `RunNode`
-> hierarchy — see
-> [backend-runtime/README.md](../backend-runtime/README.md#event-schema)).
-> This front-app still consumes the previous `RuntimeEvent` shape
-> (`message.delta` / `tool.start` / `seq` / …); `types.ts` and
-> `runtimeBridge.translate` have not yet been updated. Until they are, the
-> references below describe the old vocabulary.
-
-The interesting file is [runtimeBridge.ts](src/runtime/runtimeBridge.ts) —
-the translation seam between the runtime's normalized event schema and
-`agent-ui`'s smaller event vocabulary. Future event types (trace timeline,
-state inspector, approval prompts) plug in here.
-
-## What's shipped (Slices 1-3) — and what's next
-
-**Shipped:**
-
-- React Router v6, persistent `AppShell` with top nav.
-- `/` AgentsHome: cards grid, health pills, capability badges, loading
-  skeleton, empty state, error banner.
-- `/agents/:id` AgentChat: metadata + `ui.yaml` fetched in parallel,
-  `RuntimeBridge` wired to SSE, working **Cancel run** button.
-- Per-agent YAML: `GET /agents/:id/ui` consumed; default chat used as
-  fallback with a small "rendering the default" hint banner.
-- Tool calls routed into the `tool-calls` widget (added to `agent-ui`)
-  instead of polluting the chat transcript as system messages.
-- Typed runtime client (`api.ts`, `sseStream.ts`, `types.ts`,
-  `runtimeBridge.ts`) — same boundary every later slice extends.
-
-**Coming next:**
-
-- Slice 4 — `/secrets` page + runtime secret store + worker env
-  injection at spawn time. (Spec: [specs.md](specs.md))
-- Slice 5 — `/settings` page + `GET /config` endpoint (theme, runtime
-  URL, log verbosity, version info).
-
-**Deferred (per spec):**
-
-- Multi-turn conversation persistence — needs platform backend.
-- Agent registration via the UI — drop folders into `PLATFORM_AGENTS_DIR`.
-- Markdown / code-block rendering of message bodies (`agent-ui`'s
-  `markdown` widget can be wired into per-agent YAMLs today).
-- Auth.
-
-See [specs.md](specs.md) for the full slice plan and rationale.
+The key seam is [runtimeBridge.ts](src/runtime/runtimeBridge.ts): it adapts the
+proxy's rich SSE event schema to `agent-ui`'s `AgentBridge` (token / message /
+status / tool-call / error), and exposes the file capability + lazy
+conversation creation. The proxy contract it speaks is
+[demo/CONTRACT.md](../demo/CONTRACT.md).

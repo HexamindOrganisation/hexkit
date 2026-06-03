@@ -1,3 +1,8 @@
+> **⚠️ SUPERSEDED (pre-pivot).** This is the original *unified agent runtime*
+> spec. That product was dropped — see the root [README](../README.md) and
+> [demo/CONTRACT.md](../demo/CONTRACT.md) for the current HexaUI direction.
+> Kept for historical reference.
+
 # Project Overview — Unified AI Agent Platform
 
 ## Goal

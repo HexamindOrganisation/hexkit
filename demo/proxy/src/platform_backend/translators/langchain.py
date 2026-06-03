@@ -1,7 +1,7 @@
 """LangChain / LangGraph / DeepAgents translator.
 
 Consumes the JSON projection of LangChain's ``astream_events(version="v2")``
-stream. Ported from ``backend-runtime/.../adapters/langchain_adapter.py`` — the
+stream. Ported from ``legacy/backend-runtime/.../adapters/langchain_adapter.py`` — the
 event→emitter mapping, driven off the wire instead of a live ``Runnable``.
 
     on_chat_model_stream / on_llm_stream   -> text block delta (keyed by run_id)

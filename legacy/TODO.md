@@ -1,3 +1,7 @@
+> **⚠️ SUPERSEDED (pre-pivot).** Roadmap for the dropped *unified agent
+> runtime*. Not the current plan — see the root [README](../README.md) and
+> [demo/HANDOFF.md](../demo/HANDOFF.md). Kept for historical reference.
+
 # Roadmap to v1
 
 Full punch list to reach v1 of the unified AI agent platform described in

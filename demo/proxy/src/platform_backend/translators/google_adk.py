@@ -1,7 +1,7 @@
 """Google ADK translator.
 
 Consumes the JSON projection of ``Runner.run_async(...)``'s ``Event`` stream.
-Ported from ``backend-runtime/.../adapters/google_adk_adapter.py``.
+Ported from ``legacy/backend-runtime/.../adapters/google_adk_adapter.py``.
 
     text part, partial=True       -> text block delta (new block per author)
     text part, partial=False      -> close block (or full text)

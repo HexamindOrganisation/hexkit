@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-export PLATFORM_FERNET_KEY="${PLATFORM_FERNET_KEY:-$(platform-backend/.venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
+export PLATFORM_FERNET_KEY="${PLATFORM_FERNET_KEY:-$(demo/proxy/.venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
 export PLATFORM_DATABASE_URL="${PLATFORM_DATABASE_URL:-sqlite+aiosqlite:////tmp/hexa_dev.sqlite}"
 export PLATFORM_AGENT_BACKEND_URL="http://127.0.0.1:8080"
 
@@ -25,11 +25,11 @@ export AGENT_ENABLE_LLM="${AGENT_ENABLE_LLM:-0}"
 
 echo "starting agent-server :8080 (AGENT_ENABLE_LLM=$AGENT_ENABLE_LLM) …"
 PYTHONPATH=demo/agent-server/src \
-  backend-runtime/.venv/bin/python -m agent_server &
+  demo/agent-server/.venv/bin/python -m agent_server &
 
 echo "starting proxy :8000 (sqlite: $PLATFORM_DATABASE_URL) …"
 PYTHONPATH=demo/proxy/src:demo/packages/hexa-events/src \
-  platform-backend/.venv/bin/python -m platform_backend &
+  demo/proxy/.venv/bin/python -m platform_backend &
 
 echo "both up. open the web app with: (in front-app)  npm run dev  →  http://localhost:5173"
 echo "Ctrl-C to stop both."

@@ -3,12 +3,18 @@
 Executable verification of the HexaUI streaming contract (M1). Both run against
 the real code — no mocks of the contract itself.
 
-Run with a Python that has the proxy + agent-server deps (e.g. the WSL
-`platform-backend/.venv`) and the demo `src` dirs on `PYTHONPATH`:
+First-time setup (creates the venvs from the pyprojects; needs [`uv`](https://docs.astral.sh/uv/)):
+
+```bash
+bash demo/scripts/setup.sh
+```
+
+Run with a Python that has the proxy deps (the WSL `demo/proxy/.venv`) and the
+demo `src` dirs on `PYTHONPATH`:
 
 ```bash
 cd <repo>
-PYBIN=platform-backend/.venv/bin/python
+PYBIN=demo/proxy/.venv/bin/python
 PYTHONPATH=demo/proxy/src:demo/agent-server/src:demo/packages/hexa-events/src
 ```
 

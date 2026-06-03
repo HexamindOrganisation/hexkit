@@ -10,7 +10,8 @@ dependencies = [
 
 [project.optional-dependencies]
 llm = [
-    "openai>=1.40",
+    "openai>=1.40",        # Probe (native)
+    "google-genai>=1.0",   # Orbit (google-adk / Gemini)
 ]
 dev = [
     "pytest>=8",

@@ -87,7 +87,7 @@ def _files_payload(files: list) -> list[dict]:
 
 # Conversation-id → active run_id. In-memory: a process-restart loses the
 # mapping, which matches the runtime's own model (cancel is process-lifetime,
-# see backend-runtime/README.md). Durable cancel is post-v0.
+# see legacy/backend-runtime/README.md). Durable cancel is post-v0.
 _active_runs: dict[uuid.UUID, str] = {}
 
 

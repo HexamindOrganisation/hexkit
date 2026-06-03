@@ -1,7 +1,7 @@
 [project]
-name = "platform-backend"
+name = "hexaui-proxy"
 version = "0.1.0"
-description = "Control plane for the Unified AI Agent Platform"
+description = "HexaUI platform backend — single-user proxy: conversations, files, encrypted keys, and per-framework SSE translation (import package stays `platform_backend`)"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",

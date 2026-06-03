@@ -1,5 +1,13 @@
 # HexaUI — Implementation Handoff
 
+> **📁 Repo-structure update (post-refactor).** `platform-backend/` has been
+> **removed** — its role is fulfilled by [`proxy/`](proxy/). `backend-runtime/`
+> moved to [`../legacy/backend-runtime/`](../legacy/backend-runtime/) (reference
+> only). The demo venvs now live in `demo/proxy/.venv` and
+> `demo/agent-server/.venv`. Sections below that reference `platform-backend/`
+> or `backend-runtime/` paths are **historical** — the migration they describe
+> is complete; read them for rationale, not current layout.
+
 > Working doc for resuming the HexaUI build. Read this top-to-bottom and you
 > have everything needed to continue without re-exploring.
 > Companion files: `demo/specs.md` (pivot vision), `demo/design_handoff_hexaui/`

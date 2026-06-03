@@ -1,7 +1,7 @@
 """OpenAI Agents SDK translator.
 
 Consumes the JSON projection of ``Runner.run_streamed(...).stream_events()``.
-Ported from ``backend-runtime/.../adapters/openai_agents_adapter.py``.
+Ported from ``legacy/backend-runtime/.../adapters/openai_agents_adapter.py``.
 
     raw_response  (response.output_text.delta)   -> text block delta
     run_item      message_output_created         -> close block (or full text)
