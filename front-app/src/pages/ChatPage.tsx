@@ -43,8 +43,17 @@ export function ChatPage() {
 
   const convRef = useRef<string | null>(null);
   convRef.current = conversationId ?? null;
+  // The conversation lazily created from the greeting. We don't navigate on
+  // create (keeps the live stream), so the URL — and thus `conversationId` /
+  // `convRef` — stays null for it. Held in its own ref so a re-render doesn't
+  // clobber it back to null; actions + data_source resolve against it. Cleared
+  // when the surface changes (new session / agent / selecting a conversation).
+  const createdRef = useRef<string | null>(null);
   const agentRef = useRef<string | null>(null);
   agentRef.current = agentId ?? null;
+
+  /** The active conversation id: the URL's, else the one created this session. */
+  const liveConversationId = () => convRef.current ?? createdRef.current;
 
   // The first message (text + attachments) from the greeting, before a
   // conversation exists. Tagged with the surface it was composed in.
@@ -78,10 +87,10 @@ export function ChatPage() {
   const bridge = useMemo(
     () =>
       new RuntimeBridge({
-        getConversationId: () => convRef.current,
+        getConversationId: liveConversationId,
         getAgentId: () => agentRef.current,
         onConversationCreated: (id) => {
-          convRef.current = id;
+          createdRef.current = id;
           qc.invalidateQueries({ queryKey: ["conversations"] });
         },
         canSubmit: () => null,
@@ -91,7 +100,7 @@ export function ChatPage() {
   );
 
   const dispatcher = useMemo(
-    () => makeDispatcher(() => convRef.current),
+    () => makeDispatcher(liveConversationId),
     [agentId, conversationId, sessionNonce],
   );
 
@@ -103,6 +112,7 @@ export function ChatPage() {
   useEffect(() => {
     setPendingFirst(null);
     firedRef.current = null;
+    createdRef.current = null;
   }, [surfaceKey]);
 
   // Fire the greeting's first message into the freshly-mounted bridge exactly

@@ -15,11 +15,16 @@ _UI_DIR = Path(__file__).parent / "ui"
 # the proxy rewrites/serves it under its own /agents/{id}/ui. ``framework`` tells
 # the proxy which translator to apply to this agent's native event stream — each
 # reference agent demonstrates one framework path (`native` is the escape hatch).
+#   - Probe (native): the simple real-LLM chat showcase (OpenAI).
+#   - Orbit (google-adk): the "complex" showcase — a real LLM via Google ADK /
+#     Gemini PLUS a widget actions + data-source workspace (see ui/orbit.yaml).
+# Both stream a real model when AGENT_ENABLE_LLM is set and the matching key is
+# forwarded; otherwise they fall back (echo / canned ADK events).
 AGENTS: list[dict[str, str]] = [
     {
         "id": "probe",
         "name": "Probe",
-        "role": "Research & retrieval",
+        "role": "General assistant",
         "main_color": "#3f9d94",
         "ui_url": "/agents/probe/ui",
         "framework": "native",
@@ -43,7 +48,7 @@ AGENTS: list[dict[str, str]] = [
     {
         "id": "orbit",
         "name": "Orbit",
-        "role": "Planning & orchestration",
+        "role": "Research workspace",
         "main_color": "#b0714f",
         "ui_url": "/agents/orbit/ui",
         "framework": "google-adk",

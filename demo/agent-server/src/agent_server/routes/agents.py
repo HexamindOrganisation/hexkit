@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
 from .. import protocol
+from ..actions import run_action
 from ..agents.select import select_agent
 from ..roster import AGENTS, get_agent, read_ui
 
@@ -91,8 +92,12 @@ async def invoke_action(
     """Widget action / data source. An action returns a single `{result}`; it
     never pushes to the UI. Display widgets read their `data_source` via this
     same endpoint, and `refresh` (declared in the ui.yaml) re-pulls them after
-    an action — see CONTRACT.md §5b. The reference impl just echoes the call."""
+    an action — see CONTRACT.md §5b. Known actions (the Orbit workspace) run from
+    `actions.py`; any other name echoes so the envelope shape is demonstrable."""
     if get_agent(agent_id) is None:
         raise HTTPException(status_code=404, detail=f"Unknown agent '{agent_id}'")
     args = (body or {}).get("args", {})
-    return {"result": {"action": action_name, "args": args}}
+    result = run_action(action_name, args)
+    if result is None:
+        result = {"action": action_name, "args": args}
+    return {"result": result}
