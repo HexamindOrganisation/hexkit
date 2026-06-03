@@ -33,17 +33,28 @@ export function ChatPage() {
   const qc = useQueryClient();
   const sessionNonce = sp.get("n") ?? "0";
 
+  // Identity of the current chat surface — also the `<AgentUI>` remount key.
+  // The greeting's first message is tagged with this so it fires into exactly
+  // the surface it was composed in, and is never resent when you switch
+  // conversations or start a new session (the value is recomputed fresh each
+  // render, so a navigated-away surface can't match a stale pending message).
+  const surfaceKey = `${agentId ?? ""}:${conversationId ?? "new"}:${sessionNonce}`;
+
   const convRef = useRef<string | null>(null);
   convRef.current = conversationId ?? null;
   const agentRef = useRef<string | null>(null);
   agentRef.current = agentId ?? null;
 
   // The first message (text + attachments) from the greeting, before a
-  // conversation exists.
+  // conversation exists. Tagged with the surface it was composed in.
   const [pendingFirst, setPendingFirst] = useState<
-    { text: string; fileIds: string[] } | null
+    { text: string; fileIds: string[]; key: string } | null
   >(null);
   const firedRef = useRef<string | null>(null);
+
+  // Only honor a pending first-message that still belongs to this surface.
+  const activeFirst =
+    pendingFirst && pendingFirst.key === surfaceKey ? pendingFirst : null;
 
   const { data: yaml } = useQuery({
     queryKey: ["ui", agentId],
@@ -78,29 +89,33 @@ export function ChatPage() {
     [agentId, conversationId, sessionNonce],
   );
 
-  // Reset the pending first-message whenever the session/agent/conversation
-  // changes (e.g. New session → greeting again; selecting an existing chat).
+  // On any surface change (select a conversation / New session), drop the
+  // greeting's pending message and free the fire slot. A pending message can
+  // only ever belong to a *prior* surface here (it's tagged with the surface it
+  // was composed in), so clearing is always correct — and it lets a repeated
+  // surface key (e.g. browser-back to `/`) fire a fresh first message again.
   useEffect(() => {
     setPendingFirst(null);
     firedRef.current = null;
-  }, [agentId, conversationId, sessionNonce]);
+  }, [surfaceKey]);
 
   // Fire the greeting's first message into the freshly-mounted bridge exactly
   // once — but only when the chat will actually render (yaml loaded), so the
   // transcript has mounted + subscribed (child effects run before this parent
-  // effect) and no early tokens are missed.
+  // effect) and no early tokens are missed. Keyed by surface, so switching
+  // conversations or sessions can never re-fire it.
   useEffect(() => {
     if (
-      pendingFirst &&
+      activeFirst &&
       typeof yaml === "string" &&
-      firedRef.current !== pendingFirst.text
+      firedRef.current !== activeFirst.key
     ) {
-      firedRef.current = pendingFirst.text;
-      void bridge.onUserSubmit(pendingFirst.text, {
-        fileIds: pendingFirst.fileIds,
+      firedRef.current = activeFirst.key;
+      void bridge.onUserSubmit(activeFirst.text, {
+        fileIds: activeFirst.fileIds,
       });
     }
-  }, [pendingFirst, yaml, bridge]);
+  }, [activeFirst, yaml, bridge]);
 
   if (!agent) {
     return (
@@ -111,12 +126,14 @@ export function ChatPage() {
   }
 
   // Greeting / new-session empty state.
-  if (!conversationId && !pendingFirst) {
+  if (!conversationId && !activeFirst) {
     return (
       <Greeting
         agent={agent}
         sessionKey={`${agentId}:${sessionNonce}`}
-        onSend={(text, fileIds) => setPendingFirst({ text, fileIds })}
+        onSend={(text, fileIds) =>
+          setPendingFirst({ text, fileIds, key: surfaceKey })
+        }
       />
     );
   }
@@ -146,12 +163,12 @@ export function ChatPage() {
         content: m.content,
         timestamp: Date.parse(m.created_at) || Date.now(),
       }))
-    : pendingFirst
+    : activeFirst
       ? [
           {
             id: "first",
             role: "user" as const,
-            content: pendingFirst.text,
+            content: activeFirst.text,
             timestamp: Date.now(),
           },
         ]
@@ -167,7 +184,7 @@ export function ChatPage() {
       style={{ "--hx-assistant-initial": `"${initial}"` } as CSSProperties}
     >
       <AgentUI
-        key={`${agentId}:${conversationId ?? "new"}:${sessionNonce}`}
+        key={surfaceKey}
         config={yaml}
         dispatcher={dispatcher}
         agent={bridge}
