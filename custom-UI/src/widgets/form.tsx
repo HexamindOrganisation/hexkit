@@ -15,7 +15,7 @@ type FormValues = Record<string, string | number | boolean>;
 export function FormWidgetComponent({
   props,
 }: WidgetProps<FormWidget>): JSX.Element {
-  const { dispatcher } = useAgentUIContext();
+  const { dispatcher, requestRefresh } = useAgentUIContext();
   const { data: prefill } = useWidgetData<Record<string, unknown>>(
     props.data_source,
   );
@@ -70,6 +70,7 @@ export function FormWidgetComponent({
         ...(props.submit_args ?? {}),
         ...values,
       });
+      if (props.refresh?.length) requestRefresh(props.refresh);
       setStatus({
         kind: "success",
         message: props.success_message ?? "Submitted.",

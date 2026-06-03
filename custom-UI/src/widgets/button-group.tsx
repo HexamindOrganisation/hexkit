@@ -1,5 +1,6 @@
 import type { WidgetProps } from "../registry/types.js";
 import type { ButtonGroupWidget } from "../schema/widgets/button-group.js";
+import { useAgentUIContext } from "../runtime/context.js";
 import { Button } from "../components/ui/button.js";
 import { cn } from "../lib/utils.js";
 
@@ -7,6 +8,7 @@ export function ButtonGroupWidgetComponent({
   props,
   dispatcher,
 }: WidgetProps<ButtonGroupWidget>): JSX.Element {
+  const { requestRefresh } = useAgentUIContext();
   const orientation = props.orientation ?? "horizontal";
   return (
     <div
@@ -24,7 +26,14 @@ export function ButtonGroupWidgetComponent({
           size={b.size ?? "default"}
           disabled={b.disabled ?? false}
           onClick={() => {
-            void dispatcher.invoke(b.action, b.args);
+            dispatcher
+              .invoke(b.action, b.args)
+              .then(() => {
+                if (b.refresh?.length) requestRefresh(b.refresh);
+              })
+              .catch(() => {
+                /* action errors surface via the backend / diagnostics */
+              });
           }}
         >
           {b.label}

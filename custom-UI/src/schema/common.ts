@@ -3,6 +3,17 @@ import type { FromSchema } from "json-schema-to-ts";
 export const IconSchema = { type: "string" } as const;
 export const ActionSchema = { type: "string", minLength: 1 } as const;
 
+/**
+ * Widget names whose `data_source` should re-pull after an action succeeds.
+ * The YAML is the only layer that knows widget names — the backend stays
+ * UI-agnostic; it just exposes data via actions, and this wires which display
+ * widgets refresh when an action changes their underlying data.
+ */
+export const RefreshSchema = {
+  type: "array",
+  items: { type: "string", minLength: 1 },
+} as const;
+
 export const PositionSchema = {
   type: "object",
   properties: {

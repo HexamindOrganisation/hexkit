@@ -1,6 +1,6 @@
 import type { FromSchema } from "json-schema-to-ts";
 import { WidgetBaseProperties } from "../widget-base.js";
-import { ActionSchema, DataSourceSchema } from "../common.js";
+import { ActionSchema, DataSourceSchema, RefreshSchema } from "../common.js";
 
 const FieldBaseProperties = {
   id: { type: "string", minLength: 1 },
@@ -135,6 +135,8 @@ export const FormWidgetSchema = {
     submit_action: ActionSchema,
     /** Optional extra args merged into the submit payload. */
     submit_args: { type: "object", additionalProperties: true },
+    /** Widget names to re-pull after a successful submit. */
+    refresh: RefreshSchema,
     submit_label: { type: "string" },
     /** If set, shows a reset button. */
     reset_label: { type: "string" },

@@ -1,5 +1,6 @@
 import type { FromSchema } from "json-schema-to-ts";
 import { WidgetBaseProperties } from "../widget-base.js";
+import { RefreshSchema } from "../common.js";
 
 export const ButtonVariantSchema = {
   enum: ["default", "destructive", "outline", "secondary", "ghost", "link"],
@@ -15,6 +16,8 @@ export const ButtonGroupItemSchema = {
     label: { type: "string", minLength: 1 },
     action: { type: "string", minLength: 1 },
     args: { type: "object", additionalProperties: true },
+    /** Widget names to re-pull after this action succeeds. */
+    refresh: RefreshSchema,
     variant: ButtonVariantSchema,
     size: ButtonSizeSchema,
     disabled: { type: "boolean" },

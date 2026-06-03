@@ -35,6 +35,10 @@ interface AgentUIContextValue {
   subscribeInbox: (name: string, cb: () => void) => () => void;
   /** Subscribe to container-targeted events (token/message/status). */
   subscribeContainer: (cb: (event: AgentEvent) => void) => () => void;
+  /** Subscribe a widget (by name) to re-pull requests for its `data_source`. */
+  subscribeRefresh: (name: string, cb: () => void) => () => void;
+  /** Ask the named widgets to re-pull their `data_source` (after an action). */
+  requestRefresh: (names: readonly string[]) => void;
   pushDiagnostic: (d: Diagnostic) => void;
   diagnostics: Diagnostic[];
   /** Full conversation log (user + assistant + system, finalized only). */
@@ -83,6 +87,7 @@ export function AgentUIProvider({
   const inboxesRef = useRef<Map<string, InboxState>>(new Map());
   const inboxSubsRef = useRef<Map<string, Set<() => void>>>(new Map());
   const containerSubsRef = useRef<Set<(e: AgentEvent) => void>>(new Set());
+  const refreshSubsRef = useRef<Map<string, Set<() => void>>>(new Map());
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [conversation, setConversation] = useState<ConversationMessage[]>(
     initialMessages ?? [],
@@ -143,6 +148,24 @@ export function AgentUIProvider({
       containerSubsRef.current.delete(cb);
     };
   };
+
+  const subscribeRefresh = useCallback((name: string, cb: () => void) => {
+    let set = refreshSubsRef.current.get(name);
+    if (!set) {
+      set = new Set();
+      refreshSubsRef.current.set(name, set);
+    }
+    set.add(cb);
+    return () => {
+      set!.delete(cb);
+    };
+  }, []);
+
+  const requestRefresh = useCallback((names: readonly string[]) => {
+    for (const name of names) {
+      refreshSubsRef.current.get(name)?.forEach((cb) => cb());
+    }
+  }, []);
 
   useEffect(() => {
     if (!agent) return;
@@ -223,6 +246,8 @@ export function AgentUIProvider({
       inboxes: inboxesRef.current,
       subscribeInbox,
       subscribeContainer,
+      subscribeRefresh,
+      requestRefresh,
       pushDiagnostic,
       diagnostics,
       conversation,
@@ -237,6 +262,8 @@ export function AgentUIProvider({
       diagnostics,
       conversation,
       selectedConversationId,
+      subscribeRefresh,
+      requestRefresh,
       pushUserMessage,
       loadConversation,
       startNewConversation,
@@ -287,6 +314,11 @@ function useWidgetName(): string {
   return n;
 }
 
+/** Like `useWidgetName` but returns null outside a widget instead of throwing. */
+function useOptionalWidgetName(): string | null {
+  return useContext(WidgetNameContext);
+}
+
 /**
  * Widget data hook. Backed by `dispatcher.subscribe` when available and
  * `dataSource.subscribe` is true; otherwise calls `invoke` once.
@@ -294,12 +326,21 @@ function useWidgetName(): string {
 export function useWidgetData<T>(
   dataSource: DataSource | undefined,
 ): { data: T | undefined; loading: boolean; error?: Error; refresh: () => void } {
-  const { dispatcher } = useAgentUIContext();
+  const { dispatcher, subscribeRefresh } = useAgentUIContext();
+  const widgetName = useOptionalWidgetName();
   const [data, setData] = useState<T | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(!!dataSource);
   const [error, setError] = useState<Error | undefined>(undefined);
   const [refreshTick, setRefreshTick] = useState(0);
   const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
+
+  // Re-pull when an action declares this widget in its `refresh:` list. This is
+  // the only widget-update path: actions mutate data on the backend, then the
+  // named widgets re-pull — no push, nothing on the chat stream.
+  useEffect(() => {
+    if (!widgetName || !dataSource) return;
+    return subscribeRefresh(widgetName, refresh);
+  }, [widgetName, dataSource, subscribeRefresh, refresh]);
 
   useEffect(() => {
     if (!dataSource) {
