@@ -16,6 +16,7 @@ export async function* streamChat(
   conversationId: string,
   content: string,
   signal?: AbortSignal,
+  fileIds?: string[],
 ): AsyncGenerator<RuntimeEvent, void, void> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -28,7 +29,10 @@ export async function* streamChat(
     {
       method: "POST",
       headers,
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        content,
+        ...(fileIds && fileIds.length ? { file_ids: fileIds } : {}),
+      }),
       ...(signal && { signal }),
     },
   );

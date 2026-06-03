@@ -33,6 +33,22 @@ class LLMAgent:
             messages = (input or {}).get("messages") or [
                 {"role": "user", "content": query}
             ]
+            # Attached files persist across the conversation — inline their text
+            # as a leading system message so the model can use them.
+            files = (context or {}).get("files") or []
+            blocks = [
+                f"## {f.get('name', 'file')}\n{f.get('content') or '[binary file omitted]'}"
+                for f in files
+            ]
+            if blocks:
+                messages = [
+                    {
+                        "role": "system",
+                        "content": "The user attached these files:\n\n"
+                        + "\n\n".join(blocks),
+                    },
+                    *messages,
+                ]
             stream = await client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,

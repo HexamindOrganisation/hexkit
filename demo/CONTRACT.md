@@ -57,7 +57,8 @@ previous revision; see those sections at the end.)
   "input": { "messages": [ { "role": "user", "content": "..." } ] },
   "context": {
     "conversation_id": "uuid",
-    "credentials": { "openai_api_key": "sk-...", "anthropic_api_key": "..." }
+    "credentials": { "openai_api_key": "sk-...", "anthropic_api_key": "..." },
+    "files": [ { "id": "uuid", "name": "notes.txt", "mime": "text/plain", "size": 123, "content": "…" } ]
   }
 }
 ```
@@ -66,6 +67,10 @@ previous revision; see those sections at the end.)
 - `input.messages` — the chat transcript.
 - `context.credentials` — the user's decrypted secrets, flat `{provider}_api_key`.
   **Use them only for the run; never persist or log them.**
+- `context.files` — files the user attached to the conversation (persist across
+  turns; forwarded every run). `content` is the decoded text for text mimes,
+  `null` for binary (fetch by `id` is post-v1). Inline them into the prompt /
+  provider content blocks as your framework needs.
 
 ### Response — framework-tagged native events
 

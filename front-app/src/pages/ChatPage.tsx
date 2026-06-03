@@ -38,8 +38,11 @@ export function ChatPage() {
   const agentRef = useRef<string | null>(null);
   agentRef.current = agentId ?? null;
 
-  // The first message typed from the greeting, before a conversation exists.
-  const [pendingFirst, setPendingFirst] = useState<string | null>(null);
+  // The first message (text + attachments) from the greeting, before a
+  // conversation exists.
+  const [pendingFirst, setPendingFirst] = useState<
+    { text: string; fileIds: string[] } | null
+  >(null);
   const firedRef = useRef<string | null>(null);
 
   const { data: yaml } = useQuery({
@@ -90,10 +93,12 @@ export function ChatPage() {
     if (
       pendingFirst &&
       typeof yaml === "string" &&
-      firedRef.current !== pendingFirst
+      firedRef.current !== pendingFirst.text
     ) {
-      firedRef.current = pendingFirst;
-      void bridge.onUserSubmit(pendingFirst);
+      firedRef.current = pendingFirst.text;
+      void bridge.onUserSubmit(pendingFirst.text, {
+        fileIds: pendingFirst.fileIds,
+      });
     }
   }, [pendingFirst, yaml, bridge]);
 
@@ -111,7 +116,7 @@ export function ChatPage() {
       <Greeting
         agent={agent}
         sessionKey={`${agentId}:${sessionNonce}`}
-        onSend={(text) => setPendingFirst(text)}
+        onSend={(text, fileIds) => setPendingFirst({ text, fileIds })}
       />
     );
   }
@@ -146,7 +151,7 @@ export function ChatPage() {
           {
             id: "first",
             role: "user" as const,
-            content: pendingFirst,
+            content: pendingFirst.text,
             timestamp: Date.now(),
           },
         ]

@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import { AppShell } from "./layout/AppShell";
 import { ChatPage } from "./pages/ChatPage";
+import { FilesPage } from "./pages/FilesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
 /**
@@ -16,6 +17,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <ChatPage /> },
       { path: "c/:id", element: <ChatPage /> },
+      { path: "files", element: <FilesPage /> },
       { path: "settings", element: <SettingsPage /> },
     ],
   },

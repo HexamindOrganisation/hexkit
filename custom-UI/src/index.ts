@@ -4,7 +4,12 @@ export { AgentUI, type AgentUIProps } from "./components/AgentUI.js";
 // Runtime contracts
 export type { ActionDispatcher } from "./runtime/dispatcher.js";
 export { nullDispatcher } from "./runtime/dispatcher.js";
-export type { AgentBridge, AgentEvent } from "./runtime/agentBridge.js";
+export type {
+  AgentBridge,
+  AgentEvent,
+  AgentFile,
+  FileService,
+} from "./runtime/agentBridge.js";
 // Tool-call payload shape consumed by the built-in `tool-calls` widget;
 // re-exported here so bridge authors don't have to deep-import the schema.
 export type {

@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..auth.implicit_user import current_user
 from ..db import get_session
 from ..models.conversation import Conversation
+from ..models.conversation_file import ConversationFile
+from ..models.file import File as FileModel
 from ..models.folder import Folder
 from ..models.message import Message
 from ..models.user import User
@@ -25,6 +27,7 @@ from ..schemas.conversation import (
     ConversationOut,
     ConversationUpdate,
 )
+from ..schemas.file import AttachFilesIn, FileOut
 from ..schemas.message import MessageOut
 
 
@@ -131,3 +134,88 @@ async def list_messages(
         .order_by(Message.created_at)
     )
     return [MessageOut.model_validate(m) for m in result.scalars().all()]
+
+
+# ---------------------------------------------------------------------------
+# Conversation attachments (files persist across turns within a conversation)
+# ---------------------------------------------------------------------------
+
+async def conversation_files(
+    session: AsyncSession, conv_id: uuid.UUID
+) -> list[FileModel]:
+    """All files linked to a conversation, newest-attached first."""
+    result = await session.execute(
+        select(FileModel)
+        .join(ConversationFile, ConversationFile.file_id == FileModel.id)
+        .where(ConversationFile.conversation_id == conv_id)
+        .order_by(ConversationFile.created_at)
+    )
+    return list(result.scalars().all())
+
+
+async def link_files(
+    session: AsyncSession,
+    conv_id: uuid.UUID,
+    user_id: uuid.UUID,
+    file_ids: list[uuid.UUID],
+) -> None:
+    """Idempotently link user-owned files to a conversation. Unknown / other
+    users' ids are silently ignored. Caller commits."""
+    if not file_ids:
+        return
+    owned = (
+        await session.execute(
+            select(FileModel.id).where(
+                FileModel.user_id == user_id, FileModel.id.in_(file_ids)
+            )
+        )
+    ).scalars().all()
+    existing = set(
+        (
+            await session.execute(
+                select(ConversationFile.file_id).where(
+                    ConversationFile.conversation_id == conv_id
+                )
+            )
+        ).scalars().all()
+    )
+    for fid in owned:
+        if fid not in existing:
+            session.add(ConversationFile(conversation_id=conv_id, file_id=fid))
+
+
+@router.get("/{conv_id}/files", response_model=list[FileOut])
+async def list_conversation_files(
+    conv_id: uuid.UUID,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[FileOut]:
+    await _get_owned(session, user.id, conv_id)
+    return [FileOut.model_validate(f) for f in await conversation_files(session, conv_id)]
+
+
+@router.post("/{conv_id}/files", response_model=list[FileOut])
+async def attach_conversation_files(
+    conv_id: uuid.UUID,
+    body: AttachFilesIn,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[FileOut]:
+    await _get_owned(session, user.id, conv_id)
+    await link_files(session, conv_id, user.id, body.file_ids)
+    await session.commit()
+    return [FileOut.model_validate(f) for f in await conversation_files(session, conv_id)]
+
+
+@router.delete("/{conv_id}/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def detach_conversation_file(
+    conv_id: uuid.UUID,
+    file_id: uuid.UUID,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    await _get_owned(session, user.id, conv_id)
+    link = await session.get(ConversationFile, {"conversation_id": conv_id, "file_id": file_id})
+    if link is not None:
+        await session.delete(link)
+        await session.commit()

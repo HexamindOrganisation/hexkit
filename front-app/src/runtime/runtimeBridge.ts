@@ -1,10 +1,22 @@
-import type { AgentBridge, AgentEvent, ToolCallPayload } from "agent-ui";
+import type {
+  AgentBridge,
+  AgentEvent,
+  FileService,
+  ToolCallPayload,
+} from "agent-ui";
 
 import {
   cancelConversation,
   createConversation,
   invokeConversationAction,
 } from "../api/conversations";
+import {
+  attachFiles,
+  detachConversationFile,
+  listConversationFiles,
+  listFiles,
+  uploadFile,
+} from "../api/files";
 
 import { streamChat } from "./sseStream";
 import type { RuntimeEvent } from "./types";
@@ -71,7 +83,27 @@ export class RuntimeBridge implements AgentBridge {
   // and the runtime's cancelled error event would emit one.
   private localCancelEmitted = false;
 
-  constructor(private readonly hooks: BridgeHooks) {}
+  /** Host file capability — global library + conversation attachments. */
+  readonly files: FileService;
+
+  constructor(private readonly hooks: BridgeHooks) {
+    this.files = {
+      listLibrary: () => listFiles(),
+      upload: (fl) => Promise.all(fl.map((f) => uploadFile(f))),
+      listAttached: async () => {
+        const id = this.hooks.getConversationId();
+        return id ? await listConversationFiles(id) : [];
+      },
+      attach: async (ids) => {
+        const id = this.hooks.getConversationId();
+        return id ? await attachFiles(id, ids) : [];
+      },
+      detach: async (fid) => {
+        const id = this.hooks.getConversationId();
+        if (id) await detachConversationFile(id, fid);
+      },
+    };
+  }
 
   subscribeAgentOutput = (cb: (event: AgentEvent) => void): (() => void) => {
     this.listeners.add(cb);
@@ -80,7 +112,10 @@ export class RuntimeBridge implements AgentBridge {
     };
   };
 
-  onUserSubmit = async (text: string): Promise<void> => {
+  onUserSubmit = async (
+    text: string,
+    options?: { fileIds?: string[] },
+  ): Promise<void> => {
     if (this.streaming) {
       // Already streaming. The user has to cancel before starting another run.
       return;
@@ -127,6 +162,7 @@ export class RuntimeBridge implements AgentBridge {
         conversationId,
         text,
         controller.signal,
+        options?.fileIds,
       )) {
         this.translate(event);
       }

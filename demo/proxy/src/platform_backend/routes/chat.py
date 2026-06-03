@@ -46,10 +46,40 @@ from ..models.user import User
 from ..schemas.chat import ActionIn, CancelOut, ChatMessageIn
 from ..sse import iter_frames
 from ..translators import get_translator
+from .conversations import conversation_files, link_files
 from .me_keys import load_credentials_dict
 
 
 router = APIRouter(prefix="/conversations", tags=["chat"])
+
+# Mimes whose bytes we decode to text and inline into `context.files`. Anything
+# else is forwarded as metadata only (binary handling is post-v1).
+_TEXT_MIMES = {
+    "application/json",
+    "application/xml",
+    "application/javascript",
+    "application/x-yaml",
+    "application/yaml",
+    "application/x-sh",
+    "image/svg+xml",
+}
+
+
+def _files_payload(files: list) -> list[dict]:
+    """Shape a conversation's files for `context.files`; decode text content."""
+    out: list[dict] = []
+    for f in files:
+        is_text = f.mime.startswith("text/") or f.mime in _TEXT_MIMES
+        out.append(
+            {
+                "id": str(f.id),
+                "name": f.name,
+                "mime": f.mime,
+                "size": f.size,
+                "content": f.content.decode("utf-8", "replace") if is_text else None,
+            }
+        )
+    return out
 
 
 # Conversation-id → active run_id. In-memory: a process-restart loses the
@@ -132,6 +162,14 @@ async def post_message(
 
     history = await _assemble_history(session, conv.id)
     creds = await load_credentials_dict(session, user.id)
+
+    # Link any newly-attached files to the conversation, then forward ALL of the
+    # conversation's files (attachments persist across turns).
+    if body.file_ids:
+        await link_files(session, conv.id, user.id, body.file_ids)
+        await session.commit()
+    files_payload = _files_payload(await conversation_files(session, conv.id))
+
     run_id = uuid.uuid4().hex
     agent_id = conv.agent_id
 
@@ -141,6 +179,7 @@ async def post_message(
         "context": {
             "conversation_id": str(conv.id),
             "credentials": creds,
+            "files": files_payload,
         },
     }
 

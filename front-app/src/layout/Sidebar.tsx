@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { FolderPlus, PanelLeftClose, PanelLeftOpen, Plus, Settings } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Files,
+  FolderPlus,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Settings,
+} from "lucide-react";
 
 import { useActiveAgent, useFolders } from "../hooks/useActiveAgent";
 import { createFolder } from "../api/folders";
@@ -29,6 +36,7 @@ export function Sidebar({
   onToggle: () => void;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
   const { agents, agentId, conversationId, conversations } = useActiveAgent();
   const { data: folders = [] } = useFolders();
@@ -148,6 +156,25 @@ export function Sidebar({
             <FolderPlus className="h-4 w-4" />
           </button>
         )}
+      </div>
+
+      {/* Files library */}
+      <div className="mt-2 px-2">
+        <button
+          type="button"
+          onClick={() => navigate("/files")}
+          className={[
+            "hx-srow flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm",
+            location.pathname === "/files"
+              ? "bg-secondary text-foreground"
+              : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+          ].join(" ")}
+          aria-label="Files"
+          title="Files"
+        >
+          <Files className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Files</span>}
+        </button>
       </div>
 
       {/* Shared conversation history */}

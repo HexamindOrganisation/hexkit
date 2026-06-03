@@ -32,7 +32,13 @@ class EchoAgent:
 
         creds = (context or {}).get("credentials") or {}
         present = bool(creds.get("openai_api_key"))
-        reply = f"creds-present:{present} | echo: {query}".strip()
+        files = (context or {}).get("files") or []
+        files_note = (
+            " | files: " + ", ".join(f.get("name", "?") for f in files)
+            if files
+            else ""
+        )
+        reply = f"creds-present:{present}{files_note} | echo: {query}".strip()
 
         for word in reply.split(" "):
             await asyncio.sleep(_CHUNK_DELAY)

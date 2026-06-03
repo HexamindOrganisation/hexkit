@@ -17,6 +17,7 @@ from ..auth.implicit_user import seed_implicit_user
 from ..db import Base, dispose_engine, init_engine
 from ..routes import chat as chat_routes
 from ..routes import conversations as conversations_routes
+from ..routes import files as files_routes
 from ..routes import folders as folders_routes
 from ..routes import me as me_routes
 from ..routes import me_keys as me_keys_routes
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     # disk, unwired, for the eventual return of multi-user.
     app.include_router(me_routes.router)
     app.include_router(me_keys_routes.router)
+    app.include_router(files_routes.router)
     app.include_router(folders_routes.router)
     app.include_router(conversations_routes.router)
     app.include_router(chat_routes.router)
