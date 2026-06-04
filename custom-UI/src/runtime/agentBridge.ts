@@ -63,6 +63,9 @@ export interface AgentBridge {
     options?: { fileIds?: string[] },
   ) => void | Promise<void>;
   subscribeAgentOutput: (cb: (event: AgentEvent) => void) => () => void;
+  /** Cancel the in-flight run: abort the stream and tell the backend to stop.
+   *  When absent, the composer falls back to dispatching a `cancel-run` action. */
+  cancel?: () => void | Promise<unknown>;
   /** Optional file attachments capability. */
   files?: FileService;
   /** Optional widget-content → context capability (the context toggle). */

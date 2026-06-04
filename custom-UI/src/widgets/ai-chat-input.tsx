@@ -34,9 +34,14 @@ const SHORTCUT_LABEL =
 export function AiChatInputWidgetComponent({
   props,
 }: WidgetProps<AiChatInputWidget>): JSX.Element {
-  const { dispatcher, agent, pushUserMessage } = useAgentUIContext();
+  const { dispatcher, agent, pushUserMessage, subscribeContainer } =
+    useAgentUIContext();
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Whether a run is in flight — tracked from the agent's status events so the
+  // Stop button shows even for runs this composer didn't start (e.g. the first
+  // turn fired from the greeting).
+  const [running, setRunning] = useState(false);
 
   const fileSvc = agent?.files;
   const [attached, setAttached] = useState<AgentFile[]>([]);
@@ -93,6 +98,13 @@ export function AiChatInputWidgetComponent({
     return () => document.removeEventListener("keydown", onKey);
   }, [openPalette]);
 
+  useEffect(() => {
+    if (!agent) return;
+    return subscribeContainer((e) => {
+      if (e.kind === "status") setRunning(e.state !== "idle");
+    });
+  }, [agent, subscribeContainer]);
+
   const attachedIds = new Set(attached.map((a) => a.id));
 
   const onSubmit = async (e?: React.FormEvent) => {
@@ -115,9 +127,13 @@ export function AiChatInputWidgetComponent({
   };
 
   const onCancel = async () => {
-    if (!submitting) return;
+    if (!submitting && !running) return;
     try {
-      await dispatcher.invoke(CANCEL_ACTION);
+      // Prefer the bridge's real cancel (aborts the stream + hits the backend
+      // cancel endpoint). Fall back to a `cancel-run` action for hosts that
+      // wire cancellation through the dispatcher instead.
+      if (agent?.cancel) await agent.cancel();
+      else await dispatcher.invoke(CANCEL_ACTION);
     } catch {
       /* nothing to roll back */
     }
@@ -318,7 +334,7 @@ export function AiChatInputWidgetComponent({
 
         <div className="flex-1" />
 
-        {submitting ? (
+        {submitting || running ? (
           <button
             type="button"
             onClick={onCancel}
