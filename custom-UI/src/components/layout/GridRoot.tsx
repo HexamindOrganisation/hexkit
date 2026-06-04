@@ -30,7 +30,11 @@ export function gridStyle(t: GridTemplate): React.CSSProperties {
   return {
     display: "grid",
     gridTemplateColumns: `repeat(${t.columns}, minmax(0, 1fr))`,
-    gridAutoRows: "min-content",
+    // `auto` (not `min-content`): a row track must grow to contain its widget's
+    // explicit height (e.g. a 420px transcript). `min-content` sizes the track
+    // to the content minimum and ignores the item height, so a tall widget
+    // overflows its track and overlaps the next row.
+    gridAutoRows: "auto",
     gap: t.gap,
   };
 }

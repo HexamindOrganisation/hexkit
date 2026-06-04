@@ -24,7 +24,7 @@ from .. import protocol
 
 logger = logging.getLogger("agent_server.adk")
 
-_MODEL = "gemini-2.0-flash"
+_MODEL = "gemini-2.5-flash"
 
 
 def _build_prompt(input: dict[str, Any], files: list[dict], query: str) -> str:

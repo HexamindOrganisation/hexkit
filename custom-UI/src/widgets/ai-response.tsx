@@ -68,7 +68,7 @@ export function AiResponseWidgetComponent({
   }
 
   return (
-    <div ref={scrollRef} className="flex max-h-[34rem] flex-col gap-6 overflow-auto pr-1">
+    <div ref={scrollRef} className="flex h-full min-h-0 flex-col gap-6 overflow-auto pr-1">
       <GooFilter />
       {log.map((m) => (
         <Turn key={m.id} role={m.role} content={m.content} />
