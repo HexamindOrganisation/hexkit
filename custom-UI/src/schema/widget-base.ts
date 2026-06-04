@@ -9,7 +9,6 @@ export const WidgetBaseProperties = {
   name: { type: "string", minLength: 1 },
   position: PositionSchema,
   size: SizeSchema,
-  tab: { type: "string" },
 } as const;
 
 export const WidgetBaseRequired = ["name", "type", "size"] as const;

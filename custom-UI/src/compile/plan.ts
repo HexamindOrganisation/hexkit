@@ -7,8 +7,6 @@ import { resolveTheme, type ResolvedTheme, type ThemeTokens } from "./theme.js";
 import type { LayoutPlan } from "./layout/types.js";
 import { compileGrid } from "./layout/grid.js";
 import { compileFlex } from "./layout/flex.js";
-import { compileSidebar } from "./layout/sidebar.js";
-import { compileTabs } from "./layout/tabs.js";
 import type { WidgetRegistry } from "../registry/register.js";
 import type { ActionDispatcher } from "../runtime/dispatcher.js";
 import type { SourceMap } from "./parse.js";
@@ -69,16 +67,11 @@ export function compilePlan(
   const footerWidgets = resolved.widgets.filter((w) => w.slot === "footer");
 
   let layout: LayoutPlan;
-  const lt = resolved.page.layout_type;
-  if (lt === "grid") {
+  if (resolved.page.layout_type === "grid") {
     const g = compileGrid(mainWidgets, diagnostics);
     layout = { kind: "grid", template: g.template, cells: g.cells };
-  } else if (lt === "flex") {
-    layout = compileFlex(mainWidgets, "column");
-  } else if (lt === "sidebar") {
-    layout = compileSidebar(resolved.page, mainWidgets, diagnostics);
   } else {
-    layout = compileTabs(mainWidgets, diagnostics);
+    layout = compileFlex(mainWidgets, "column");
   }
 
   const plan: RenderPlan = {

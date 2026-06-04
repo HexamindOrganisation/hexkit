@@ -133,8 +133,7 @@ Three runnable examples live under [`examples/`](./examples):
   backend with an OpenAI-backed `/chat` endpoint and persisted
   conversations.
 - [`examples/layouts`](./examples/layouts) — the same five widgets rendered
-  under all four `layout_type`s (`grid`, `flex`, `sidebar`, `tabs`) with a
-  top-bar switcher.
+  under both `layout_type`s (`grid`, `flex`) with a top-bar switcher.
 
 ```bash
 npm install

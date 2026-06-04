@@ -1,5 +1,3 @@
-import type { MainMenuItem } from "../../schema/common.js";
-
 export type ContainerSlot = "user-input" | "agent-response";
 
 export interface GridCell {
@@ -32,14 +30,4 @@ export type LayoutPlan =
       kind: "flex";
       direction: "row" | "column";
       items: FlexItem[];
-    }
-  | {
-      kind: "sidebar";
-      menu: MainMenuItem[];
-      main: LayoutPlan;
-    }
-  | {
-      kind: "tabs";
-      tabs: { id: string; label: string; content: LayoutPlan }[];
-      persistent: { id: string; kind: "container" }[];
     };

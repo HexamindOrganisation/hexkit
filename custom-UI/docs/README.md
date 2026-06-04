@@ -76,7 +76,7 @@ optional bridge streams `token` / `message` / `status` / `tool-call` /
 |---|---|
 | Install and ship a "hello world" | [Getting started](./getting-started.md) |
 | Configure an `ai-chat-input` or `ai-response` | [Widgets](./widgets.md) |
-| Understand layouts (`grid`, `flex`, `sidebar`, `tabs`) | [YAML reference — Layouts](./yaml-reference.md#layouts) |
+| Understand layouts (`grid`, `flex`) | [YAML reference — Layouts](./yaml-reference.md#layouts) |
 | Add a custom widget type | [Extending — Custom widgets](./extending.md#custom-widgets) |
 | Read the conversation log from your code | [Extending — useConversation](./extending.md#useconversation) |
 | Style with shadcn / Tailwind | [Extending — Theming](./extending.md#theming) |
@@ -98,9 +98,9 @@ Three runnable examples live under [`examples/`](../examples):
   for setup.
 - [`examples/layouts`](../examples/layouts) — the **same five widgets**
   (`page-header`, `markdown`, `form`, `button-group`, `page-footer`)
-  rendered under all four `layout_type`s (`grid`, `flex`, `sidebar`,
-  `tabs`). One React app, four YAML configs, a top-bar switcher. Stub
-  dispatcher logs every action to the console — no backend.
+  rendered under both `layout_type`s (`grid`, `flex`). One React app, two
+  YAML configs, a top-bar switcher. Stub dispatcher logs every action to
+  the console — no backend.
 
 Run them:
 

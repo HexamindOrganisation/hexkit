@@ -26,7 +26,7 @@ import {
 const BannerSchema = {
   type: "object",
   properties: {
-    ...WidgetBaseProperties,                // name, position, size, tab
+    ...WidgetBaseProperties,                // name, position, size
     type: { const: "banner" },
     message: { type: "string" },
     tone: { enum: ["info", "warn", "error"] },
@@ -125,7 +125,7 @@ defineWidget({
 
 Footer-slot widgets:
 
-- Are **excluded** from the layout (`grid` / `flex` / `sidebar` / `tabs`).
+- Are **excluded** from the layout (`grid` / `flex`).
 - Honor neither `position` nor `size.width` — they always span the full
   page width.
 - Are stacked in YAML order in a single footer area pinned to the bottom of
@@ -354,7 +354,7 @@ inbox `history` into one row per tool-call `id`.
 
 There are two layers: the **shadcn/Tailwind** layer (used by the built-in
 widgets) and the **legacy CSS variables** (used by the structural shell:
-sidebar layout, tabs, widget host frame, diagnostics overlay).
+widget host frame, diagnostics overlay).
 
 ### shadcn / Tailwind
 
@@ -459,9 +459,9 @@ vars, pass HSL triplets like `"210 40% 90%"` (they're consumed via
 
 ### Legacy `--au-*` tokens
 
-The structural shell (`.au-root`, `.au-sidebar`, `.au-tab-bar`,
-`.au-diagnostics`, etc.) uses a small set of legacy custom properties
-internally. They're now derived from the shadcn palette:
+The structural shell (`.au-root`, `.au-diagnostics`, etc.) uses a small
+set of legacy custom properties internally. They're now derived from the
+shadcn palette:
 
 ```css
 .au-root {

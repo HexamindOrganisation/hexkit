@@ -30,19 +30,13 @@ is a widget. Place a `page-header`, `ai-chat-input`, etc. as widgets.
 
 ```yaml
 page:
-  layout_type: "grid"            # required; one of: grid | flex | sidebar | tabs
+  layout_type: "grid"            # required; one of: grid | flex
   theme:                         # optional; pick a curated palette
     mode: "light"                #   "light" | "dark" | "system"
     accent: "#4F46E5"            #   any hex; flows to --primary, --ring, focus, hovers
     overrides:                   #   optional; raw CSS-var overrides (escape hatch)
       "--muted": "210 40% 90%"
       "--border": "214 32% 88%"
-  main_menu:                     # optional; only consumed by layout_type: sidebar
-    - name: "Home"
-      icon: "/assets/home.svg"   # optional
-      action: "navigate_home"    # required
-    - name: "Logout"
-      action: "logout_user"
 ```
 
 - **`layout_type`** determines how the `widgets` array is arranged — see
@@ -61,9 +55,6 @@ page:
   like `"210 40% 90%"` for shadcn variables (they're consumed via
   `hsl(var(--name))`). Reach for this only when a curated default truly
   doesn't fit.
-- **`main_menu`** is consumed only by `layout_type: sidebar` — it renders
-  as the vertical nav. Other layouts ignore it. Each click calls
-  `dispatcher.invoke(item.action)`.
 
 ## Common widget fields
 
@@ -74,20 +65,18 @@ page:
     horizontal: "left"           #   left | right | center
     vertical: "high"             #   high | middle | low
   size:                          # required
-    width: 6                     #   1..12 (grid columns; ignored by flex/tabs)
+    width: 6                     #   1..12 (grid columns; ignored by flex)
     height: 400                  #   pixels, or "auto"
-  tab: "Chat"                    # optional; only used by layout_type: tabs
   # ...type-specific fields, see widgets.md
 ```
 
 - **`name`** is how the `AgentBridge` addresses the widget in `tool-call`
   events and how `useAgentInbox()` scopes to a widget. Must be unique within
   the config. No reserved names — you can name a widget anything.
-- **`position`** is meaningful for `grid` and `sidebar` layouts. The packer
+- **`position`** is meaningful for the `grid` layout. The packer
   sorts widgets by `vertical` and biases column choice by `horizontal`.
 - **`size.width`** is a grid column count (1–12), **not pixels**. For `flex`
-  it becomes a percentage of the container. `tabs` ignores width inside each
-  tab's grid.
+  it becomes a percentage of the container.
 - **`size.height`** is pixels or the literal string `"auto"`.
 
 ### Footer-slot widgets bypass the layout
@@ -103,7 +92,7 @@ widgets can opt into the same behavior — see
 ## Layouts
 
 > **See it side-by-side:** [`examples/layouts`](../examples/layouts) renders
-> the **same five widgets** under all four layouts with a top-bar switcher —
+> the **same five widgets** under both layouts with a top-bar switcher —
 > the fastest way to feel how `layout_type` reshapes a page. Run it with
 > `npm run example:layouts`.
 
@@ -136,46 +125,6 @@ Vertical bias order: `high` → `middle` → `low`. Within a row, horizontal bia
 Stacks widgets in config order. Ignores `position`. `size.width` becomes a
 percentage of the container — `width: 6` → 50%, `width: 12` → 100%. Widgets
 wrap if they don't fit.
-
-### `layout_type: sidebar`
-
-Persistent left nav from `page.main_menu`, with the `widgets:` array packed
-as a grid in the main pane. Use this for app-shell dashboards.
-
-```yaml
-page:
-  layout_type: "sidebar"
-  main_menu:
-    - { name: "Chat",     action: "view_chat" }
-    - { name: "Settings", action: "view_settings" }
-
-widgets:
-  - name: "agent-output"
-    type: "ai-response"
-    size: { width: 12, height: "auto" }
-```
-
-### `layout_type: tabs`
-
-Groups widgets by their `tab` field — widgets sharing a `tab` value go into
-the same tab panel. Widgets without a `tab` land in a default tab labeled
-"Main".
-
-```yaml
-page: { layout_type: "tabs" }
-widgets:
-  - name: "summary"
-    type: "page-header"
-    tab: "Overview"
-    size: { width: 12, height: "auto" }
-    title: "Overview"
-  - name: "actions"
-    type: "button-group"
-    tab: "Actions"
-    size: { width: 12, height: "auto" }
-    buttons:
-      - { label: "Run", action: "run_job" }
-```
 
 ## `data_source` — shared sub-schema
 

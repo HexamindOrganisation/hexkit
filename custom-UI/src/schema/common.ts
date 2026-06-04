@@ -38,17 +38,6 @@ export const SizeSchema = {
   additionalProperties: false,
 } as const;
 
-export const MainMenuItemSchema = {
-  type: "object",
-  properties: {
-    name: { type: "string", minLength: 1 },
-    icon: IconSchema,
-    action: ActionSchema,
-  },
-  required: ["name", "action"],
-  additionalProperties: false,
-} as const;
-
 export const DataSourceSchema = {
   type: "object",
   properties: {
@@ -62,5 +51,4 @@ export const DataSourceSchema = {
 
 export type Position = FromSchema<typeof PositionSchema>;
 export type Size = FromSchema<typeof SizeSchema>;
-export type MainMenuItem = FromSchema<typeof MainMenuItemSchema>;
 export type DataSource = FromSchema<typeof DataSourceSchema>;

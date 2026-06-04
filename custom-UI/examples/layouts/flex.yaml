@@ -18,14 +18,12 @@ widgets:
     content: |
       ## Welcome
 
-      This example renders the **same five widgets** under four different
+      This example renders the **same five widgets** under two different
       layouts. Switch layouts in the top bar to see how `layout_type`
       reshapes the page without touching the widget definitions.
 
       - `grid` — twelve-column grid with `position` and `size.width`
       - `flex` — stacked, `size.width` becomes a percentage
-      - `sidebar` — `main_menu` on the left, widgets in the main pane
-      - `tabs` — widgets grouped by their `tab` field
 
       Below is a **form** widget that dispatches its values through the
       `ActionDispatcher` on submit. The dispatcher in this example just

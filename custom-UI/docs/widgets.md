@@ -7,7 +7,7 @@ footer, or chat container shell — they are all widgets you place via the
 This page documents every native widget: its `type`, its YAML schema, what it
 renders, and what runtime hooks it consumes.
 
-For the *envelope* every widget shares (`name`, `position`, `size`, `tab`),
+For the *envelope* every widget shares (`name`, `position`, `size`),
 see [yaml-reference.md](./yaml-reference.md#common-widget-fields). For
 custom widgets, see [extending.md](./extending.md).
 
@@ -33,8 +33,7 @@ border/padding so they sit flush with the page edges.
 **Slot** controls where a widget renders inside the AgentUI shell:
 
 - `main` *(default)* — the widget participates in the layout
-  (`grid` / `flex` / `sidebar` / `tabs`). Honors `position`, `size.width`,
-  and `tab`.
+  (`grid` / `flex`). Honors `position` and `size.width`.
 - `footer` — the widget is rendered **outside** the layout, pinned to the
   bottom of the page no matter how short or tall the main content is.
   `position` is ignored. The footer slot spans the full page width.
@@ -280,11 +279,9 @@ with the `width` and `height` you give it. Common patterns:
   right.
 - **Reserve vertical space.** A `spacer` with a fixed pixel height creates
   a gap row between busy sections.
-- **Empty cell in `tabs` layout.** Put a `spacer` in a `tab` panel that's
-  intentionally blank.
 
-It honors all the standard widget-base fields (`name`, `position`, `size`,
-`tab`) and nothing else.
+It honors all the standard widget-base fields (`name`, `position`, `size`)
+and nothing else.
 
 ---
 

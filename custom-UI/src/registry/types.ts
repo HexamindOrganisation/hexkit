@@ -15,8 +15,8 @@ export interface WidgetProps<TProps = unknown> {
 
 /**
  * Where a widget renders inside the AgentUI shell.
- * - "main"   (default): the widget is part of the layout (grid/flex/sidebar/tabs).
- *                        Honors `position`, `size.width`, `tab`.
+ * - "main"   (default): the widget is part of the layout (grid/flex).
+ *                        Honors `position` and `size.width`.
  * - "footer": rendered outside the layout, pinned to the bottom of the page.
  *             Spans the full width. `position` is ignored.
  */

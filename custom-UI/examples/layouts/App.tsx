@@ -5,16 +5,12 @@ import "../../src/shadcn.css";
 
 import gridYaml from "./grid.yaml?raw";
 import flexYaml from "./flex.yaml?raw";
-import sidebarYaml from "./sidebar.yaml?raw";
-import tabsYaml from "./tabs.yaml?raw";
 
-type LayoutKey = "grid" | "flex" | "sidebar" | "tabs";
+type LayoutKey = "grid" | "flex";
 
 const configs: Record<LayoutKey, string> = {
   grid: gridYaml,
   flex: flexYaml,
-  sidebar: sidebarYaml,
-  tabs: tabsYaml,
 };
 
 // No backend, no agent. Every action just logs to the console so you can

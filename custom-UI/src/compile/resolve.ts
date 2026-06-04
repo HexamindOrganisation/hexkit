@@ -19,7 +19,6 @@ export interface ResolvedWidget {
   props: unknown;
   position: Position | undefined;
   size: Size;
-  tab?: string;
   component: ComponentType<WidgetProps<unknown>>;
   chromeless?: boolean;
   slot?: "main" | "footer";
@@ -149,7 +148,7 @@ export function resolve(
         ...getLoc(opts.locate, ["widgets", idx, "type"]),
       });
       unknownWidgets.push({ name, type });
-      const raw = item as { size?: Size; position?: Position; tab?: string };
+      const raw = item as { size?: Size; position?: Position };
       const size = raw.size ?? { width: 6, height: 120 };
       resolved.push({
         id: name,
@@ -162,7 +161,6 @@ export function resolve(
         },
         position: raw.position,
         size,
-        ...(raw.tab !== undefined && { tab: raw.tab }),
         component: PlaceholderWidget as unknown as ComponentType<
           WidgetProps<unknown>
         >,
@@ -192,7 +190,6 @@ export function resolve(
       type: string;
       position?: Position;
       size: Size;
-      tab?: string;
     };
 
     resolved.push({
@@ -202,7 +199,6 @@ export function resolve(
       props: data,
       position: data.position,
       size: data.size,
-      ...(data.tab !== undefined && { tab: data.tab }),
       component: def.component,
       ...(def.chromeless && { chromeless: true }),
       ...(def.slot && def.slot !== "main" && { slot: def.slot }),
@@ -224,21 +220,6 @@ export function resolve(
       }
     }
   });
-
-  // Cross-check page.main_menu actions.
-  if (opts.dispatcher?.has && page.main_menu) {
-    page.main_menu.forEach((item, idx) => {
-      if (!opts.dispatcher!.has!(item.action)) {
-        diagnostics.push({
-          severity: "warning",
-          code: "resolve.unknown-action",
-          message: `main_menu[${idx}] references unknown action "${item.action}"`,
-          path: ["page", "main_menu", idx, "action"],
-          ...getLoc(opts.locate, ["page", "main_menu", idx, "action"]),
-        });
-      }
-    });
-  }
 
   const errors = diagnostics.filter((d) => d.severity === "error");
   if (errors.length > 0) return err(errors);

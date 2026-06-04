@@ -14,8 +14,6 @@ import { AgentUIProvider } from "../runtime/context.js";
 import type { ConversationMessage } from "../runtime/context.js";
 import { GridRoot } from "./layout/GridRoot.js";
 import { FlexRoot } from "./layout/FlexRoot.js";
-import { SidebarRoot } from "./layout/SidebarRoot.js";
-import { TabsRoot } from "./layout/TabsRoot.js";
 import { WidgetHost } from "./WidgetHost.js";
 
 export interface AgentUIProps {
@@ -187,10 +185,6 @@ function renderLayout(plan: RenderPlan, dispatcher: ActionDispatcher): JSX.Eleme
       return <GridRoot plan={plan} dispatcher={dispatcher} />;
     case "flex":
       return <FlexRoot plan={plan} dispatcher={dispatcher} />;
-    case "sidebar":
-      return <SidebarRoot plan={plan} dispatcher={dispatcher} />;
-    case "tabs":
-      return <TabsRoot plan={plan} dispatcher={dispatcher} />;
   }
 }
 

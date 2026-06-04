@@ -1,5 +1,4 @@
 import type { FromSchema } from "json-schema-to-ts";
-import { MainMenuItemSchema } from "./common.js";
 
 /**
  * Theme is intentionally minimal: pick a curated mode + one accent color.
@@ -25,7 +24,7 @@ export const ThemeSchema = {
 export const PageSchema = {
   type: "object",
   properties: {
-    layout_type: { enum: ["grid", "flex", "sidebar", "tabs"] },
+    layout_type: { enum: ["grid", "flex"] },
     /**
      * The active agent's signature color — the ONE variable that recolors the
      * whole page (HexaUI's core principle). Bridges to shadcn `--primary` /
@@ -34,7 +33,6 @@ export const PageSchema = {
      */
     main_color: { type: "string", pattern: "^#[0-9a-fA-F]{3,8}$" },
     theme: ThemeSchema,
-    main_menu: { type: "array", items: MainMenuItemSchema },
   },
   required: ["layout_type"],
   additionalProperties: false,

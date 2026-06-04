@@ -13,8 +13,6 @@ const examples = [
   "examples/minimal/config.yaml",
   "examples/layouts/flex.yaml",
   "examples/layouts/grid.yaml",
-  "examples/layouts/sidebar.yaml",
-  "examples/layouts/tabs.yaml",
 ];
 
 describe("example configs", () => {

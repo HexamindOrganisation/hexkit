@@ -50,7 +50,6 @@ export {
   type Position,
   type Size,
   type DataSource,
-  type MainMenuItem,
   BuiltinWidgetSchemas,
   type BuiltinWidgetType,
   type BuiltinWidget,
