@@ -1,0 +1,33 @@
+# Fortify Guard — served by GET /agents/guard/ui.
+# The active agent's main_color is the only accent color in the product.
+#
+# A transcript + composer, plus a tool-calls widget so the get_server_time call
+# (forwarded as fortify tool_start/tool_end -> translated to the rich tool
+# envelope) is visible. See custom-UI/docs/widgets.md for the full catalog.
+page:
+  layout_type: grid
+  main_color: "#10b981"
+
+widgets:
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: high }
+    size: { width: 8, height: 520 }
+    empty_text: "Ask Fortify Guard something — try \"what time is it?\""
+    thinking_indicator: dots
+
+  # The name MUST be `tool-calls`: tool-call events target a widget by NAME
+  # (the translator emits widget="tool-calls", the DEFAULT_TOOL_WIDGET), and the
+  # frontend drops events whose target name isn't in the render plan.
+  - name: tool-calls
+    type: tool-calls
+    position: { horizontal: right, vertical: high }
+    size: { width: 4, height: 520 }
+    empty_text: "Tool calls will appear here."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Message Fortify Guard…"
+    rows: 2

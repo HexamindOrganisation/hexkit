@@ -1,0 +1,32 @@
+[project]
+name = "hexa-gate-agent"
+version = "0.1.0"
+description = "HexaUI backend serving a fortify-wrapped agent — forwards fortify's normalized events tagged framework='fortify'"
+# fortify requires >=3.13; this backend inherits that floor (the other demo
+# backends only need 3.11). Create this venv with a 3.13+ interpreter.
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "fortify",
+]
+
+[project.optional-dependencies]
+# Only needed to run demo/scripts/verify_backend.py against this backend.
+dev = ["httpx>=0.27"]
+
+[tool.uv.sources]
+# Editable clone of the (unpublished) coolagents/fortify SDK, kept OUTSIDE this
+# repo so it can't be committed and there's no nested-.git gitlink. Clone with:
+#   git clone https://github.com/HexamindOrganisation/coolagents.git \
+#     C:/Users/quent/Documents/hexa-gate-sdk
+# The fortify package lives at the repo root; this path is relative to this
+# file: demo/hexa-gate-agent -> ../../../hexa-gate-sdk (= Documents/hexa-gate-sdk).
+fortify = { path = "../../../hexa-gate-sdk", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hexa_gate_agent"]

@@ -9,6 +9,7 @@ loops / unsupported frameworks (already-normalized minimal events).
 from __future__ import annotations
 
 from .base import BaseTranslator
+from .fortify import FortifyTranslator
 from .google_adk import GoogleADKTranslator
 from .langchain import LangChainTranslator
 from .native import NativeTranslator
@@ -21,6 +22,7 @@ _REGISTRY: dict[str, type[BaseTranslator]] = {
     "deepagents": LangChainTranslator,
     "openai-agents": OpenAIAgentsTranslator,
     "google-adk": GoogleADKTranslator,
+    "fortify": FortifyTranslator,
 }
 
 SUPPORTED_FRAMEWORKS = tuple(_REGISTRY)
