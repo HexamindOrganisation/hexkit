@@ -116,6 +116,12 @@ export function AgentUI(props: AgentUIProps): JSX.Element {
 
   const plan = state.plan;
   const widgetNames = plan.widgets.map((w) => w.name);
+  // Names of tool-calls-typed widgets, in plan order. The runtime routes
+  // unaddressed tool-calls to the first of these, so the widget's name is the
+  // dev's choice and the proxy never hardcodes one.
+  const toolWidgetNames = plan.widgets
+    .filter((w) => w.type === "tool-calls")
+    .map((w) => w.name);
 
   return (
     <AgentUIProvider
@@ -123,6 +129,7 @@ export function AgentUI(props: AgentUIProps): JSX.Element {
       {...(agent && { agent })}
       {...(initialMessages && { initialMessages })}
       knownWidgetNames={widgetNames}
+      toolWidgetNames={toolWidgetNames}
     >
       <div
         className={[

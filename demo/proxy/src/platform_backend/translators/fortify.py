@@ -33,7 +33,7 @@ from typing import Any
 
 from hexa_events import BlockType, RunEmitter, StreamEvent, ToolCallState
 
-from .base import DEFAULT_TOOL_WIDGET, BaseTranslator
+from .base import BaseTranslator
 
 
 def _block_type(value: Any) -> BlockType:
@@ -81,7 +81,6 @@ class FortifyTranslator(BaseTranslator):
                 tool_id=event.get("tool_id") or "",
                 tool_name=event.get("tool_name", "tool"),
                 arguments=event.get("arguments") or {},
-                widget=DEFAULT_TOOL_WIDGET,
             )
 
         if et == "tool_end":
@@ -99,7 +98,6 @@ class FortifyTranslator(BaseTranslator):
                 error=summary if failed else None,
                 state=state,
                 output_summary=summary,
-                widget=DEFAULT_TOOL_WIDGET,
             )
 
         if et == "error":

@@ -111,6 +111,9 @@ export type RuntimeEvent =
       tool_id: string;
       tool_name: string;
       arguments: Record<string, unknown>;
+      // Optional explicit widget target. null/absent → the default tool-calls
+      // widget, resolved by type in the UI layer (the proxy no longer names it).
+      widget?: string | null;
     })
   | (BaseStreamEvent & {
       event_type: "tool_update";
@@ -125,6 +128,7 @@ export type RuntimeEvent =
       state: ToolCallState;
       output_summary: string | null;
       output: unknown;
+      widget?: string | null;
     })
   | (BaseStreamEvent & {
       event_type: "run_end";

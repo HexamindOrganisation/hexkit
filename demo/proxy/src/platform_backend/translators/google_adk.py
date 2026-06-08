@@ -26,7 +26,7 @@ from typing import Any
 
 from hexa_events import RunEmitter, StreamEvent
 
-from .base import DEFAULT_TOOL_WIDGET, BaseTranslator, coerce_args
+from .base import BaseTranslator, coerce_args
 
 
 class GoogleADKTranslator(BaseTranslator):
@@ -82,7 +82,6 @@ class GoogleADKTranslator(BaseTranslator):
                     tool_id=tool_id,
                     tool_name=func_call.get("name", "tool"),
                     arguments=coerce_args(func_call.get("args")),
-                    widget=DEFAULT_TOOL_WIDGET,
                 )
 
             elif func_resp is not None:
@@ -92,7 +91,6 @@ class GoogleADKTranslator(BaseTranslator):
                     tool_id=tool_id,
                     tool_name=func_resp.get("name", "tool"),
                     output=func_resp.get("response"),
-                    widget=DEFAULT_TOOL_WIDGET,
                 )
 
         if event.get("turn_complete") and self._msg_id is not None:

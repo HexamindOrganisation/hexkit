@@ -28,15 +28,6 @@ import { streamChat } from "./sseStream";
 import type { RuntimeEvent } from "./types";
 
 
-/**
- * Widget name that receives tool-call routing payloads. Agents that want a
- * dedicated tool log include a widget by exactly this name in their
- * `ui.yaml`. The default chat config does NOT include this widget — agents
- * stay quiet about tool events unless their YAML opts in.
- */
-const TOOL_CALLS_WIDGET = "tool-calls";
-
-
 export interface BridgeHooks {
   /** Current conversation id, or `null` on the landing page. */
   getConversationId: () => string | null;
@@ -69,8 +60,8 @@ export interface BridgeHooks {
  *   block_start  (text)         →   open partial keyed by block_id
  *   block_delta  (text)         →   token
  *   block_end    (text)         →   message (assistant, accumulated)
- *   tool_start                  →   tool-call (TOOL_CALLS_WIDGET, phase: start)
- *   tool_end                    →   tool-call (TOOL_CALLS_WIDGET, phase: end)
+ *   tool_start                  →   tool-call (event.widget or default, phase: start)
+ *   tool_end                    →   tool-call (event.widget or default, phase: end)
  *   run_end                     →   status: idle  (in finally)
  *   error  (details.cancelled)  →   message (system, "Run cancelled.")
  *   error  (everything else)    →   error
@@ -303,7 +294,9 @@ export class RuntimeBridge implements AgentBridge {
         };
         this.emit({
           kind: "tool-call",
-          widget: TOOL_CALLS_WIDGET,
+          // Forward an explicit target if the proxy set one; otherwise leave it
+          // unset so the UI routes to the default tool-calls widget by type.
+          ...(event.widget ? { widget: event.widget } : {}),
           payload,
         });
         return;
@@ -323,7 +316,7 @@ export class RuntimeBridge implements AgentBridge {
         };
         this.emit({
           kind: "tool-call",
-          widget: TOOL_CALLS_WIDGET,
+          ...(event.widget ? { widget: event.widget } : {}),
           payload,
         });
         return;

@@ -18,10 +18,11 @@ from typing import Any
 
 from hexa_events import RunEmitter, StreamEvent
 
-# Tool calls route to this widget unless a native event names another. Real
-# framework tool events carry no widget concept, so framework translators
-# always use the default; the `native` format may override per call.
-DEFAULT_TOOL_WIDGET = "tool-calls"
+# Tool routing note: translators leave `widget` as None (the default target).
+# The proxy does NOT name a UI widget — the frontend resolves the default to
+# whatever widget has type `tool-calls`, so a dev can name that widget anything.
+# A translator only sets `widget` to a concrete name when the framework's native
+# event explicitly targets one (today only the `native` format can).
 
 
 class BaseTranslator:

@@ -7,7 +7,7 @@ export type AgentEvent =
       messageId?: string;
     }
   | { kind: "status"; state: "idle" | "thinking" | "responding" }
-  | { kind: "tool-call"; widget: string; payload: unknown }
+  | { kind: "tool-call"; widget?: string; payload: unknown }
   | { kind: "error"; message: string };
 
 /** A file in the user's library / attached to the conversation. */

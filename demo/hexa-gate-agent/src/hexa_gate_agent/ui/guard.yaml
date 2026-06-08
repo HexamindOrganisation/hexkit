@@ -16,10 +16,9 @@ widgets:
     empty_text: "Ask Fortify Guard something — try \"what time is it?\""
     thinking_indicator: dots
 
-  # The name MUST be `tool-calls`: tool-call events target a widget by NAME
-  # (the translator emits widget="tool-calls", the DEFAULT_TOOL_WIDGET), and the
-  # frontend drops events whose target name isn't in the render plan.
-  - name: tool-calls
+  # Name is the dev's free choice — unaddressed tool-calls route to the first
+  # widget of TYPE `tool-calls`, so this can be called anything.
+  - name: tools
     type: tool-calls
     position: { horizontal: right, vertical: high }
     size: { width: 4, height: 520 }

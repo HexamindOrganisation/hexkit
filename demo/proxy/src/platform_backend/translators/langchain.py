@@ -22,7 +22,7 @@ from typing import Any
 
 from hexa_events import RunEmitter, StreamEvent
 
-from .base import DEFAULT_TOOL_WIDGET, BaseTranslator, coerce_args, extract_text
+from .base import BaseTranslator, coerce_args, extract_text
 
 
 class LangChainTranslator(BaseTranslator):
@@ -50,7 +50,6 @@ class LangChainTranslator(BaseTranslator):
                 tool_id=tool_id,
                 tool_name=event.get("name", "tool"),
                 arguments=coerce_args(data.get("input")),
-                widget=DEFAULT_TOOL_WIDGET,
             )
 
         if name == "on_tool_end":
@@ -59,7 +58,6 @@ class LangChainTranslator(BaseTranslator):
                 tool_id=tool_id,
                 tool_name=event.get("name", "tool"),
                 output=data.get("output"),
-                widget=DEFAULT_TOOL_WIDGET,
             )
 
         return []

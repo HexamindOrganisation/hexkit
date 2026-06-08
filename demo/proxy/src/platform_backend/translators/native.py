@@ -19,7 +19,7 @@ from typing import Any
 
 from hexa_events import BlockType, RunEmitter, StreamEvent
 
-from .base import DEFAULT_TOOL_WIDGET, BaseTranslator
+from .base import BaseTranslator
 
 
 class NativeTranslator(BaseTranslator):
@@ -42,7 +42,9 @@ class NativeTranslator(BaseTranslator):
         if etype == "tool":
             tool_id = event.get("id") or uuid.uuid4().hex
             name = event.get("name") or "tool"
-            widget = event.get("widget") or DEFAULT_TOOL_WIDGET
+            # None (no explicit target) → the frontend's default tool-calls
+            # widget; a native event may still name a specific widget.
+            widget = event.get("widget")
             self._tools[tool_id] = (name, widget)
             self._last_tool_id = tool_id
             return emitter.tool_start(
@@ -55,7 +57,7 @@ class NativeTranslator(BaseTranslator):
         if etype == "tool_result":
             tool_id = event.get("id") or self._last_tool_id or uuid.uuid4().hex
             name, widget = self._tools.pop(
-                tool_id, (event.get("name") or "tool", DEFAULT_TOOL_WIDGET)
+                tool_id, (event.get("name") or "tool", None)
             )
             return emitter.tool_end(
                 tool_id=tool_id,
