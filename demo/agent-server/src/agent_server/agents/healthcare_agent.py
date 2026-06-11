@@ -123,7 +123,11 @@ async def stream_as(input: Any, *, role: str) -> AsyncIterator[Any]:
     from hexgate.adapters.openai import HexgateRunner
     from hexgate.runtime import User
 
-    user = User(user_id="hexaui-demo", session_id="hexaui-demo", role=role)
+    user = User(
+        user_id=f"hexaui-demo-{role}",
+        session_id=f"hexaui-demo-healthcare-{role}",
+        role=role,
+    )
     result = HexgateRunner().run_streamed(agent, input, user=user)
     async for event in result.stream_events():
         yield event
