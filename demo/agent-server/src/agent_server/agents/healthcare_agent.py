@@ -127,9 +127,7 @@ async def run(input: Any) -> AsyncIterator[Any]:
         yield event
 
 
-async def run_as(
-    input: Any, *, role: str, api_key: str | None = None
-) -> AsyncIterator[Any]:
+async def run_as(input: Any, *, role: str) -> AsyncIterator[Any]:
     """Stream the agent through HexGate as ``role`` — the same call as :func:`run`.
 
     The only differences from the plain SDK path: ``HexgateRunner`` (which gates
@@ -137,14 +135,14 @@ async def run_as(
     name) instead of ``Runner``, and a ``User(role=…)`` scope. The yielded events
     are identical, so the forwarder/translator is none the wiser.
 
-    ``api_key`` is the HexGate *platform* key; ``None`` falls back to
-    ``HEXGATE_KEY`` in the environment. (The OpenAI model key is separate.)
+    ``HexgateRunner()`` reads ``HEXGATE_KEY`` from the environment (loaded from
+    the agent-server's ``.env`` at startup).
     """
     from hexgate.adapters.openai import HexgateRunner
     from hexgate.runtime import User
 
     user = User(user_id="hexaui-demo", session_id="hexaui-demo", role=role)
-    result = HexgateRunner(api_key=api_key).run_streamed(agent, input, user=user)
+    result = HexgateRunner().run_streamed(agent, input, user=user)
     async for event in result.stream_events():
         yield event
 

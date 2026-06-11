@@ -11,8 +11,9 @@ projects each event onto the wire shapes. Which streamer (e.g.
 The proxy synthesizes the run envelope, sequence numbers, and block lifecycle;
 this bridge only forwards native events.
 
-Also hosts :func:`hexgate_api_key` — the one bit of HexGate infra (resolving the
-platform key from env / ``.env``), kept here so the agent file stays pure SDK.
+Keys come from the environment (loaded from the agent-server's ``.env`` at
+startup — see ``__main__``): ``OPENAI_API_KEY`` for the model, ``HEXGATE_KEY``
+for the HexGate platform (read by ``HexgateRunner`` itself).
 """
 
 from __future__ import annotations
@@ -29,38 +30,6 @@ logger = logging.getLogger("agent_server.openai_agents")
 
 # A streamer yields one run's native ``stream_events()`` items for some input.
 Streamer = Callable[[Any], AsyncIterator[Any]]
-
-
-def hexgate_api_key() -> str | None:
-    """Resolve the HexGate platform key without the launcher having to set it.
-
-    Priority: ``HEXGATE_KEY`` in the env → a ``.env`` at ``HEXGATE_ENV_FILE`` →
-    the hexgate checkout's own ``.env`` (auto-discovered from the installed
-    editable ``hexgate`` package). The demo keeps the key in the hexgate repo's
-    ``.env``, so the agent works under ``run-backends.sh`` without anyone having
-    to ``source`` it first. This is the HexGate *platform* key — separate from
-    the per-run OpenAI key forwarded in ``context.credentials``.
-    """
-    key = os.getenv("HEXGATE_KEY")
-    if key:
-        return key
-    try:
-        from dotenv import dotenv_values
-    except ImportError:
-        return None
-    env_file = os.getenv("HEXGATE_ENV_FILE")
-    if not env_file:
-        try:
-            import hexgate
-            from pathlib import Path
-
-            env_file = str(Path(hexgate.__file__).resolve().parent.parent / ".env")
-        except Exception:  # noqa: BLE001 — discovery is best-effort
-            return None
-    try:
-        return dotenv_values(env_file).get("HEXGATE_KEY")
-    except Exception:  # noqa: BLE001
-        return None
 
 
 def _agent_input(input: dict[str, Any]) -> Any:
@@ -162,18 +131,21 @@ class OpenAIAgentsAgent:
     async def run(
         self, *, input: dict[str, Any], context: dict[str, Any]
     ) -> AsyncIterator[dict]:
-        api_key = ((context or {}).get("credentials") or {}).get("openai_api_key")
+        # Env (.env) is the source of truth when present — it's the developer's
+        # own key — falling back to the per-run key the proxy forwards from the
+        # HexaUI Settings UI.
+        api_key = os.getenv("OPENAI_API_KEY") or (
+            (context or {}).get("credentials") or {}
+        ).get("openai_api_key")
         if not api_key:
             yield protocol.error(
-                "No OpenAI API key available. Add one in Settings (provider "
-                "OpenAI) — it arrives per-run in context.credentials.openai_api_key."
+                "No OpenAI API key available. Set OPENAI_API_KEY in the "
+                "agent-server .env, or add one in the HexaUI Settings UI."
             )
             return
 
-        # Per-run model key; scope to this run, never persist/log. (Process-
-        # global is fine for the single-user demo; a multi-tenant deploy would
-        # pass a per-run AsyncOpenAI client.) The HexGate platform key is
-        # separate — the streamer (run_as) carries it.
+        # Scope to this run, never persist/log. (Process-global is fine for the
+        # single-user demo; a multi-tenant deploy would pass a per-run client.)
         set_default_openai_key(api_key)
 
         names: dict[str, str] = {}

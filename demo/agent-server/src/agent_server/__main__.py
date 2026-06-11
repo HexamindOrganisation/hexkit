@@ -3,8 +3,19 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import uvicorn
+
+# The developer's backend reads its secrets (OPENAI_API_KEY, HEXGATE_KEY) from
+# the environment or a local .env — like any app. Real env vars win; the .env
+# just fills the gaps. Loaded once at startup, before any request reads a key.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")  # demo/agent-server/.env
+except ImportError:
+    pass
 
 from .config import get_settings
 from .server.app import create_app

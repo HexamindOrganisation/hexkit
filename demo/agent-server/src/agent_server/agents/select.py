@@ -35,13 +35,11 @@ def select_agent(agent_id: str, context: dict[str, Any]) -> Agent:
     # so a missing `openai-agents`/`hexgate` install doesn't break the roster.
     if agent_id == "healthcare":
         from . import healthcare_agent
-        from .openai_agents import OpenAIAgentsAgent, hexgate_api_key
+        from .openai_agents import OpenAIAgentsAgent
 
         if os.getenv("HEALTHCARE_HEXGATE", "0") == "1":
             role = os.getenv("HEALTHCARE_ROLE", "nurse")
-            streamer = partial(
-                healthcare_agent.run_as, role=role, api_key=hexgate_api_key()
-            )
+            streamer = partial(healthcare_agent.run_as, role=role)
         else:
             streamer = healthcare_agent.run
         return OpenAIAgentsAgent(streamer)
