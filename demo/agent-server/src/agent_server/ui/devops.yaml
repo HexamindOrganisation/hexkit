@@ -1,0 +1,29 @@
+# DevOps — infra assistant (Google ADK). Served by GET /agents/devops/ui.
+# Chat + a tool-calls panel so the infra tools (read_logs, restart_service,
+# scale_deployment, delete_resource) are visible as they fire. The active agent's
+# main_color is the only accent in the product.
+page:
+  layout_type: grid
+  main_color: "#8b5cf6"
+
+widgets:
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: high }
+    size: { width: 8, height: 520 }
+    empty_text: "Ask the DevOps assistant — e.g. \"Scale checkout to 5 replicas in staging.\""
+    thinking_indicator: dots
+
+  - name: tool-calls
+    type: tool-calls
+    position: { horizontal: right, vertical: high }
+    size: { width: 4, height: 520 }
+    title: Ops steps
+    empty_text: "Tool calls (log reads, restarts, scaling, deletes…) appear here."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Message the DevOps assistant…"
+    rows: 2

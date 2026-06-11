@@ -3,8 +3,18 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import uvicorn
+
+# Load secrets (OPENAI_API_KEY, HEXGATE_KEY) from the agent-server .env. Real
+# env vars take precedence.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")  # demo/agent-server/.env
+except ImportError:
+    pass
 
 from .config import get_settings
 from .server.app import create_app

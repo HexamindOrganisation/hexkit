@@ -25,9 +25,15 @@ uv pip install --python demo/proxy/.venv -e 'demo/proxy[dev]'
 
 echo "→ agent-server venv  (demo/agent-server/.venv)"
 uv venv demo/agent-server/.venv
-# [llm] pulls openai (Probe) + google-genai (Orbit) for real model replies.
+# [llm] pulls openai (Probe) + google-genai (Orbit) for real model replies. The
+# `hexgate` extra is intentionally NOT installed here (heavy, 3.13-only); opt in below.
 uv pip install --python demo/agent-server/.venv -e 'demo/agent-server[dev,llm]'
 
 echo
 echo "done. start the stack with:"
 echo "    AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh"
+echo
+echo "Optional — HexGate-wrapped healthcare agent (set HEXGATE_KEY to enable):"
+echo "  needs the hexgate checkout at ../hexgate and a Python >=3.13 venv, then:"
+echo "    uv venv --python 3.13 demo/agent-server/.venv   # if the venv isn't already 3.13"
+echo "    uv pip install --python demo/agent-server/.venv -e 'demo/agent-server[dev,llm,hexgate]'"

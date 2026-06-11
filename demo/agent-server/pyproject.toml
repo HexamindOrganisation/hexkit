@@ -6,18 +6,29 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "python-dotenv>=1.0",      # load secrets from the agent-server .env at startup
 ]
 
 [project.optional-dependencies]
 llm = [
-    "openai>=1.40",        # Probe (native)
-    "google-genai>=1.0",   # Orbit (google-adk / Gemini)
+    "openai>=1.40",            # Probe (native)
+    "google-genai>=1.0",       # Orbit (google-adk / Gemini)
+    "openai-agents>=0.0.10",   # Healthcare (openai-agents SDK)
+    "google-adk>=1.0",         # DevOps (google-adk runtime)
+    "litellm>=1.40",           # DevOps model backend (openai/* via Google ADK)
 ]
 dev = [
     "pytest>=8",
     "pytest-asyncio>=0.23",
     "httpx>=0.27",
 ]
+# Opt-in HexGate wrapping (enabled by setting HEXGATE_KEY). Not in the default setup.sh;
+# needs Python >=3.13 and the sibling hexgate checkout. Without it, the plain
+# healthcare path still works.
+hexgate = ["hexgate"]
+
+[tool.uv.sources]
+hexgate = { path = "../../../hexgate", editable = true }  # path relative to this file
 
 [build-system]
 requires = ["hatchling"]

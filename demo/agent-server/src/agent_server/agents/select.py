@@ -24,6 +24,18 @@ def select_agent(agent_id: str, context: dict[str, Any]) -> Agent:
     creds = (context or {}).get("credentials") or {}
     llm_on = get_settings().enable_llm
 
+    # Real OpenAI Agents SDK agent (it picks the plain vs HexGate path itself).
+    # Lazy import so a missing openai-agents/hexgate install doesn't break the roster.
+    if agent_id == "healthcare":
+        from .healthcare import HealthcareAgent
+
+        return HealthcareAgent()
+
+    if agent_id == "devops":
+        from .devops import DevopsAgent
+
+        return DevopsAgent()
+
     if framework == "langchain":
         return LangChainDemoAgent()
     if framework == "openai-agents":

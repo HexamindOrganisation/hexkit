@@ -32,7 +32,7 @@ browser ──HTTP/SSE──▶ HexaUI proxy ──HTTP/SSE──▶ your agent 
 ## 2. Endpoints (the imposed API shape)
 
 All paths are relative to your backend's base URL
-(`PLATFORM_AGENT_BACKEND_URL`, default `http://127.0.0.1:8080`).
+(`PLATFORM_AGENT_BACKEND_URL`, default `http://127.0.0.1:8880`).
 
 | Method + path | Purpose |
 |---|---|
@@ -244,7 +244,7 @@ reads the SSE stream, cancels mid-run, validates every frame's shape) and prints
 PASS/FAIL per item above, exiting non-zero on failure:
 
 ```bash
-python scripts/verify_backend.py http://127.0.0.1:8080 [--agent <id>]
+python scripts/verify_backend.py http://127.0.0.1:8880 [--agent <id>]
 ```
 
 **Start from a template.** [`starter-agent/`](starter-agent/) is the smallest
