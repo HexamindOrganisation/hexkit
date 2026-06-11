@@ -10,8 +10,10 @@ dependencies = [
 
 [project.optional-dependencies]
 llm = [
-    "openai>=1.40",        # Probe (native)
-    "google-genai>=1.0",   # Orbit (google-adk / Gemini)
+    "openai>=1.40",            # Probe (native)
+    "google-genai>=1.0",       # Orbit (google-adk / Gemini)
+    "openai-agents>=0.0.10",   # Healthcare (openai-agents SDK)
+    "python-dotenv>=1.0",      # Healthcare: resolve HEXGATE_KEY from a .env
 ]
 dev = [
     "pytest>=8",

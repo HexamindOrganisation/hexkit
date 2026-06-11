@@ -8,6 +8,8 @@ agent uses the deterministic echo, or the optional OpenAI-backed `LLMAgent` when
 
 from __future__ import annotations
 
+import os
+from functools import partial
 from typing import Any
 
 from ..config import get_settings
@@ -23,6 +25,26 @@ def select_agent(agent_id: str, context: dict[str, Any]) -> Agent:
     framework = (get_agent(agent_id) or {}).get("framework", "native")
     creds = (context or {}).get("credentials") or {}
     llm_on = get_settings().enable_llm
+
+    # A real OpenAI Agents SDK agent (not a canned demo). Routed by id so the
+    # `openai-agents` framework still maps to the demo agent (Forge) for others.
+    # The agent + its invocation helpers live in `healthcare_agent` (pure SDK);
+    # `OpenAIAgentsAgent` is the reusable framework→contract bridge. Here we just
+    # pick the streamer: plain SDK, or the HexGate-wrapped `run_as` (opt-in via
+    # HEALTHCARE_HEXGATE; role via HEALTHCARE_ROLE, default `nurse`). Lazy import
+    # so a missing `openai-agents`/`hexgate` install doesn't break the roster.
+    if agent_id == "healthcare":
+        from . import healthcare_agent
+        from .openai_agents import OpenAIAgentsAgent, hexgate_api_key
+
+        if os.getenv("HEALTHCARE_HEXGATE", "0") == "1":
+            role = os.getenv("HEALTHCARE_ROLE", "nurse")
+            streamer = partial(
+                healthcare_agent.run_as, role=role, api_key=hexgate_api_key()
+            )
+        else:
+            streamer = healthcare_agent.run
+        return OpenAIAgentsAgent(streamer)
 
     if framework == "langchain":
         return LangChainDemoAgent()
