@@ -73,13 +73,13 @@ Two backends (proxy + agent-server) on a throwaway SQLite DB, plus the web app.
 bash demo/scripts/setup.sh
 
 # Terminal 1 — backends (WSL). Set AGENT_ENABLE_LLM=1 for real LLM replies.
-AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh    # agent-server :9080, proxy :9000
+AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh    # agent-server :8880, proxy :8800
 
 # Terminal 2 — web app
-cd front-app && npm install && npm run dev               # http://localhost:9173
+cd front-app && npm install && npm run dev               # http://localhost:8873
 ```
 
-Open <http://localhost:9173>, pick an agent, and chat. To get real model replies
+Open <http://localhost:8873>, pick an agent, and chat. To get real model replies
 rather than the deterministic echo/canned fallback, set your provider key in
 **Settings** (OpenAI for Probe, Google for Orbit) — the proxy forwards it to the
 agent backend per run, never persisting it in plaintext.
@@ -118,7 +118,7 @@ it against any running URL:
 # Acts as the proxy would: assigns a run_id, reads the SSE stream, cancels
 # mid-run, checks every frame's shape against CONTRACT.md §8. Exits non-zero
 # on failure, so it works as a CI gate too.
-python demo/scripts/verify_backend.py http://127.0.0.1:9080
+python demo/scripts/verify_backend.py http://127.0.0.1:8880
 ```
 
 [`demo/agent-server/`](demo/agent-server/) is the richer reference (every

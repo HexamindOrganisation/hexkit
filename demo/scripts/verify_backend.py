@@ -8,8 +8,8 @@ shape. Each check prints PASS / FAIL / SKIP; the process exits non-zero if any
 required check fails, so it doubles as a CI gate.
 
 Usage:
-    python verify_backend.py http://127.0.0.1:9080
-    python verify_backend.py http://127.0.0.1:9080 --agent echo
+    python verify_backend.py http://127.0.0.1:8880
+    python verify_backend.py http://127.0.0.1:8880 --agent echo
 
 Only dependency is httpx (already in the demo venvs). No proxy, no DB.
 """
@@ -288,7 +288,7 @@ async def check_actions(c: httpx.AsyncClient, r: Report, agent_id: str, ui_text:
 
 async def main() -> int:
     ap = argparse.ArgumentParser(description="Validate a HexaUI backend against CONTRACT.md §8.")
-    ap.add_argument("base_url", help="Base URL of the running backend, e.g. http://127.0.0.1:9080")
+    ap.add_argument("base_url", help="Base URL of the running backend, e.g. http://127.0.0.1:8880")
     ap.add_argument("--agent", help="Agent id to exercise (default: first in the roster)")
     ap.add_argument("--timeout", type=float, default=30.0, help="Per-request timeout seconds")
     args = ap.parse_args()
