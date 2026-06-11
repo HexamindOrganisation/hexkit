@@ -20,6 +20,18 @@ dev = [
     "pytest-asyncio>=0.23",
     "httpx>=0.27",
 ]
+# Optional HexGate policy wrapping for the healthcare agent's `run_as` path.
+# Deliberately NOT in the default setup.sh install — opt in with
+#   uv pip install --python demo/agent-server/.venv -e 'demo/agent-server[hexgate]'
+# Needs Python >=3.13 (hexgate's floor) and the sibling hexgate checkout at the
+# path below. Absent it, the plain healthcare path still works; the HexGate path
+# degrades to a visible "No module named 'hexgate'" event (imports are lazy).
+hexgate = ["hexgate"]
+
+[tool.uv.sources]
+# Editable path dependency on the sibling hexgate repo (not published). Path is
+# relative to THIS file (demo/agent-server/): ../../../hexgate → hexamind/hexgate.
+hexgate = { path = "../../../hexgate", editable = true }
 
 [build-system]
 requires = ["hatchling"]
