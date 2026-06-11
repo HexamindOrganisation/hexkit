@@ -7,14 +7,15 @@ import react from "@vitejs/plugin-react";
 // runtime.
 //
 // Override the target with PLATFORM_BACKEND_URL when running the backend
-// somewhere other than the default :8001.
+// somewhere other than the default :9000.
 const BACKEND_URL =
-  process.env.PLATFORM_BACKEND_URL ?? "http://127.0.0.1:8001";
+  process.env.PLATFORM_BACKEND_URL ?? "http://127.0.0.1:9000";
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 9173,
+    strictPort: true, // fail loudly on a taken port instead of drifting to 9174
     proxy: {
       "/api": {
         target: BACKEND_URL,

@@ -31,8 +31,8 @@ item and exits non-zero on any failure, so it works as a CI gate.
 Only needs `httpx` (in every demo venv). Start a backend, then:
 
 ```bash
-$PYBIN demo/scripts/verify_backend.py http://127.0.0.1:8080            # first roster agent
-$PYBIN demo/scripts/verify_backend.py http://127.0.0.1:8080 --agent orbit
+$PYBIN demo/scripts/verify_backend.py http://127.0.0.1:9080            # first roster agent
+$PYBIN demo/scripts/verify_backend.py http://127.0.0.1:9080 --agent orbit
 ```
 
 Pairs with [`../starter-agent/`](../starter-agent/), the minimal copy-me backend
@@ -63,7 +63,7 @@ connection. It hits the agent-server directly (which speaks the minimal format),
 so it parses `data:` JSON `type` fields. Start the agent-server first, then run:
 
 ```bash
-PYTHONPATH=demo/agent-server/src:demo/packages/hexa-events/src $PYBIN -m agent_server &   # :8080
+PYTHONPATH=demo/agent-server/src:demo/packages/hexa-events/src $PYBIN -m agent_server &   # :9080
 PYTHONPATH=demo/agent-server/src:demo/packages/hexa-events/src $PYBIN demo/scripts/cancel_check.py
 ```
 

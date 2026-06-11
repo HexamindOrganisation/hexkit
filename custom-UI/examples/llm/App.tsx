@@ -4,7 +4,7 @@ import "../../src/styles.css";
 import "../../src/shadcn.css";
 import configText from "./config.yaml?raw";
 
-const API = "http://localhost:8001";
+const API = "http://localhost:8000";
 
 let currentConversationId: string | null = null;
 const conversationLog: { role: "user" | "assistant"; content: string }[] = [];

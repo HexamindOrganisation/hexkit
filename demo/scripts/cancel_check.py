@@ -11,7 +11,7 @@ import os
 
 import httpx
 
-BASE = os.environ.get("AGENT_URL", "http://127.0.0.1:8080")
+BASE = os.environ.get("AGENT_URL", "http://127.0.0.1:9080")
 
 
 async def main():
