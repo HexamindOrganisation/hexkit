@@ -1,8 +1,9 @@
-"""Reference widget actions (CONTRACT.md §5b) for the Orbit research workspace.
+"""Reference widget actions (CONTRACT.md §5b) for the Orbit + DevOps workspaces.
 
 Backs the `data_source` + `action` + `refresh` mechanism: an action returns a
 single `{result}` and never pushes to the UI; display widgets re-pull their
 `data_source` when an action names them in `refresh` (declared in the ui.yaml).
+Action names are globally unique, so one flat registry serves every agent.
 
 State is process-global and in-memory — fine for the single-user demo. A real
 backend would persist per-user / per-conversation.
@@ -13,6 +14,8 @@ from __future__ import annotations
 import csv
 import io
 from typing import Any
+
+from .agents import devops_state
 
 # The "retrieved sources" the Orbit `sources` table displays.
 _SOURCES: list[dict[str, Any]] = []
@@ -54,10 +57,34 @@ def _clear_sources(_args: dict[str, Any]) -> dict[str, Any]:
     return {"removed": removed}
 
 
+# ── DevOps service-state panel (CONTRACT §5b) ────────────────────────────────
+# The env buttons call `select_env`; the two display widgets pull `service_summary`
+# (metrics) and `service_state` (table) for the selected env. The agent's tools
+# mutate the same `devops_state`, so the panel shows the impact of a run.
+
+
+def _select_env(args: dict[str, Any]) -> dict[str, Any]:
+    devops_state.select_env(args.get("env", "dev"))
+    return {"env": devops_state.selected_env()}
+
+
+def _service_summary(_args: dict[str, Any]) -> dict[str, Any]:
+    return devops_state.summary(devops_state.selected_env())
+
+
+def _service_state(_args: dict[str, Any]) -> dict[str, Any]:
+    return {"csv": devops_state.table_csv(devops_state.selected_env())}
+
+
 _ACTIONS = {
+    # Orbit research workspace
     "list_sources": _list_sources,
     "seed_sources": _seed_sources,
     "clear_sources": _clear_sources,
+    # DevOps service-state panel
+    "select_env": _select_env,
+    "service_summary": _service_summary,
+    "service_state": _service_state,
 }
 
 
