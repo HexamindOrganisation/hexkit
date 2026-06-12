@@ -23,7 +23,6 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from platform_backend import models  # noqa: F401 — side-effect import
 from platform_backend.db import Base
 
-
 config = context.config
 
 if config.config_file_name is not None:

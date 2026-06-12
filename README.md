@@ -29,10 +29,10 @@ product**, driven from a single variable (`page.main_color` → `--accent`).
                                 │ HTTP + SSE  (single origin)
                                 ▼
 ┌───────────────────────────────────────────────────────────────┐
-│  demo/proxy  (FastAPI · single-user)                          │
-│   auth-less implicit user · conversations · folders · files   │
-│   · Fernet-encrypted keys · per-framework translators that    │
-│   normalize native events → the rich hexa SSE schema          │
+│  demo/proxy  (FastAPI)                                        │
+│   JWT auth (argon2id) · conversations · folders · files       │
+│   · Fernet-encrypted per-user keys · per-framework            │
+│   translators normalize native events → hexa SSE schema       │
 └───────────────────────────────┬───────────────────────────────┘
                                 │ HTTP + SSE  (the developer contract)
                                 ▼
@@ -66,23 +66,24 @@ events; the **proxy translates** and the **UI renders from YAML**. See
 
 ## Quick start
 
-Two backends (proxy + agent-server) on a throwaway SQLite DB, plus the web app.
+**Prerequisites:** [`uv`](https://docs.astral.sh/uv/) and Node.js 18+.
 
 ```bash
-# One-time — create the backend venvs from their pyprojects (needs `uv`).
-bash demo/scripts/setup.sh
-
-# Terminal 1 — backends (WSL). Set AGENT_ENABLE_LLM=1 for real LLM replies.
-AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh    # agent-server :8080, proxy :8000
-
-# Terminal 2 — web app
-cd front-app && npm install && npm run dev               # http://localhost:5173
+make setup        # one-time: Python venvs + custom-UI build + front-app npm install
+make dev          # backends + frontend together; Ctrl-C tears down both
 ```
 
-Open <http://localhost:5173>, pick an agent, and chat. To get real model replies
-rather than the deterministic echo/canned fallback, set your provider key in
-**Settings** (OpenAI for Probe, Google for Orbit) — the proxy forwards it to the
-agent backend per run, never persisting it in plaintext.
+Open <http://localhost:5173>. The app redirects to **`/login`**; sign in as
+`dev01@hexamind.ai` / `hexademo` (the dev seed) or sign up a fresh account.
+
+To get real model replies rather than the deterministic echo/canned fallback,
+set your provider key in **Settings** (OpenAI for Probe, Google for Orbit) —
+the proxy forwards it to the agent backend per run, never persisting it in
+plaintext.
+
+Run `make help` to see all targets (`test`, `lint`, `typecheck`, …). The full
+guide with troubleshooting and configuration is in [QUICKSTART.md](QUICKSTART.md);
+suggested next steps for the project live in [IMPROVEMENTS.md](IMPROVEMENTS.md).
 
 The bundled agents demonstrate the contract end to end:
 
@@ -129,6 +130,22 @@ the fewest moving parts that still pass conformance.
 
 ## Development
 
+The top-level [Makefile](Makefile) wraps the most common loops:
+
+```bash
+make test         # proxy test suite (skips known-broken chat/proxy tests — see IMPROVEMENTS.md §1)
+make test-all     # every proxy test, including the known-broken ones
+make lint         # ruff check on demo/proxy and demo/agent-server
+make format       # ruff format on both
+make typecheck    # tsc --noEmit on custom-UI and front-app
+make clean        # wipe venvs and node_modules
+```
+
+CI runs the same gates on every push and PR — see
+[.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+For lower-level work directly against the packages:
+
 ```bash
 # UI library (the core)
 cd custom-UI && npm install && npm test && npm run build
@@ -136,7 +153,7 @@ cd custom-UI && npm install && npm test && npm run build
 # Web app
 cd front-app && npm install && npx tsc --noEmit && npx vite build
 
-# Backend contract smoke checks (WSL; venvs live in demo/proxy + demo/agent-server)
+# Backend contract smoke checks
 PYTHONPATH=demo/proxy/src:demo/agent-server/src:demo/packages/hexa-events/src \
   demo/proxy/.venv/bin/python demo/scripts/e2e_check.py
 ```

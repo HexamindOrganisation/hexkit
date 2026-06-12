@@ -54,9 +54,9 @@ export async function authedFetch(
   input: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  // Single-user: the proxy seeds an implicit user and requires no auth, so we
-  // attach a token only if one happens to be present (multi-user can return
-  // later) and never redirect on 401.
+  // Attach the stored bearer token if one exists. RouteGuard keeps the user
+  // off protected pages without a token, so callers can assume one is present;
+  // 401 handling (e.g. on a stale token) lives in AuthContext's /me check.
   const token = getToken();
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);

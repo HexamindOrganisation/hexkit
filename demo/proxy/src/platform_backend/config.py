@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     log_level: str = "info"
+    seed_dev_user: bool = Field(
+        default=True,
+        description=(
+            "If true, on startup ensure a known dev account exists "
+            "(email dev01@hexamind.ai, password 'dev'). Set to false in "
+            "production (env PLATFORM_SEED_DEV_USER=false)."
+        ),
+    )
 
 
 @lru_cache(maxsize=1)

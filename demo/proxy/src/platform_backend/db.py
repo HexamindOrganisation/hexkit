@@ -8,7 +8,7 @@ rolled back by the dep wrapper on exception.
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (

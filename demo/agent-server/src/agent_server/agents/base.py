@@ -11,7 +11,8 @@ SSE; the HexaUI proxy selects the matching translator and normalizes the stream.
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Protocol
+from collections.abc import AsyncIterator
+from typing import Any, Protocol
 
 
 class Agent(Protocol):

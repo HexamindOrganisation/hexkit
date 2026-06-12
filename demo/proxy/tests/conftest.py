@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from cryptography.fernet import Fernet
 
@@ -34,7 +34,6 @@ from platform_backend import db as db_mod
 from platform_backend.db import Base
 from platform_backend.models import User  # noqa: F401 — registers on metadata
 from platform_backend.server import create_app
-
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

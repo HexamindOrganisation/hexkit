@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import httpx
 import pytest
@@ -28,35 +28,24 @@ from platform_backend.routes import chat as chat_module
 
 from ._helpers import signup
 
-
 # ---------------------------------------------------------------------------
 # Mock-runtime fixture
 # ---------------------------------------------------------------------------
 
-def _sse_frame(event_type: str, payload: dict) -> bytes:
-    data = json.dumps({**payload, "event_type": event_type})
-    return f"event: {event_type}\nid: {uuid.uuid4().hex}\ndata: {data}\n\n".encode()
+def _native_frame(event: dict) -> bytes:
+    """One upstream SSE frame: a `{framework, event}` envelope wrapping a
+    framework-native event (CONTRACT.md §5). The proxy's NativeTranslator
+    accepts ``{type: text, text: ...}`` and friends."""
+    data = json.dumps({"framework": "native", "event": event})
+    return f"id: {uuid.uuid4().hex}\ndata: {data}\n\n".encode()
 
 
-def _build_run(text_chunks: list[str], block_id: str = "blk-1") -> bytes:
-    """A canonical run: start → text block (open/delta×N/close) → end."""
-    parts = [
-        _sse_frame("run_start", {"run_id": "rN", "agent_id": "a1"}),
-        _sse_frame("block_start", {"block_id": block_id, "block_type": "text"}),
-    ]
-    for chunk in text_chunks:
-        parts.append(
-            _sse_frame(
-                "block_delta",
-                {"block_id": block_id, "block_type": "text", "text": chunk},
-            )
-        )
-    parts.extend(
-        [
-            _sse_frame("block_end", {"block_id": block_id, "block_type": "text"}),
-            _sse_frame("run_end", {"output": {"ok": True}}),
-        ]
-    )
+def _build_run(text_chunks: list[str]) -> bytes:
+    """A canonical run from the developer backend's POV: one text event per
+    chunk, then EOF. The proxy synthesizes run_start/block_start/_end/run_end
+    around these — that's what the assertions on the downstream stream check."""
+    parts = [_native_frame({"type": "text", "text": chunk}) for chunk in text_chunks]
+    parts.append(_native_frame({"type": "done"}))
     return b"".join(parts)
 
 
@@ -176,7 +165,9 @@ async def test_chat_streams_through_and_persists_assistant(
     assert body["input"] == {"messages": [{"role": "user", "content": "say hi"}]}
     assert body["run_id"]
     assert body["context"]["conversation_id"] == cid
-    assert "user_id" in body["context"]
+    # Per CONTRACT.md §5 the context payload is `{conversation_id, credentials,
+    # files}` — no user_id (the developer backend shouldn't see auth identity).
+    assert "user_id" not in body["context"]
     assert body["context"]["credentials"] == {}  # no keys configured
 
     # Assistant row exists, content is the concatenated deltas, run_id is set.
@@ -320,8 +311,10 @@ async def test_cancel_proxies_to_runtime(
     assert r.status_code == 200 and r.json() == {"cancelled": True}
 
     sent = mock_runtime["requests"][-1]
-    assert sent["path"] == "/agents/fake-1/runs/run-xyz/cancel"
+    assert sent["path"] == "/agents/fake-1/cancel"
     assert sent["method"] == "POST"
+    # Per CONTRACT.md §2: run_id rides in the body, not the URL.
+    assert json.loads(sent["body"]) == {"run_id": "run-xyz"}
 
 
 async def test_cancel_with_no_active_run_returns_false(

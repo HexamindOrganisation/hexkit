@@ -10,6 +10,7 @@ import {
   Settings,
 } from "lucide-react";
 
+import { useAuth } from "../auth/AuthContext";
 import { useActiveAgent, useFolders } from "../hooks/useActiveAgent";
 import { createFolder } from "../api/folders";
 import { updateConversation, type Conversation } from "../api/conversations";
@@ -40,6 +41,9 @@ export function Sidebar({
   const qc = useQueryClient();
   const { agents, agentId, conversationId, conversations } = useActiveAgent();
   const { data: folders = [] } = useFolders();
+  const { user } = useAuth();
+  const handle = user?.email.split("@")[0] ?? "";
+  const initial = handle.charAt(0).toUpperCase() || "?";
 
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -283,11 +287,11 @@ export function Sidebar({
       {/* User footer + settings */}
       <div className="flex items-center gap-2 border-t border-border px-3 py-3">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
-          D
+          {initial}
         </span>
         {!collapsed && (
-          <span className="flex-1 truncate text-sm text-muted-foreground">
-            dev01
+          <span className="flex-1 truncate text-sm text-muted-foreground" title={user?.email}>
+            {handle}
           </span>
         )}
         <button

@@ -1,14 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { KeyPresence, listKeys, PROVIDERS } from "../api/keys";
+import { useAuth } from "../auth/AuthContext";
 import { KeyRow } from "../components/KeyRow";
 
 /**
- * Settings — per-user API keys (single-user). Keys are stored encrypted on the
- * server (Fernet) and never returned. Setting an OpenAI key here lets the proxy
+ * Settings — per-user API keys. Keys are stored encrypted on the server
+ * (Fernet) and never returned. Setting an OpenAI key here lets the proxy
  * forward it to the agent backend so the `probe` agent can call a real LLM.
  */
 export function SettingsPage() {
+  const { user } = useAuth();
   const keys = useQuery({ queryKey: ["me", "keys"], queryFn: listKeys });
 
   const byProvider = new Map<string, KeyPresence>(
@@ -29,7 +31,7 @@ export function SettingsPage() {
         </h2>
         <div className="rounded-lg border border-border bg-card p-4 text-sm">
           <div className="text-muted-foreground">Signed in as</div>
-          <div>dev01@hexamind.ai</div>
+          <div>{user?.email ?? "—"}</div>
         </div>
       </section>
 

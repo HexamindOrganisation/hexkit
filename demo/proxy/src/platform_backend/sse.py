@@ -18,8 +18,8 @@ We tolerate `\r\n` too — the spec allows it and clients in the wild emit it.
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import AsyncIterator
 
 
 @dataclass

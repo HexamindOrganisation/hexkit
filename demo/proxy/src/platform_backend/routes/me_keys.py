@@ -9,17 +9,16 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import delete, select
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.implicit_user import current_user
+from ..auth.deps import current_user
 from ..crypto import fernet
 from ..db import get_session
 from ..models.api_key import ApiKey
 from ..models.user import User
 from ..schemas.api_key import ApiKeyIn, ApiKeyOut, Provider
-
 
 router = APIRouter(prefix="/me/keys", tags=["me"])
 

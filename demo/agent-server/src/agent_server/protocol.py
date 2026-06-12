@@ -67,7 +67,7 @@ def done() -> dict:
 def to_sse(event: dict) -> bytes:
     """Frame one minimal event as an SSE ``data:`` frame (raw bytes)."""
     body = json.dumps(event, separators=(",", ":"))
-    return f"data: {body}\n\n".encode("utf-8")
+    return f"data: {body}\n\n".encode()
 
 
 def last_user_text(input: dict[str, Any]) -> str:

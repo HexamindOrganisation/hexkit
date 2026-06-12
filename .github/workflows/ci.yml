@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same branch so a fresh push doesn't queue up
+# behind a stale one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  proxy:
+    name: proxy (lint + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: demo/proxy
+        run: |
+          uv venv .venv
+          uv pip install --python .venv -e ../packages/hexa-events
+          uv pip install --python .venv -e '.[dev]'
+
+      - name: Lint (ruff)
+        working-directory: demo/proxy
+        run: .venv/bin/ruff check .
+
+      - name: Test (pytest)
+        working-directory: demo/proxy
+        run: PYTHONPATH=src:../packages/hexa-events/src .venv/bin/python -m pytest -v
+
+  agent-server:
+    name: agent-server (lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: demo/agent-server
+        # Skip [llm] extras — they pull large model SDKs we don't need to lint.
+        run: |
+          uv venv .venv
+          uv pip install --python .venv -e '.[dev]'
+
+      - name: Lint (ruff)
+        working-directory: demo/agent-server
+        run: .venv/bin/ruff check .
+
+  frontend:
+    name: frontend (typecheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            custom-UI/package-lock.json
+            front-app/package-lock.json
+
+      # custom-UI must be built first: front-app imports from `agent-ui`, a
+      # file:../custom-UI link whose types live in custom-UI/dist/index.d.ts.
+      - name: Build custom-UI
+        working-directory: custom-UI
+        run: |
+          npm ci
+          npm run build
+
+      - name: Typecheck custom-UI
+        working-directory: custom-UI
+        run: npm run typecheck
+
+      - name: Install front-app
+        working-directory: front-app
+        run: npm ci
+
+      - name: Typecheck front-app
+        working-directory: front-app
+        run: npx tsc --noEmit
