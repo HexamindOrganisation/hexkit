@@ -1,8 +1,13 @@
-"""Runtime proxy: 5 read-only GETs that mirror the runtime.
+"""Runtime proxy: the two read-only GETs that mirror the runtime.
 
-Tests use httpx's `MockTransport` to stand in for the runtime — no real
-process spawn, no network. Subprocess-real-runtime testing lives in the
-chat tests (Phase C.6, `@pytest.mark.runtime`).
+Per the v1 developer contract (see ``demo/CONTRACT.md`` §2), the agent
+backend exposes exactly five endpoints. Only two of them are read-only GETs
+that the proxy mirrors at ``/agents`` and ``/agents/{id}/ui``; the other
+three (``/stream``, ``/cancel``, ``/actions/{name}``) are exercised through
+the chat route in ``test_chat.py``.
+
+Tests use httpx's ``MockTransport`` to stand in for the runtime — no real
+process spawn, no network.
 """
 
 from __future__ import annotations
@@ -12,7 +17,6 @@ import json
 import httpx
 import pytest
 from httpx import AsyncClient
-
 from platform_backend import runtime_client
 
 from ._helpers import signup
@@ -53,38 +57,6 @@ async def test_list_agents(client: AsyncClient, _mock_runtime: dict) -> None:
     assert _mock_runtime["request"].url.path == "/agents"
 
 
-async def test_metadata_404_preserved(client: AsyncClient, _mock_runtime: dict) -> None:
-    _mock_runtime["rule"] = lambda r: httpx.Response(404, json={"detail": "no such agent"})
-    h = (await signup(client))["headers"]
-    r = await client.get("/agents/ghost/metadata", headers=h)
-    assert r.status_code == 404
-    assert r.json() == {"detail": "no such agent"}
-
-
-async def test_metadata_200(client: AsyncClient, _mock_runtime: dict) -> None:
-    md = {"agent_id": "a1", "name": "A1", "framework": "langchain"}
-    _mock_runtime["rule"] = lambda r: httpx.Response(200, json=md)
-    h = (await signup(client))["headers"]
-    r = await client.get("/agents/a1/metadata", headers=h)
-    assert r.status_code == 200 and r.json() == md
-    assert _mock_runtime["request"].url.path == "/agents/a1/metadata"
-
-
-async def test_tools(client: AsyncClient, _mock_runtime: dict) -> None:
-    _mock_runtime["rule"] = lambda r: httpx.Response(200, json=[{"name": "echo"}])
-    h = (await signup(client))["headers"]
-    r = await client.get("/agents/a1/tools", headers=h)
-    assert r.status_code == 200 and r.json() == [{"name": "echo"}]
-
-
-async def test_health(client: AsyncClient, _mock_runtime: dict) -> None:
-    _mock_runtime["rule"] = lambda r: httpx.Response(503, json={"ok": False, "details": {"err": "no key"}})
-    h = (await signup(client))["headers"]
-    r = await client.get("/agents/a1/health", headers=h)
-    assert r.status_code == 503
-    assert r.json()["ok"] is False
-
-
 async def test_ui_yaml_passthrough(client: AsyncClient, _mock_runtime: dict) -> None:
     yaml_body = "page:\n  main_color: '#abc'\n"
     _mock_runtime["rule"] = lambda r: httpx.Response(
@@ -107,30 +79,32 @@ async def test_ui_404_preserved(client: AsyncClient, _mock_runtime: dict) -> Non
 
 
 async def test_proxy_requires_auth(client: AsyncClient, _mock_runtime: dict) -> None:
-    """All five proxy endpoints sit behind JWT."""
-    for path in (
-        "/agents",
-        "/agents/a/metadata",
-        "/agents/a/tools",
-        "/agents/a/health",
-        "/agents/a/ui",
-    ):
+    """Both proxy GETs sit behind JWT."""
+    for path in ("/agents", "/agents/a/ui"):
         r = await client.get(path)
         assert r.status_code == 401, f"{path} should require auth"
 
 
-async def test_runtime_client_helpers_directly(_mock_runtime: dict) -> None:
-    """The runtime_client module is independently useful (chat route uses
-    it directly). Exercise its non-streaming helpers."""
+async def test_runtime_client_cancel_helper(_mock_runtime: dict) -> None:
+    """``runtime_client.cancel`` POSTs to ``/agents/{id}/cancel`` with the
+    run id in the body — the contract specified in CONTRACT.md §2."""
     _mock_runtime["rule"] = lambda r: httpx.Response(
         200, json={"cancelled": True}
     )
     assert await runtime_client.cancel("a", "r1") == {"cancelled": True}
     sent = _mock_runtime["request"]
-    assert sent.url.path == "/agents/a/runs/r1/cancel"
+    assert sent.url.path == "/agents/a/cancel"
     assert sent.method == "POST"
+    assert json.loads(sent.content) == {"run_id": "r1"}
 
+
+async def test_runtime_client_invoke_action_helper(_mock_runtime: dict) -> None:
+    """``runtime_client.invoke_action`` POSTs to
+    ``/agents/{id}/actions/{name}`` with ``{args}`` and returns
+    ``(status, body)``."""
     _mock_runtime["rule"] = lambda r: httpx.Response(200, json={"result": "ok"})
     status, body = await runtime_client.invoke_action("a", "ping", {"x": 1})
     assert status == 200 and body == {"result": "ok"}
-    assert json.loads(_mock_runtime["request"].content) == {"args": {"x": 1}}
+    sent = _mock_runtime["request"]
+    assert sent.url.path == "/agents/a/actions/ping"
+    assert json.loads(sent.content) == {"args": {"x": 1}}

@@ -21,8 +21,9 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime, timezone
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+from typing import Any
 
 from langchain_core.tools import tool
 
@@ -50,7 +51,7 @@ def get_server_time(timezone_name: str = "UTC") -> str:
     # `timezone_name` is accepted for a realistic tool signature; this stub
     # always answers in UTC.
     _ = timezone_name
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _messages_with_files(

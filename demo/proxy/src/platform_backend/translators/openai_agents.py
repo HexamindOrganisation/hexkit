@@ -59,7 +59,7 @@ class OpenAIAgentsTranslator(BaseTranslator):
                 if self._block_open and emitter.has_block(_MSG_KEY):
                     self._block_open = False
                     return emitter.end_block(_MSG_KEY)
-                text = extract_text((item.get("raw_item") or {}))
+                text = extract_text(item.get("raw_item") or {})
                 return emitter.full_text_block(text) if text else []
 
             if name == "tool_called":

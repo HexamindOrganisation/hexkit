@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from httpx import AsyncClient
 
-
 CREDS = {"email": "bob@example.com", "password": "hunter2hunter2"}
 
 

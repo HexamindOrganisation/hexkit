@@ -13,12 +13,11 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.implicit_user import current_user
+from ..auth.deps import current_user
 from ..db import get_session
 from ..models.file import File as FileModel
 from ..models.user import User
 from ..schemas.file import FileOut, FileRenameIn
-
 
 router = APIRouter(prefix="/files", tags=["files"])
 

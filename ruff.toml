@@ -1,0 +1,31 @@
+# Shared ruff config for every Python package in this repo. Run from the
+# repo root with `make lint` (or `ruff check .`); ruff discovers this file
+# automatically and applies it to all paths it walks.
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    "**/alembic/versions",
+    "**/.venv",
+    "**/dist",
+    "**/build",
+    "legacy",
+]
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long — formatter handles this
+    "B008",  # FastAPI's `Depends()` in default args is idiomatic
+]
+
+[lint.per-file-ignores]
+"**/tests/**" = ["S101"]  # asserts are the point in tests

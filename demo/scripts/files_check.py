@@ -17,13 +17,12 @@ os.environ["PLATFORM_FERNET_KEY"] = Fernet.generate_key().decode()
 import asyncio  # noqa: E402
 
 import httpx  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-
-from platform_backend import runtime_client  # noqa: E402
-from platform_backend.db import Base, init_engine  # noqa: E402
-from platform_backend.auth.implicit_user import seed_implicit_user  # noqa: E402
-from platform_backend.server.app import create_app as create_proxy  # noqa: E402
 from agent_server.server.app import create_app as create_agent  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from platform_backend import runtime_client  # noqa: E402
+from platform_backend.auth.implicit_user import seed_implicit_user  # noqa: E402
+from platform_backend.db import Base, init_engine  # noqa: E402
+from platform_backend.server.app import create_app as create_proxy  # noqa: E402
 
 
 async def _setup():

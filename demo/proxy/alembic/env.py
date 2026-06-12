@@ -15,14 +15,13 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Import the package so all model modules register their tables on Base.metadata.
 from platform_backend import models  # noqa: F401 — side-effect import
 from platform_backend.db import Base
-
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
 config = context.config
 

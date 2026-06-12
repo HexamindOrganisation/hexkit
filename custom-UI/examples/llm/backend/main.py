@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -141,7 +141,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
-    conversation_id: Optional[str] = None
+    conversation_id: str | None = None
 
 
 @app.post("/chat")

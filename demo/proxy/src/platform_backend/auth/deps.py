@@ -14,7 +14,6 @@ from ..db import get_session
 from ..models.user import User
 from .jwt import InvalidTokenError, decode_token
 
-
 _UNAUTHORIZED = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Not authenticated",

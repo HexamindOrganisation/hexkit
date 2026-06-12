@@ -5,6 +5,7 @@ import { AttachPalette } from "agent-ui";
 
 import type { AgentSummary } from "../api/agents";
 import { listFiles, uploadFile, type FileMeta } from "../api/files";
+import { useAuth } from "../auth/AuthContext";
 import { FileGlyph, fmtSize, relTime, tagOf } from "../lib/fileFx";
 
 const ACCENT = "var(--accent-color, hsl(var(--primary)))";
@@ -53,6 +54,8 @@ export function Greeting({
   const attachRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasText = text.trim().length > 0;
+  const { user } = useAuth();
+  const handle = user?.email.split("@")[0] ?? "there";
 
   const filteredLibrary = useMemo(() => {
     const ql = menuQuery.trim().toLowerCase();
@@ -60,7 +63,7 @@ export function Greeting({
     return ql ? list.filter((f) => f.name.toLowerCase().includes(ql)) : list;
   }, [library, menuQuery]);
 
-  const words = `${greetWord()}, dev01`.split(" ");
+  const words = `${greetWord()}, ${handle}`.split(" ");
 
   useEffect(() => {
     if (!menuOpen) return;

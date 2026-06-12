@@ -5,7 +5,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 # Closed vocabulary — matches the runtime's framework set today (TODO line 87).
 # Extending = add a new value here and a passthrough in `Credentials` (runtime
 # protocol.py).

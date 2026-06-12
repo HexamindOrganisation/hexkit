@@ -13,12 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.implicit_user import current_user
+from ..auth.deps import current_user
 from ..db import get_session
 from ..models.folder import Folder
 from ..models.user import User
 from ..schemas.folder import FolderCreate, FolderOut, FolderUpdate
-
 
 router = APIRouter(prefix="/folders", tags=["folders"])
 

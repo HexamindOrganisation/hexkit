@@ -29,17 +29,16 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from hexa_events import RunEmitter, extract_query, to_sse_frame
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hexa_events import RunEmitter, extract_query, to_sse_frame
-
 from .. import runtime_client
-from ..auth.implicit_user import current_user
+from ..auth.deps import current_user
 from ..db import get_session, session_factory
 from ..models.conversation import Conversation
 from ..models.message import Message
@@ -53,7 +52,6 @@ from .conversations import (
     link_files,
 )
 from .me_keys import load_credentials_dict
-
 
 router = APIRouter(prefix="/conversations", tags=["chat"])
 logger = logging.getLogger("platform_backend.chat")

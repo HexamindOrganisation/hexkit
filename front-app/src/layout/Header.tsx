@@ -1,5 +1,6 @@
-import { History, MoreHorizontal } from "lucide-react";
+import { History, LogOut, MoreHorizontal } from "lucide-react";
 
+import { useAuth } from "../auth/AuthContext";
 import { AgentDropdown } from "../components/AgentDropdown";
 import { useActiveAgent } from "../hooks/useActiveAgent";
 
@@ -10,6 +11,7 @@ import { useActiveAgent } from "../hooks/useActiveAgent";
  */
 export function Header() {
   const { conversation } = useActiveAgent();
+  const { user, logout } = useAuth();
   const title = conversation?.title ?? "New session";
 
   return (
@@ -18,12 +20,26 @@ export function Header() {
       <span className="min-w-0 flex-1 truncate text-sm text-[var(--hx-text-3,hsl(var(--muted-foreground)))]">
         {title}
       </span>
+      {user && (
+        <span className="hidden text-sm text-muted-foreground sm:inline">
+          {user.email}
+        </span>
+      )}
       <button
         type="button"
         className="rounded-md p-2 text-muted-foreground hover:bg-secondary"
         aria-label="History"
       >
         <History className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={logout}
+        className="rounded-md p-2 text-muted-foreground hover:bg-secondary"
+        aria-label="Log out"
+        title="Log out"
+      >
+        <LogOut className="h-4 w-4" />
       </button>
       <button
         type="button"

@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.implicit_user import current_user
+from ..auth.deps import current_user
 from ..db import get_session
 from ..models.conversation import Conversation
 from ..models.conversation_context import ConversationContext
@@ -31,7 +31,6 @@ from ..schemas.conversation import (
 )
 from ..schemas.file import AttachFilesIn, FileOut
 from ..schemas.message import MessageOut
-
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 

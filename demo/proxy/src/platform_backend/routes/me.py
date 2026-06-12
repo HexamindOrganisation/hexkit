@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from ..auth.implicit_user import current_user
+from ..auth.deps import current_user
 from ..models.user import User
 from ..schemas.auth import UserOut
-
 
 router = APIRouter(tags=["me"])
 

@@ -50,10 +50,11 @@ def extract_text(obj: Any) -> str:
         if isinstance(content, list):
             parts: list[str] = []
             for part in content:
-                if isinstance(part, dict):
-                    if part.get("type") == "text" and isinstance(part.get("text"), str):
-                        parts.append(part["text"])
-                    elif isinstance(part.get("text"), str):
+                # Nested-if + complex condition — flattening would change
+                # semantics (`(A and B) or B` simplifies to `B`); leaving
+                # as-is until reviewed in isolation.
+                if isinstance(part, dict):  # noqa: SIM102
+                    if part.get("type") == "text" and isinstance(part.get("text"), str) or isinstance(part.get("text"), str):
                         parts.append(part["text"])
             return "".join(parts)
         if isinstance(obj.get("text"), str):

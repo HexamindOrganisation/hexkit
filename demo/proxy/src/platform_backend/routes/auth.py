@@ -19,7 +19,6 @@ from ..db import get_session
 from ..models.user import User
 from ..schemas.auth import Credentials, TokenOut, UserOut
 
-
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # Pre-computed hash of a throwaway password, used to keep login timing

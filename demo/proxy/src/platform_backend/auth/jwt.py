@@ -13,7 +13,6 @@ import jwt as pyjwt
 
 from ..config import get_settings
 
-
 _ALGO = "HS256"
 
 

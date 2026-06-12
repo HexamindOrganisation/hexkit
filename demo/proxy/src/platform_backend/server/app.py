@@ -14,7 +14,9 @@ from fastapi import FastAPI
 
 from .. import runtime_client
 from ..auth.implicit_user import seed_implicit_user
+from ..config import get_settings
 from ..db import Base, dispose_engine, init_engine
+from ..routes import auth as auth_routes
 from ..routes import chat as chat_routes
 from ..routes import conversations as conversations_routes
 from ..routes import files as files_routes
@@ -22,7 +24,6 @@ from ..routes import folders as folders_routes
 from ..routes import me as me_routes
 from ..routes import me_keys as me_keys_routes
 from ..routes import proxy as proxy_routes
-
 
 logger = logging.getLogger("platform_backend.server")
 
@@ -36,9 +37,10 @@ def create_app() -> FastAPI:
         if engine.url.get_backend_name() == "sqlite":
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
-        # Single-user: seed the one implicit account so every route's
-        # `current_user` resolves without auth. Idempotent upsert.
-        await seed_implicit_user()
+        # Dev convenience: seed a known account so a fresh DB has someone
+        # to log in as. Disable in production via PLATFORM_SEED_DEV_USER=false.
+        if get_settings().seed_dev_user:
+            await seed_implicit_user()
         runtime_client.init_client()
         logger.info("platform_backend ready")
         try:
@@ -48,8 +50,7 @@ def create_app() -> FastAPI:
             await dispose_engine()
 
     app = FastAPI(title="platform-backend", version="0.1.0", lifespan=lifespan)
-    # No auth router: v1 is single-user. auth/{jwt,passwords,deps}.py remain on
-    # disk, unwired, for the eventual return of multi-user.
+    app.include_router(auth_routes.router)
     app.include_router(me_routes.router)
     app.include_router(me_keys_routes.router)
     app.include_router(files_routes.router)

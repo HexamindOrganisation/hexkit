@@ -32,9 +32,14 @@ async def main():
                 buf += chunk
                 while b"\n\n" in buf:
                     frame, buf = buf.split(b"\n\n", 1)
-                    data = next((l[len("data:"):].strip()
-                                 for l in frame.decode().splitlines()
-                                 if l.startswith("data:")), None)
+                    data = next(
+                        (
+                            line[len("data:") :].strip()
+                            for line in frame.decode().splitlines()
+                            if line.startswith("data:")
+                        ),
+                        None,
+                    )
                     if not data:
                         continue
                     packet = json.loads(data)
