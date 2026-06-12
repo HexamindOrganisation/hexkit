@@ -21,8 +21,11 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
+from . import devops_state
 
-# ── Tools — stubs, verbatim from the upstream example ────────────────────────
+
+# ── Tools — stubs from the upstream example; the write tools also update the
+#    shared service state so the UI panel reflects what the model just did. ────
 
 
 def read_logs(service: str, env: str) -> str:
@@ -40,6 +43,7 @@ def read_logs(service: str, env: str) -> str:
 
 def restart_service(service: str, env: str) -> str:
     """Restart `service` in environment `env` (one of dev/staging/prod)."""
+    devops_state.restart(service, env)
     return f"(stub) restarted {service}@{env} → rollout OPS-2210 complete"
 
 
@@ -50,6 +54,7 @@ def scale_deployment(service: str, replicas: int, env: str) -> str:
     gates this on BOTH the replica count (a per-role cap) and the env, so
     the same call can pass for one role and fail for another.
     """
+    devops_state.scale(service, replicas, env)
     return f"(stub) scaled {service}@{env} to {replicas} replicas → OPS-2211"
 
 
@@ -59,6 +64,7 @@ def delete_resource(name: str, env: str) -> str:
     Destructive and irreversible — the policy allows it only for the
     highest-privilege role and denies it outright for everyone else.
     """
+    devops_state.delete(name, env)
     return f"(stub) deleted {name}@{env} → OPS-2212"
 
 
