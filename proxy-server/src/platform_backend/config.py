@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PLATFORM_", extra="ignore")
 
     database_url: str = Field(
-        default="postgresql+asyncpg://platform:platform@127.0.0.1:5432/platform",
+        default="postgresql+asyncpg://platform:platform@127.0.0.1:5433/platform",
         description="Async SQLAlchemy URL for the primary database.",
     )
     jwt_secret: str = Field(

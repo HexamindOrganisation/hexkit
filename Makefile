@@ -40,10 +40,10 @@ dev: ## Backends + frontend together. Ctrl-C tears down both.
 	 bash demo/scripts/run-backends.sh & \
 	 cd front-app && npm run dev
 
-demo: ## Brand-new user, one command: setup → register agents on HexGate → run everything.
+demo: ## Brand-new user, one command: setup → register agents on HexGate → run everything (real LLM replies on; add your provider key in the UI under Settings → Keys).
 	$(MAKE) setup
 	$(MAKE) register
-	$(MAKE) dev
+	AGENT_ENABLE_LLM=1 $(MAKE) dev
 
 # -- hexgate ----------------------------------------------------------------
 install-hexgate: ## Ensure the agent-server venv is Python 3.13 with the hexgate extra (idempotent).

@@ -72,10 +72,11 @@ Open <http://localhost:8873>.
 
 1. Loading the app redirects you to **/login** (the route guard fires).
 2. Log in as one of the demo accounts (all share the same password, `hexademo`):
-   - `dev01@hexamind.ai` (admin), `alice@example.com` (billing),
-     `bob@example.com` (support), `carol@example.com` (no role)
-   - `dana@example.com` (nurse) and `erin@example.com` (doctor) — healthcare roles
-   - `frank@example.com` (viewer) and `grace@example.com` (operator) — devops roles
+   - `guest@example.com` (no role) — exercises the fail-closed `default` (deny)
+   - `vince@hexamind.ai` (viewer), `olivia@hexamind.ai` (operator),
+     `aaron@hexamind.ai` (admin) — devops roles
+   - `nadia@clinic.org` (nurse), `priya@clinic.org` (physician),
+     `bianca@clinic.org` (billing_staff) — healthcare roles
 
    The `role` only matters for HexGate-gated agents (healthcare / devops with
    `HEXGATE_KEY` set), where it scopes the per-tool policy. The accounts come
@@ -137,7 +138,7 @@ lsof -i :8873   # front-app
 
 **Database feels stale.** The default SQLite file lives at `/tmp/hexa_dev.sqlite` — delete it to reset all conversations and users.
 
-**`no such column` / schema errors after a pull.** The proxy brings the SQLite schema to head via Alembic migrations on startup, so a pull that changes the schema is normally picked up on restart. The exception is a SQLite file created before this behavior existed (tables present, no `alembic_version` table): the first migration fails with "table already exists". Fix it once with `rm /tmp/hexa_dev.sqlite` and restart. (Postgres is migrated out-of-band — run `cd demo/proxy && alembic upgrade head` after a schema-changing pull.)
+**`no such column` / schema errors after a pull.** The proxy brings the SQLite schema to head via Alembic migrations on startup, so a pull that changes the schema is normally picked up on restart. The exception is a SQLite file created before this behavior existed (tables present, no `alembic_version` table): the first migration fails with "table already exists". Fix it once with `rm /tmp/hexa_dev.sqlite` and restart. (Postgres is migrated out-of-band — run `cd proxy-server && alembic upgrade head` after a schema-changing pull.)
 
 ## Next steps
 

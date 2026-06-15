@@ -39,7 +39,7 @@ def _alembic_upgrade_head(database_url: str) -> None:
     from alembic import command
     from alembic.config import Config
 
-    proxy_root = Path(__file__).resolve().parents[3]  # …/demo/proxy
+    proxy_root = Path(__file__).resolve().parents[3]  # …/proxy-server
     cfg = Config(str(proxy_root / "alembic.ini"))
     cfg.set_main_option("script_location", str(proxy_root / "alembic"))
     cfg.set_main_option("sqlalchemy.url", database_url)
