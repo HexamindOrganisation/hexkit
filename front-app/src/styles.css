@@ -151,10 +151,10 @@ body {
 }
 
 /* ============================================================
-   File handling — ported from the HexaUI design handoff
-   (demo/design_handoff_file_handling). Tokens are scoped to `.hxf`
-   and mapped onto the shell's shadcn theme + the active agent accent,
-   so file UI recolors with the agent and stays the only color.
+   File handling — ported from the original HexaUI design handoff.
+   Tokens are scoped to `.hxf` and mapped onto the shell's shadcn theme
+   + the active agent accent, so file UI recolors with the agent and
+   stays the only color.
    ============================================================ */
 .hxf {
   --bg: hsl(var(--background));

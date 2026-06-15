@@ -29,7 +29,7 @@ product**, driven from a single variable (`page.main_color` → `--accent`).
                                 │ HTTP + SSE  (single origin)
                                 ▼
 ┌───────────────────────────────────────────────────────────────┐
-│  demo/proxy  (FastAPI)                                        │
+│  proxy-server  (FastAPI)                                      │
 │   JWT auth (argon2id) · conversations · folders · files       │
 │   · Fernet-encrypted per-user keys · per-framework            │
 │   translators normalize native events → hexa SSE schema       │
@@ -56,8 +56,10 @@ events; the **proxy translates** and the **UI renders from YAML**. See
 | Path | Purpose |
 |---|---|
 | [custom-UI/](custom-UI/) | The product's heart: a React + TS library that renders a configurable agent UI from YAML (`<AgentUI>` + 11 built-in widgets). Theme bridge, streaming chat, the actions/`data_source` system. |
-| [demo/](demo/) | The runnable reference stack: [`proxy/`](demo/proxy/) (platform backend), [`agent-server/`](demo/agent-server/) (a contract-conformant developer backend with 6 sample agents), [`hexgate-agent/`](demo/hexgate-agent/) (a standalone hexgate-wrapped backend), [`starter-agent/`](demo/starter-agent/) (a minimal **copy-me** backend — the whole contract in one file), [`packages/hexa-events/`](demo/packages/hexa-events/) (the internal event schema), [`scripts/`](demo/scripts/) (run + smoke checks, incl. the `verify_backend.py` conformance CLI). |
 | [front-app/](front-app/) | The HexaUI shell that consumes `custom-UI` and talks to the proxy. |
+| [proxy-server/](proxy-server/) | The platform backend (FastAPI): JWT auth, conversations, folders, files, Fernet-encrypted per-user keys, and the per-framework translators that normalize native events into the hexa SSE schema. Import package stays `platform_backend`. |
+| [packages/hexa-events/](packages/hexa-events/) | The internal event schema package consumed by the proxy (a local path dependency). |
+| [demo/](demo/) | The runnable reference backends: [`agent-server/`](demo/agent-server/) (a contract-conformant developer backend with 6 sample agents), [`hexgate-agent/`](demo/hexgate-agent/) (a standalone hexgate-wrapped backend), [`starter-agent/`](demo/starter-agent/) (a minimal **copy-me** backend — the whole contract in one file), and [`scripts/`](demo/scripts/) (run + smoke checks, incl. the `verify_backend.py` conformance CLI). |
 | [legacy/](legacy/) | The dropped unified-runtime backend (`backend-runtime`), kept for reference. Not part of the live product. |
 | [demo/CONTRACT.md](demo/CONTRACT.md) | The developer contract — the one document an integrator reads. |
 
@@ -75,10 +77,15 @@ make dev          # backends + frontend together; Ctrl-C tears down both
 Open <http://localhost:8873>. The app redirects to **`/login`**. Sign in as
 one of the demo accounts (all share the password `hexademo`):
 
-- `dev01@hexamind.ai` (admin)
-- `alice@example.com` (billing)
-- `bob@example.com` (support)
-- `carol@example.com` (no role)
+- `dev01@hexamind.ai` (admin — full access on healthcare + devops)
+- `alice@example.com` (billing — healthcare billing)
+- `bob@example.com` (support — customer-support policy)
+- `carol@example.com` (no role — exercises the no-role path)
+- `dana@example.com` (nurse — healthcare) · `erin@example.com` (doctor — healthcare)
+- `frank@example.com` (viewer — devops) · `grace@example.com` (operator — devops)
+
+The `role` only changes behavior when an agent is HexGate-gated (healthcare /
+devops with `HEXGATE_KEY` set); it scopes that agent's per-tool policy.
 
 Or sign up a fresh account at `/signup`. The demo accounts come from
 [`demo-users.yaml`](demo-users.yaml), upserted on startup when
@@ -167,8 +174,8 @@ cd custom-UI && npm install && npm test && npm run build
 cd front-app && npm install && npx tsc --noEmit && npx vite build
 
 # Backend contract smoke checks
-PYTHONPATH=demo/proxy/src:demo/agent-server/src:demo/packages/hexa-events/src \
-  demo/proxy/.venv/bin/python demo/scripts/e2e_check.py
+PYTHONPATH=proxy-server/src:demo/agent-server/src:packages/hexa-events/src \
+  proxy-server/.venv/bin/python demo/scripts/e2e_check.py
 ```
 
 See [demo/scripts/README.md](demo/scripts/README.md) for all smoke checks and

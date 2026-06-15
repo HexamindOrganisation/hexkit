@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-export PLATFORM_FERNET_KEY="${PLATFORM_FERNET_KEY:-$(demo/proxy/.venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
+export PLATFORM_FERNET_KEY="${PLATFORM_FERNET_KEY:-$(proxy-server/.venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
 export PLATFORM_DATABASE_URL="${PLATFORM_DATABASE_URL:-sqlite+aiosqlite:////tmp/hexa_dev.sqlite}"
 # Pre-create the demo users (alice@example.com, bob@example.com, …) on
 # first boot so the demo has populated accounts to log into. Idempotent —
@@ -32,8 +32,8 @@ PYTHONPATH=demo/agent-server/src \
   demo/agent-server/.venv/bin/python -m agent_server &
 
 echo "starting proxy :8800 (sqlite: $PLATFORM_DATABASE_URL) …"
-PYTHONPATH=demo/proxy/src:demo/packages/hexa-events/src \
-  demo/proxy/.venv/bin/python -m platform_backend &
+PYTHONPATH=proxy-server/src:packages/hexa-events/src \
+  proxy-server/.venv/bin/python -m platform_backend &
 
 echo "both up. open the web app with: (in front-app)  npm run dev  →  http://localhost:8873"
 echo "Ctrl-C to stop both."

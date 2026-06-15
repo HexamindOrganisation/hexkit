@@ -13,8 +13,8 @@
         clean clean-venvs clean-node
 
 # -- shared paths -----------------------------------------------------------
-PROXY_PY      := demo/proxy/.venv/bin/python
-PROXY_PATH    := demo/proxy/src:demo/packages/hexa-events/src
+PROXY_PY      := proxy-server/.venv/bin/python
+PROXY_PATH    := proxy-server/src:packages/hexa-events/src
 AGENT_PY      := demo/agent-server/.venv/bin/python
 AGENT_PATH    := demo/agent-server/src
 HEXGATE       := demo/agent-server/.venv/bin/hexgate
@@ -64,14 +64,14 @@ register: install-hexgate ## Register the healthcare + devops agents on the HexG
 
 # -- test -------------------------------------------------------------------
 test: ## Run the proxy test suite.
-	cd demo/proxy && PYTHONPATH=$(PROXY_PATH) .venv/bin/python -m pytest
+	cd proxy-server && PYTHONPATH=$(PROXY_PATH) .venv/bin/python -m pytest
 
 # -- lint / format ----------------------------------------------------------
 lint: ## ruff check across every Python package in the repo (shared ruff.toml).
-	demo/proxy/.venv/bin/ruff check .
+	proxy-server/.venv/bin/ruff check .
 
 format: ## ruff format across every Python package.
-	demo/proxy/.venv/bin/ruff format .
+	proxy-server/.venv/bin/ruff format .
 
 typecheck: ## tsc --noEmit on custom-UI and front-app.
 	cd custom-UI && npm run typecheck
@@ -83,7 +83,7 @@ check: lint test typecheck ## Run lint + test + typecheck — the same gates CI 
 clean: clean-venvs clean-node ## Remove all generated artifacts.
 
 clean-venvs: ## Remove Python virtual environments.
-	rm -rf demo/proxy/.venv demo/agent-server/.venv
+	rm -rf proxy-server/.venv demo/agent-server/.venv
 
 clean-node: ## Remove node_modules + custom-UI build output.
 	rm -rf custom-UI/node_modules custom-UI/dist front-app/node_modules

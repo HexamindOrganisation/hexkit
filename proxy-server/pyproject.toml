@@ -39,4 +39,4 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/platform_backend"]
 
-# Ruff config is shared at the repo root (Agent-Package/ruff.toml).
+# Ruff config is shared at the repo root (HexUI/ruff.toml).

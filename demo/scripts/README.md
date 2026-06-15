@@ -9,13 +9,13 @@ First-time setup (creates the venvs from the pyprojects; needs [`uv`](https://do
 bash demo/scripts/setup.sh
 ```
 
-Run with a Python that has the proxy deps (the WSL `demo/proxy/.venv`) and the
-demo `src` dirs on `PYTHONPATH`:
+Run with a Python that has the proxy deps (the WSL `proxy-server/.venv`) and the
+`src` dirs on `PYTHONPATH`:
 
 ```bash
 cd <repo>
-PYBIN=demo/proxy/.venv/bin/python
-PYTHONPATH=demo/proxy/src:demo/agent-server/src:demo/packages/hexa-events/src
+PYBIN=proxy-server/.venv/bin/python
+PYTHONPATH=proxy-server/src:demo/agent-server/src:packages/hexa-events/src
 ```
 
 ## `verify_backend.py` — conformance checker for *your* backend (live URL)
@@ -63,8 +63,8 @@ connection. It hits the agent-server directly (which speaks the minimal format),
 so it parses `data:` JSON `type` fields. Start the agent-server first, then run:
 
 ```bash
-PYTHONPATH=demo/agent-server/src:demo/packages/hexa-events/src $PYBIN -m agent_server &   # :8880
-PYTHONPATH=demo/agent-server/src:demo/packages/hexa-events/src $PYBIN demo/scripts/cancel_check.py
+PYTHONPATH=demo/agent-server/src:packages/hexa-events/src $PYBIN -m agent_server &   # :8880
+PYTHONPATH=demo/agent-server/src:packages/hexa-events/src $PYBIN demo/scripts/cancel_check.py
 ```
 
 Covers: `POST /agents/{id}/cancel {run_id}` stops the run mid-stream, returns

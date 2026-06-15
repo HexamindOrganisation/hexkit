@@ -8,7 +8,7 @@
 >
 > The reference implementation in [`agent-server/`](agent-server/) demonstrates
 > every supported framework; the proxy-side translators live in
-> [`proxy/.../translators/`](proxy/src/platform_backend/translators/).
+> [`proxy-server/.../translators/`](../proxy-server/src/platform_backend/translators/).
 
 ---
 
@@ -168,10 +168,10 @@ framework's native streaming events:
 
 | `framework` | Native stream you forward | Reference |
 |---|---|---|
-| `langchain` / `langgraph` / `deepagents` | `runnable.astream_events(version="v2")` events | [`translators/langchain.py`](proxy/src/platform_backend/translators/langchain.py) |
-| `openai-agents` | `Runner.run_streamed(...).stream_events()` items | [`translators/openai_agents.py`](proxy/src/platform_backend/translators/openai_agents.py) |
-| `google-adk` | `Runner.run_async(...)` `Event`s | [`translators/google_adk.py`](proxy/src/platform_backend/translators/google_adk.py) |
-| `native` | **the escape hatch** — already-normalized minimal events (below) | [`translators/native.py`](proxy/src/platform_backend/translators/native.py) |
+| `langchain` / `langgraph` / `deepagents` | `runnable.astream_events(version="v2")` events | [`translators/langchain.py`](../proxy-server/src/platform_backend/translators/langchain.py) |
+| `openai-agents` | `Runner.run_streamed(...).stream_events()` items | [`translators/openai_agents.py`](../proxy-server/src/platform_backend/translators/openai_agents.py) |
+| `google-adk` | `Runner.run_async(...)` `Event`s | [`translators/google_adk.py`](../proxy-server/src/platform_backend/translators/google_adk.py) |
+| `native` | **the escape hatch** — already-normalized minimal events (below) | [`translators/native.py`](../proxy-server/src/platform_backend/translators/native.py) |
 
 Native event shapes each translator understands (the JSON projection — the
 reference [`agents/demos.py`](agent-server/src/agent_server/agents/demos.py)
@@ -226,7 +226,7 @@ For each run the proxy:
 - persists user + assistant messages (with `run_id`), bumps `updated_at`,
   auto-titles new conversations.
 
-The rich internal schema is the proxy-internal [`hexa-events`](packages/hexa-events/)
+The rich internal schema is the proxy-internal [`hexa-events`](../packages/hexa-events/)
 package; developers never see or depend on it.
 
 ---

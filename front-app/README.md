@@ -2,7 +2,7 @@
 
 The **HexaUI shell** — the user-facing web app. It wraps the
 [`agent-ui`](../custom-UI/) library (`<AgentUI>`, rendered from each agent's
-`ui.yaml`) in constant chrome and talks to the [proxy](../demo/proxy/) over
+`ui.yaml`) in constant chrome and talks to the [proxy](../proxy-server/) over
 HTTP + SSE through a single origin (`/api/*`).
 
 ```
@@ -15,7 +15,7 @@ HTTP + SSE through a single origin (`/api/*`).
 │   greeting (empty state) → chat: transcript + composer        │
 └──────────────────────────────────────────────────────────────┘
                               │  Vite proxy /api/* → http://127.0.0.1:8800
-                              ▼                         (demo/proxy)
+                              ▼                         (proxy-server)
 ```
 
 Single-user: no login. The active agent's `main_color` is the only accent in
