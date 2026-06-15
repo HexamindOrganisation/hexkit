@@ -7,7 +7,6 @@ disposed on shutdown.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,7 +16,7 @@ from fastapi import FastAPI
 from .. import runtime_client
 from ..auth.demo_users import DemoUsersError, load_demo_users
 from ..config import get_settings
-from ..db import dispose_engine, init_engine
+from ..db import Base, dispose_engine, init_engine
 from ..routes import auth as auth_routes
 from ..routes import chat as chat_routes
 from ..routes import conversations as conversations_routes
@@ -30,33 +29,15 @@ from ..routes import proxy as proxy_routes
 logger = logging.getLogger("platform_backend.server")
 
 
-def _alembic_upgrade_head(database_url: str) -> None:
-    """Bring `database_url` to the latest revision using the project's Alembic
-    migrations. Runs synchronously (Alembic spins its own loop), so call it via
-    `asyncio.to_thread` from the async lifespan. Paths are resolved absolutely
-    so it works regardless of the process's working directory.
-    """
-    from alembic import command
-    from alembic.config import Config
-
-    proxy_root = Path(__file__).resolve().parents[3]  # …/demo/proxy
-    cfg = Config(str(proxy_root / "alembic.ini"))
-    cfg.set_main_option("script_location", str(proxy_root / "alembic"))
-    cfg.set_main_option("sqlalchemy.url", database_url)
-    command.upgrade(cfg, "head")
-
-
 def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         engine = init_engine()
-        # SQLite (zero-infra dev path) migrates to head on startup; Postgres is
-        # migrated out-of-band by design.
+        # Dev convenience: on SQLite, create tables on startup so the demo runs
+        # with zero infra (no Postgres/Alembic). Postgres still uses migrations.
         if engine.url.get_backend_name() == "sqlite":
-            await asyncio.to_thread(
-                _alembic_upgrade_head,
-                engine.url.render_as_string(hide_password=False),
-            )
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
         # Optional: upsert pre-defined demo accounts from a YAML file so a
         # fresh DB ships with a handful of users ready to log in (Alice the
         # billing-role, Bob the support-role, etc.). Opt-in via

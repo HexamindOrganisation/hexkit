@@ -10,44 +10,55 @@
 #
 # `role` is optional and opaque: hexgate-wrapped agents read it via
 # `User(role=...)`. HexUI itself never interprets the string — every team
-# defines their own role vocabulary in their hexgate policy. A role only
-# means something to the agent whose policy defines it; talking to the other
-# agent falls through to that policy's fail-closed `default` (deny).
+# defines their own role vocabulary in their hexgate policy. The role string
+# MUST match a role in the loaded policy, or the call falls through to the
+# policy's default (most-restricted) path.
 #
-# Password is `hexademo` for everyone (min length is 8).
+# Role vocabularies for the agent-server showcase agents (gated when
+# HEXGATE_KEY is set):
+#   - healthcare (clinical assistant): nurse, doctor, billing, admin
+#       nurse   → read records/labs, order tests; prescribe/share gated
+#       doctor  → prescribe + clinical actions
+#       billing → get_billing_summary only
+#       admin   → full access incl. external share_record
+#   - devops (infra assistant): viewer < operator < admin
+#       viewer   → read_logs only; scale/delete denied
+#       operator → scale_deployment within a per-role cap; delete denied
+#       admin    → everything, incl. delete_resource
 users:
+  - email: dev01@hexamind.ai
+    password: hexademo
+    name: Dev One
+    role: admin            # healthcare admin + devops admin (full access on both)
+  - email: alice@example.com
+    password: hexademo
+    name: Alice Anderson
+    role: billing          # healthcare billing (also the customer-support policy's billing role)
+  - email: bob@example.com
+    password: hexademo
+    name: Bob Brown
+    role: support          # customer-support policy role
+  - email: carol@example.com
+    password: hexademo
+    name: Carol Carter
+    # role omitted on purpose — exercises the no-role path through to the agent
 
-  # ── No role ── exercises the fail-closed `default` (deny) path on both agents
-  - email: guest@example.com
+  # --- healthcare showcase ---
+  - email: dana@example.com
     password: hexademo
-    name: Sam Guest
-    # role omitted on purpose
+    name: Dana Doyle
+    role: nurse            # healthcare: read/order allowed, prescribe + share gated
+  - email: erin@example.com
+    password: hexademo
+    name: Erin Ellis
+    role: doctor           # healthcare: prescribe allowed (change to "physician" if your policy uses that)
 
-  # ── DevOps agent ── roles: viewer < operator < admin (devops_policy.yaml)
-  - email: vince@hexamind.ai
+  # --- devops showcase ---
+  - email: frank@example.com
     password: hexademo
-    name: Vince Reilly        # read service logs only
-    role: viewer
-  - email: olivia@hexamind.ai
+    name: Frank Foster
+    role: viewer           # devops: read_logs only; scale/delete denied
+  - email: grace@example.com
     password: hexademo
-    name: Olivia Park         # restart/scale in dev & staging (replicas <= 10); prod walled off
-    role: operator
-  - email: aaron@hexamind.ai
-    password: hexademo
-    name: Aaron Mensah        # full ops incl. prod, higher cap, the only role that can delete
-    role: admin
-
-  # ── Healthcare agent ── roles: nurse, physician, billing_staff (healthcare_policy.yaml)
-  - email: nadia@clinic.org
-    password: hexademo
-    name: Nadia               # clinical reads + order labs; cannot prescribe or share PHI
-    role: nurse
-  - email: priya@clinic.org
-    password: hexademo
-    name: Priya               # full clinical authority; controlled meds gated, PHI shares only to allowlisted domains
-    role: physician
-  - email: bianca@clinic.org
-    password: hexademo
-    name: Bianca              # billing/claims lookups only; clinical data walled off
-    role: billing_staff
-
+    name: Grace Green
+    role: operator         # devops: scale within cap; delete_resource denied

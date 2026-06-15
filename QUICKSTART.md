@@ -137,8 +137,6 @@ lsof -i :8873   # front-app
 
 **Database feels stale.** The default SQLite file lives at `/tmp/hexa_dev.sqlite` — delete it to reset all conversations and users.
 
-**`no such column` / schema errors after a pull.** The proxy brings the SQLite schema to head via Alembic migrations on startup, so a pull that changes the schema is normally picked up on restart. The exception is a SQLite file created before this behavior existed (tables present, no `alembic_version` table): the first migration fails with "table already exists". Fix it once with `rm /tmp/hexa_dev.sqlite` and restart. (Postgres is migrated out-of-band — run `cd demo/proxy && alembic upgrade head` after a schema-changing pull.)
-
 ## Next steps
 
 - Read [`demo/CONTRACT.md`](demo/CONTRACT.md) for the deeper architecture (event schema, agent contract, framework translators).
