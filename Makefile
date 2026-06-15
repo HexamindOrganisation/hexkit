@@ -26,10 +26,10 @@ setup: ## Bootstrap a fresh clone: venvs, custom-UI build, front-app npm install
 	bash demo/scripts/setup.sh
 
 # -- run --------------------------------------------------------------------
-backends: ## Start agent-server (:8080) + proxy (:8000). Foreground; Ctrl-C stops both.
+backends: ## Start agent-server (:8880) + proxy (:8800). Foreground; Ctrl-C stops both.
 	bash demo/scripts/run-backends.sh
 
-frontend: ## Start the Vite dev server (:5173).
+frontend: ## Start the Vite dev server (:8873).
 	cd front-app && npm run dev
 
 dev: ## Backends + frontend together. Ctrl-C tears down both.

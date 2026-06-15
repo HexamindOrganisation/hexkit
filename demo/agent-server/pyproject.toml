@@ -24,12 +24,9 @@ dev = [
     "ruff>=0.6",
 ]
 # Opt-in HexGate wrapping (enabled by setting HEXGATE_KEY). Not in the default setup.sh;
-# needs Python >=3.13 and the sibling hexgate checkout. Without it, the plain
-# healthcare path still works.
-hexgate = ["hexgate"]
-
-[tool.uv.sources]
-hexgate = { path = "../../../hexgate", editable = true }  # path relative to this file
+# needs Python >=3.13 (the hexgate floor). Without it, the plain healthcare path
+# still works.
+hexgate = ["hexgate>=0.2"]
 
 [build-system]
 requires = ["hatchling"]

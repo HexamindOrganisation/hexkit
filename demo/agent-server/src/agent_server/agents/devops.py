@@ -41,7 +41,14 @@ class DevopsAgent:
         text = protocol.last_user_text(input)
         # HexGate-gated path whenever HexGate is configured; plain ADK otherwise.
         if os.getenv("HEXGATE_KEY"):
-            events = devops_agent.stream_as(text, role=os.getenv("HEXGATE_ROLE", "operator"))
+            # Scope policy decisions to the signed-in HexUI user. `id` / `role`
+            # ride in `context.user` (CONTRACT.md §5); fall back to the static
+            # demo identity and HEXGATE_ROLE for standalone runs that send no
+            # user block.
+            caller = protocol.caller(context)
+            user_id = caller.get("id") or "hexui-demo"
+            role = caller.get("role") or os.getenv("HEXGATE_ROLE", "operator")
+            events = devops_agent.stream_as(text, user_id=user_id, role=role)
         else:
             events = devops_agent.stream(text)
 

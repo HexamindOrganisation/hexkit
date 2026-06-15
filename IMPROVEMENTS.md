@@ -131,7 +131,7 @@ Tokens live in `localStorage`. XSS-vulnerable. For a production app, move to htt
 ### What exists
 - [README.md](README.md) — high-level pitch.
 - [QUICKSTART.md](QUICKSTART.md) — local run guide.
-- [demo/README.md](demo/README.md), [custom-UI/README.md](custom-UI/README.md) — per-package docs.
+- [demo/CONTRACT.md](demo/CONTRACT.md), [custom-UI/README.md](custom-UI/README.md) — the developer contract + UI library docs.
 
 ### What's missing
 - **`ARCHITECTURE.md`** at the root: how proxy ↔ agent-server ↔ frontend talk, the SSE event schema, the YAML UI contract.

@@ -7,9 +7,9 @@ This guide gets you from a fresh clone to a working chat with a demo agent in yo
 Three services talk to each other:
 
 ```
-front-app (Vite, :5173)
-   └─→ proxy (FastAPI, :8000)        platform backend: conversations, files, auth
-          └─→ agent-server (FastAPI, :8080)   serves demo agents (Probe, Orbit, Atlas, Forge)
+front-app (Vite, :8873)
+   └─→ proxy (FastAPI, :8800)        platform backend: conversations, files, auth
+          └─→ agent-server (FastAPI, :8880)   serves demo agents (Probe, Orbit, Atlas, Forge, Healthcare, DevOps)
                  └─→ OpenAI / Google APIs (optional — needs keys for real LLM replies)
 ```
 
@@ -22,7 +22,7 @@ Without API keys the agents reply with an echo placeholder. That's fine for a fi
 
 ## One-time setup
 
-From the repo root (`Agent-Package/`):
+From the repo root (`HexUI/`):
 
 ```bash
 make setup
@@ -38,7 +38,7 @@ Easiest path — one command, one terminal:
 make dev
 ```
 
-That launches the agent-server (:8080), proxy (:8000) and Vite dev server (:5173) together; `Ctrl-C` tears everything down. Run `make help` to see all available targets (lint, test, typecheck, …).
+That launches the agent-server (:8880), proxy (:8800) and Vite dev server (:8873) together; `Ctrl-C` tears everything down. Run `make help` to see all available targets (lint, test, typecheck, …).
 
 ### Two-terminal alternative
 
@@ -50,7 +50,7 @@ If you prefer to see each service's logs separately:
 bash demo/scripts/run-backends.sh
 ```
 
-This launches both the agent-server on `:8080` and the proxy on `:8000`, and cleans up on `Ctrl-C`.
+This launches both the agent-server on `:8880` and the proxy on `:8800`, and cleans up on `Ctrl-C`.
 
 To enable real LLM replies (instead of echo), prepend the env var:
 
@@ -66,7 +66,7 @@ You'll still need to add your `OPENAI_API_KEY` or `GOOGLE_API_KEY` in the app's 
 cd front-app && npm run dev
 ```
 
-Open <http://localhost:5173>.
+Open <http://localhost:8873>.
 
 ## What you should see
 
@@ -81,7 +81,7 @@ Open <http://localhost:5173>.
    startup when `PLATFORM_DEMO_USERS_FILE` is set (the `make dev` launcher sets
    it for you). Or sign up a fresh account at **/signup**.
 3. The chat shell loads with an empty greeting.
-4. Click the agent picker in the top bar and choose **Probe** (or any of the four demo agents).
+4. Click the agent picker in the top bar and choose **Probe** (or any of the six demo agents — Probe, Orbit, Atlas, Forge, Healthcare, DevOps).
 5. Type a message and send.
 6. With `AGENT_ENABLE_LLM=1` and a key in Settings → a real LLM reply.
    Without → an echo of your message (this confirms the full pipeline works).
@@ -93,14 +93,16 @@ Open <http://localhost:5173>.
 If you want the minimum possible backend (a single "Echo" agent in ~150 lines, meant as a template for writing your own), use `demo/starter-agent` instead of `demo/agent-server`:
 
 ```bash
-cd Agent-Package/demo/starter-agent
+cd demo/starter-agent
 uv venv .venv
 uv pip install --python .venv -e '.[dev]'
 
-AGENT_HOST=127.0.0.1 AGENT_PORT=8080 .venv/bin/python -m starter_agent
+# starter-agent exposes create_app(); run it with uvicorn's factory flag.
+.venv/bin/uvicorn starter_agent.app:create_app --factory --host 127.0.0.1 --port 8880
 ```
 
-Then run the proxy and front-app as usual. The proxy talks to whatever is on `:8080`, so it doesn't care which one is there.
+Then run the proxy and front-app as usual. The proxy talks to whatever is on `:8880`
+(its default `PLATFORM_AGENT_BACKEND_URL`), so it doesn't care which backend is there.
 
 ## Configuration
 
@@ -108,23 +110,23 @@ Defaults work out-of-the-box. The variables you might touch:
 
 | Variable | Default | Where |
 |---|---|---|
-| `AGENT_PORT` | `8080` | agent-server / starter-agent |
+| `AGENT_PORT` | `8880` | agent-server / starter-agent |
 | `AGENT_ENABLE_LLM` | unset (echo mode) | agent-server |
-| `PLATFORM_PORT` | `8000` | proxy |
+| `PLATFORM_PORT` | `8800` | proxy |
 | `PLATFORM_DATABASE_URL` | `sqlite+aiosqlite:////tmp/hexa_dev.sqlite` | proxy |
-| `PLATFORM_AGENT_BACKEND_URL` | `http://127.0.0.1:8080` | proxy → agent-server |
+| `PLATFORM_AGENT_BACKEND_URL` | `http://127.0.0.1:8880` | proxy → agent-server |
 | `PLATFORM_FERNET_KEY` | auto-generated | proxy (encrypts stored API keys) |
 
-The Vite dev server proxies `/api/*` → `http://127.0.0.1:8000`, so the frontend doesn't need its own env vars in the default setup.
+The Vite dev server proxies `/api/*` → `http://127.0.0.1:8800`, so the frontend doesn't need its own env vars in the default setup.
 
 ## Troubleshooting
 
 **Port already in use.** Find and kill the stale process:
 
 ```bash
-lsof -i :8080   # agent-server
-lsof -i :8000   # proxy
-lsof -i :5173   # front-app
+lsof -i :8880   # agent-server
+lsof -i :8800   # proxy
+lsof -i :8873   # front-app
 ```
 
 **`.venv` not found.** Re-run `bash demo/scripts/setup.sh`.
@@ -135,6 +137,6 @@ lsof -i :5173   # front-app
 
 ## Next steps
 
-- Read [`demo/README.md`](demo/README.md) for the deeper architecture (event schema, agent contract, framework translators).
+- Read [`demo/CONTRACT.md`](demo/CONTRACT.md) for the deeper architecture (event schema, agent contract, framework translators).
 - Read [`custom-UI/README.md`](custom-UI/README.md) to understand how each agent's `ui.yaml` becomes a rendered chat surface.
 - Copy `demo/starter-agent` and modify it to plug in your own agent backend.

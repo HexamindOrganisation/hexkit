@@ -56,11 +56,10 @@ events; the **proxy translates** and the **UI renders from YAML**. See
 | Path | Purpose |
 |---|---|
 | [custom-UI/](custom-UI/) | The product's heart: a React + TS library that renders a configurable agent UI from YAML (`<AgentUI>` + 11 built-in widgets). Theme bridge, streaming chat, the actions/`data_source` system. |
-| [demo/](demo/) | The runnable reference stack: [`proxy/`](demo/proxy/) (platform backend), [`agent-server/`](demo/agent-server/) (a contract-conformant developer backend with 4 sample agents), [`starter-agent/`](demo/starter-agent/) (a minimal **copy-me** backend — the whole contract in one file), [`packages/hexa-events/`](demo/packages/hexa-events/) (the internal event schema), [`scripts/`](demo/scripts/) (run + smoke checks, incl. the `verify_backend.py` conformance CLI). |
+| [demo/](demo/) | The runnable reference stack: [`proxy/`](demo/proxy/) (platform backend), [`agent-server/`](demo/agent-server/) (a contract-conformant developer backend with 6 sample agents), [`hexgate-agent/`](demo/hexgate-agent/) (a standalone hexgate-wrapped backend), [`starter-agent/`](demo/starter-agent/) (a minimal **copy-me** backend — the whole contract in one file), [`packages/hexa-events/`](demo/packages/hexa-events/) (the internal event schema), [`scripts/`](demo/scripts/) (run + smoke checks, incl. the `verify_backend.py` conformance CLI). |
 | [front-app/](front-app/) | The HexaUI shell that consumes `custom-UI` and talks to the proxy. |
 | [legacy/](legacy/) | The dropped unified-runtime backend (`backend-runtime`), kept for reference. Not part of the live product. |
 | [demo/CONTRACT.md](demo/CONTRACT.md) | The developer contract — the one document an integrator reads. |
-| [demo/HANDOFF.md](demo/HANDOFF.md) | Implementation handoff / architecture notes. |
 
 ---
 
@@ -73,7 +72,7 @@ make setup        # one-time: Python venvs + custom-UI build + front-app npm ins
 make dev          # backends + frontend together; Ctrl-C tears down both
 ```
 
-Open <http://localhost:5173>. The app redirects to **`/login`**. Sign in as
+Open <http://localhost:8873>. The app redirects to **`/login`**. Sign in as
 one of the demo accounts (all share the password `hexademo`):
 
 - `dev01@hexamind.ai` (admin)
@@ -104,6 +103,8 @@ The bundled agents demonstrate the contract end to end:
 | **Orbit** | `google-adk` (Gemini) | a real LLM **plus** the widget actions + `data_source` workspace |
 | **Atlas** | `langchain` | the LangChain translator (canned native events) |
 | **Forge** | `openai-agents` | the OpenAI Agents translator (canned native events) |
+| **Healthcare** | `openai-agents` (OpenAI) | a real clinical-assistant agent; HexGate-gated when `HEXGATE_KEY` is set, scoping per-tool policy to the caller's `context.user` role |
+| **DevOps** | `google-adk` (OpenAI via LiteLLM) | a real infra-assistant agent; HexGate-gated when `HEXGATE_KEY` is set, scoping per-tool policy to the caller's `context.user` role |
 | **Hexgate Guard** | `hexgate` | a hexgate-wrapped agent that opens `User(user_id, role)` per run and emits audit decisions to the hexgate cloud (separate backend at [`demo/hexgate-agent/`](demo/hexgate-agent/)) |
 
 ---
@@ -145,11 +146,11 @@ the fewest moving parts that still pass conformance.
 The top-level [Makefile](Makefile) wraps the most common loops:
 
 ```bash
-make test         # proxy test suite (skips known-broken chat/proxy tests — see IMPROVEMENTS.md §1)
-make test-all     # every proxy test, including the known-broken ones
-make lint         # ruff check on demo/proxy and demo/agent-server
-make format       # ruff format on both
+make test         # proxy test suite
+make lint         # ruff check across every Python package (shared ruff.toml)
+make format       # ruff format across every Python package
 make typecheck    # tsc --noEmit on custom-UI and front-app
+make check        # lint + test + typecheck — the same gates CI enforces
 make clean        # wipe venvs and node_modules
 ```
 

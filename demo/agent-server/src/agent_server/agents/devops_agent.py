@@ -118,14 +118,19 @@ async def stream(text: str) -> AsyncIterator[Any]:
         yield event
 
 
-async def stream_as(text: str, *, role: str) -> AsyncIterator[Any]:
-    """Same as :func:`stream`, but through HexGate as ``role`` — every tool call is
-    policy-gated. ``HexgateRunner`` reads ``HEXGATE_KEY`` from the environment.
+async def stream_as(text: str, *, user_id: str, role: str) -> AsyncIterator[Any]:
+    """Same as :func:`stream`, but through HexGate as ``user_id`` / ``role`` —
+    every tool call is policy-gated against the calling user. The caller's
+    ``role`` (viewer < operator < admin) is what flips each decision.
+    ``HexgateRunner`` reads ``HEXGATE_KEY`` from the environment.
+
+    ``user_id`` and ``role`` come from the HexUI caller (``context.user``); the
+    wrapper in ``devops.py`` resolves them.
     """
     from hexgate.adapters.google import HexgateRunner
     from hexgate.runtime import User
 
-    user = User(user_id=_USER_ID, session_id=_SESSION_ID, role=role)
+    user = User(user_id=user_id, session_id=_SESSION_ID, role=role)
     session_service = InMemorySessionService()
     await session_service.create_session(
         app_name=_APP_NAME, user_id=user.user_id, session_id=user.session_id

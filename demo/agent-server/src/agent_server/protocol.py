@@ -78,3 +78,16 @@ def last_user_text(input: dict[str, Any]) -> str:
             if isinstance(msg, dict) and msg.get("role") == "user":
                 return str(msg.get("content", ""))
     return ""
+
+
+def caller(context: dict[str, Any]) -> dict[str, Any]:
+    """Caller identity from ``context.user`` (CONTRACT.md §5).
+
+    The proxy forwards the signed-in user as ``context.user = {id, name, role}``
+    (any value may be ``None``). Policy-aware backends use it to scope per-call
+    decisions to the calling user — see the HexGate-gated ``healthcare`` /
+    ``devops`` agents, which read ``id`` and ``role`` here. Returns an empty dict
+    when no user block was sent (standalone ``python -m`` runs, older proxies),
+    so callers fall back to their own defaults.
+    """
+    return (context or {}).get("user") or {}

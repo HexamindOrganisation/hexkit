@@ -108,14 +108,18 @@ async def stream(input: Any) -> AsyncIterator[Any]:
         yield event
 
 
-async def stream_as(input: Any, *, role: str) -> AsyncIterator[Any]:
-    """Same as :func:`stream`, but through HexGate as ``role`` — every tool call is
-    policy-gated.
+async def stream_as(input: Any, *, user_id: str, role: str) -> AsyncIterator[Any]:
+    """Same as :func:`stream`, but through HexGate as ``user_id`` / ``role`` —
+    every tool call is policy-gated against the calling user.
+
+    ``user_id`` and ``role`` come from the HexUI caller (``context.user``); the
+    wrapper in ``healthcare.py`` resolves them. Policy decisions and audit events
+    are tagged with this identity.
     """
     from hexgate.adapters.openai import HexgateRunner
     from hexgate.runtime import User
 
-    user = User(user_id="hexui-demo", session_id="hexui-demo-healthcare", role=role)
+    user = User(user_id=user_id, session_id="hexui-demo-healthcare", role=role)
     result = HexgateRunner().run_streamed(agent, input, user=user)
     async for event in result.stream_events():
         yield event
