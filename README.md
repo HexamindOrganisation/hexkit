@@ -77,10 +77,15 @@ make dev          # backends + frontend together; Ctrl-C tears down both
 Open <http://localhost:8873>. The app redirects to **`/login`**. Sign in as
 one of the demo accounts (all share the password `hexademo`):
 
-- `dev01@hexamind.ai` (admin)
-- `alice@example.com` (billing)
-- `bob@example.com` (support)
-- `carol@example.com` (no role)
+- `dev01@hexamind.ai` (admin — full access on healthcare + devops)
+- `alice@example.com` (billing — healthcare billing)
+- `bob@example.com` (support — customer-support policy)
+- `carol@example.com` (no role — exercises the no-role path)
+- `dana@example.com` (nurse — healthcare) · `erin@example.com` (doctor — healthcare)
+- `frank@example.com` (viewer — devops) · `grace@example.com` (operator — devops)
+
+The `role` only changes behavior when an agent is HexGate-gated (healthcare /
+devops with `HEXGATE_KEY` set); it scopes that agent's per-tool policy.
 
 Or sign up a fresh account at `/signup`. The demo accounts come from
 [`demo-users.yaml`](demo-users.yaml), upserted on startup when

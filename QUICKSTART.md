@@ -72,12 +72,14 @@ Open <http://localhost:8873>.
 
 1. Loading the app redirects you to **/login** (the route guard fires).
 2. Log in as one of the demo accounts (all share the same password, `hexademo`):
-   - `dev01@hexamind.ai` (admin)
-   - `alice@example.com` (billing)
-   - `bob@example.com` (support)
-   - `carol@example.com` (no role)
+   - `dev01@hexamind.ai` (admin), `alice@example.com` (billing),
+     `bob@example.com` (support), `carol@example.com` (no role)
+   - `dana@example.com` (nurse) and `erin@example.com` (doctor) — healthcare roles
+   - `frank@example.com` (viewer) and `grace@example.com` (operator) — devops roles
 
-   The accounts come from [`demo-users.yaml`](demo-users.yaml), upserted on
+   The `role` only matters for HexGate-gated agents (healthcare / devops with
+   `HEXGATE_KEY` set), where it scopes the per-tool policy. The accounts come
+   from [`demo-users.yaml`](demo-users.yaml), upserted on
    startup when `PLATFORM_DEMO_USERS_FILE` is set (the `make dev` launcher sets
    it for you). Or sign up a fresh account at **/signup**.
 3. The chat shell loads with an empty greeting.
