@@ -14,15 +14,7 @@ unblock the suite.
 from __future__ import annotations
 
 import asyncio
-import os
 from collections.abc import AsyncIterator
-
-from cryptography.fernet import Fernet
-
-# Provision the Fernet master key BEFORE platform_backend imports — its
-# Settings object is lru-cached at first read, so the env var must exist
-# by then. `setdefault` lets a developer override via the shell env.
-os.environ.setdefault("PLATFORM_FERNET_KEY", Fernet.generate_key().decode())
 
 import pytest
 import pytest_asyncio

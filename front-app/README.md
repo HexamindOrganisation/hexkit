@@ -44,7 +44,7 @@ to the platform backend; override with `PLATFORM_BACKEND_URL` if it's elsewhere.
 | `/` | Greeting (empty state) → chat once a message is sent (lazy conversation create) |
 | `/c/:id` | An existing conversation |
 | `/files` | The file library (upload / rename / delete; attach from the composer) |
-| `/settings` | Per-user API keys (Fernet-encrypted server-side) |
+| `/settings` | Profile: display name + optional hexgate `role` (provider keys live in the agent backend's env) |
 
 ## Layout
 

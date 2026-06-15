@@ -2,10 +2,9 @@
 
 Note how little it has to do: yield plain text chunks and a tool call. No run
 ids, no sequence numbers, no block lifecycle — the proxy synthesizes all of
-that. It word-chunks the last user message back, prefixed with
-``creds-present:{bool}`` so a smoke test can confirm the proxy forwarded the
-developer's secrets, then fires one sample tool call routed to the
-``tool-calls`` widget. Per-chunk sleeps make cancellation observable mid-stream.
+that. It word-chunks the last user message back, then fires one sample tool
+call routed to the ``tool-calls`` widget. Per-chunk sleeps make cancellation
+observable mid-stream.
 """
 
 from __future__ import annotations
@@ -31,8 +30,6 @@ class EchoAgent:
     ) -> AsyncIterator[dict]:
         query = protocol.last_user_text(input)
 
-        creds = (context or {}).get("credentials") or {}
-        present = bool(creds.get("openai_api_key"))
         files = (context or {}).get("files") or []
 
         # Echo a short content preview so it's visible the bytes actually arrived.
@@ -42,9 +39,9 @@ class EchoAgent:
             return f'{name}="{c[:60]}"' if c else f"{name}(binary)"
 
         files_note = (
-            " | files{ " + "; ".join(_preview(f) for f in files) + " }" if files else ""
+            "files{ " + "; ".join(_preview(f) for f in files) + " } | " if files else ""
         )
-        reply = f"creds-present:{present}{files_note} | echo: {query}".strip()
+        reply = f"{files_note}echo: {query}".strip()
 
         for word in reply.split(" "):
             await asyncio.sleep(_CHUNK_DELAY)

@@ -16,9 +16,6 @@ _db = os.path.join(tempfile.gettempdir(), "hexa_e2e.sqlite")
 if os.path.exists(_db):
     os.remove(_db)
 os.environ["PLATFORM_DATABASE_URL"] = f"sqlite+aiosqlite:///{_db}"
-from cryptography.fernet import Fernet  # noqa: E402
-
-os.environ["PLATFORM_FERNET_KEY"] = Fernet.generate_key().decode()
 
 import asyncio  # noqa: E402
 
@@ -85,15 +82,11 @@ check("GET /agents/probe/ui is text/yaml w/ main_color",
       r.status_code == 200 and r.headers["content-type"].startswith("text/yaml")
       and '#3f9d94' in r.text, f"{r.status_code}")
 
-# 2. keys
-check("PUT /me/keys/openai -> 204",
-      c.put("/me/keys/openai", json={"value": "sk-test"}).status_code == 204)
-
-# 3. per-framework: each agent's native stream normalizes to the SAME rich schema
+# 2. per-framework: each agent's native stream normalizes to the SAME rich schema
 EXPECTED = ["run_start", "block_start", "block_delta", "block_end",
             "tool_start", "tool_end", "run_end"]
 FRAMEWORKS = [
-    ("probe", "native", "creds-present:True"),
+    ("probe", "native", "echo: hello"),
     ("atlas", "langchain", "LangChain echo: hello"),
     ("forge", "openai-agents", "OpenAI echo: hello"),
     ("orbit", "google-adk", "ADK echo: hello"),

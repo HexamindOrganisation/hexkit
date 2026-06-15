@@ -71,17 +71,15 @@ async def run_agent(
 ) -> AsyncIterator[dict]:
     query = _last_user_text(input)
 
-    # context.credentials holds the user's decrypted secrets (flat
-    # `{provider}_api_key`). Use them only for this run; never persist or log.
-    creds = (context or {}).get("credentials") or {}
-    has_key = bool(creds.get("openai_api_key"))
+    # Provider API keys live in THIS backend's environment (e.g. OPENAI_API_KEY),
+    # never in the request — read them with os.getenv where you call your model.
 
     # context.files holds conversation attachments; `content` is decoded text
     # for text mimes, None for binary. Inline them into your prompt as needed.
     files = (context or {}).get("files") or []
     files_note = f" [{len(files)} file(s) attached]" if files else ""
 
-    reply = f"You said: {query}{files_note} (provider key forwarded: {has_key})"
+    reply = f"You said: {query}{files_note}"
 
     for word in reply.split(" "):
         if cancel.is_set():

@@ -39,8 +39,8 @@ hexgate's own envelope events and re-drives the emitter from the content events
   authenticates this backend to your hexgate cloud project. Per-request biscuit
   attenuation scopes each call down to the HexUI user, so one key serves all
   HexUI users.
-- **`OPENAI_API_KEY`** — either in the process env or per-user in HexUI Settings
-  (it arrives in `context.credentials.openai_api_key`).
+- **`OPENAI_API_KEY`** — read from this backend's process env. HexUI does not
+  send provider keys.
 
 ## Run it
 

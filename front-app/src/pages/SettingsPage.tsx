@@ -1,28 +1,21 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { updateMe } from "../api/auth";
-import { KeyPresence, listKeys, PROVIDERS } from "../api/keys";
 import { useAuth } from "../auth/AuthContext";
-import { KeyRow } from "../components/KeyRow";
 
 /**
- * Settings — display profile + per-user API keys.
+ * Settings — display profile.
  *
  * `role` is a free-text optional string forwarded to hexgate-wrapped agents
  * as `context.user.role`. HexUI never interprets it; the dev team picks the
  * vocabulary in their hexgate policy.
  *
- * Keys are stored encrypted on the server (Fernet) and never returned. Set
- * your OpenAI key to chat with a real model.
+ * Provider API keys are NOT configured here — the agent backend reads its own
+ * keys from its environment (see the backend's `.env`). HexUI never holds them.
  */
 export function SettingsPage() {
   const { user, setUser } = useAuth();
-  const keys = useQuery({ queryKey: ["me", "keys"], queryFn: listKeys });
-
-  const byProvider = new Map<string, KeyPresence>(
-    (keys.data ?? []).map((k) => [k.provider, k]),
-  );
 
   const [name, setName] = useState(user?.name ?? "");
   const [role, setRole] = useState(user?.role ?? "");
@@ -46,8 +39,8 @@ export function SettingsPage() {
     <div className="mx-auto h-full max-w-2xl overflow-auto p-8">
       <h1 className="mb-1 text-lg font-semibold tracking-tight">Settings</h1>
       <p className="mb-8 text-sm text-muted-foreground">
-        Per-user API keys are stored encrypted on the server and never returned
-        in responses. Set your OpenAI key to chat with a real model.
+        Your display name and optional hexgate role. Provider API keys live in
+        the agent backend's environment — HexUI never holds them.
       </p>
 
       <section className="mb-8">
@@ -113,27 +106,6 @@ export function SettingsPage() {
             )}
           </div>
         </form>
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          API keys
-        </h2>
-        {keys.isLoading && (
-          <div className="text-sm text-muted-foreground">Loading…</div>
-        )}
-        {keys.isError && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
-            Couldn't load keys: {(keys.error as Error).message}
-          </div>
-        )}
-        {!keys.isLoading && !keys.isError && (
-          <div className="space-y-3">
-            {PROVIDERS.map((p) => (
-              <KeyRow key={p} provider={p} presence={byProvider.get(p)} />
-            ))}
-          </div>
-        )}
       </section>
     </div>
   );

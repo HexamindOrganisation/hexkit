@@ -7,8 +7,8 @@ from pathlib import Path
 
 import uvicorn
 
-# Load secrets (OPENAI_API_KEY, HEXGATE_KEY) from the agent-server .env. Real
-# env vars take precedence.
+# Load secrets (OPENAI_API_KEY, GOOGLE_API_KEY, HEXGATE_KEY) from the
+# agent-server .env. Real env vars take precedence.
 try:
     from dotenv import load_dotenv
 

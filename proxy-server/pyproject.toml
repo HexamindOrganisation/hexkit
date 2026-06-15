@@ -1,7 +1,7 @@
 [project]
 name = "hexaui-proxy"
 version = "0.1.0"
-description = "HexaUI platform backend — single-user proxy: conversations, files, encrypted keys, and per-framework SSE translation (import package stays `platform_backend`)"
+description = "HexaUI platform backend — single-user proxy: conversations, files, and per-framework SSE translation (import package stays `platform_backend`)"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",

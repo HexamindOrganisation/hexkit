@@ -1,23 +1,25 @@
 """Optional Gemini-backed `google-adk` agent (Orbit).
 
 The google-adk analogue of `llm.py` (Probe/OpenAI): when ``AGENT_ENABLE_LLM`` is
-set AND a ``google_api_key`` is forwarded, it streams a real Gemini completion
-and **projects each chunk into google-adk-native ``Event`` shapes**, so the
-proxy's google-adk translator normalizes it exactly as it would a real ADK
-runtime. The selector (`agents.select`) returns this only under those conditions;
-otherwise the deterministic `GoogleADKDemoAgent` (canned ADK events) runs.
+set AND a ``GOOGLE_API_KEY`` is in the backend's environment, it streams a real
+Gemini completion and **projects each chunk into google-adk-native ``Event``
+shapes**, so the proxy's google-adk translator normalizes it exactly as it would
+a real ADK runtime. The selector (`agents.select`) returns this only under those
+conditions; otherwise the deterministic `GoogleADKDemoAgent` (canned ADK events)
+runs.
 
 On any failure (package missing, bad key, …) it degrades to a single visible
 text event rather than crashing — same contract as `LLMAgent`.
 
-Needs the `google-genai` package in the run venv and a Google key set in
-Settings (provider `google`).
+Needs the `google-genai` package in the run venv and ``GOOGLE_API_KEY`` set in
+the backend's environment.
 """
 
 from __future__ import annotations
 
 import inspect
 import logging
+import os
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -64,8 +66,7 @@ class GoogleADKAgent:
         context: dict[str, Any],
     ) -> AsyncIterator[dict]:
         query = protocol.last_user_text(input)
-        creds = (context or {}).get("credentials") or {}
-        api_key = creds.get("google_api_key")
+        api_key = os.getenv("GOOGLE_API_KEY")
         files = (context or {}).get("files") or []
         author = "assistant"
 

@@ -26,14 +26,6 @@ class Settings(BaseSettings):
         description="HS256 signing secret. Override in production (>=32 bytes).",
     )
     jwt_expiry_seconds: int = 60 * 60 * 24  # 24h
-    fernet_key: str = Field(
-        default="",
-        description=(
-            "Url-safe-base64 32-byte key used to encrypt per-user API keys. "
-            "Generate with `Fernet.generate_key()`. Empty in dev only — the "
-            "keys module raises if asked to encrypt with an empty key."
-        ),
-    )
     agent_backend_url: str = Field(
         default="http://127.0.0.1:8880",
         description="Base URL of the developer's agent backend to proxy "

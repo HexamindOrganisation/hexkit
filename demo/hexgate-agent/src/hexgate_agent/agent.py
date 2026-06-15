@@ -41,8 +41,8 @@ from typing import Any
 
 from langchain_core.tools import tool
 
-# CHANGE ME (1/3): the model. Read per-run from the user's forwarded key; falls
-# back to the process env for a standalone `python -m hexgate_agent` run.
+# CHANGE ME (1/3): the model. Read from this backend's env (HEXGATE_MODEL),
+# defaulting to gpt-4o-mini.
 _DEFAULT_MODEL = os.getenv("HEXGATE_MODEL", "gpt-4o-mini")
 
 # CHANGE ME (2/3): the system prompt. The nudge to call the tool makes the
@@ -90,14 +90,13 @@ def _messages_with_files(
     return [preface, *messages]
 
 
-# Built agents cached by (model, api_key). The user's key arrives per-run (not
-# at startup), so we can't build at import — but we can build once on first use
-# and reuse it, since the agent holds no per-conversation state (full history is
-# resent each turn, checkpointer=None). Keyed on the api_key, not merely
-# built-once, so rotating the key in the UI rebuilds against the new one.
-# Memory-only — never persisted or logged; the key already lives inside the
-# ChatOpenAI client regardless. Concurrent cold-cache builds just race
-# harmlessly (last write wins, both results valid), so no lock is needed.
+# Built agents cached by (model, api_key). Built lazily on first use (not at
+# import) and reused, since the agent holds no per-conversation state (full
+# history is resent each turn, checkpointer=None). Keyed on the api_key so that
+# rotating OPENAI_API_KEY in the env rebuilds against the new one. Memory-only —
+# never persisted or logged; the key already lives inside the ChatOpenAI client
+# regardless. Concurrent cold-cache builds just race harmlessly (last write
+# wins, both results valid), so no lock is needed.
 _agent_cache: dict[tuple[str, str], tuple[Any, Any]] = {}
 
 
@@ -134,22 +133,18 @@ async def run_hexgate_agent(
     exact shape the proxy's HexgateTranslator reads. The caller tags every
     frame with ``framework: "hexgate"``.
     """
-    # context.credentials holds the user's decrypted secrets, flat
-    # `{provider}_api_key`. Use them only for this run; never persist or log.
-    creds = (context or {}).get("credentials") or {}
-    api_key = creds.get("openai_api_key") or os.getenv("OPENAI_API_KEY")
+    # The OpenAI key comes from this backend's own environment — HexUI does not
+    # send provider keys. Read it per run; never persist or log it.
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         # A hexgate-shaped error event — the translator maps it to an error.
         yield {
             "event_type": "error",
-            "message": (
-                "No OpenAI API key available. Add one in the UI (it arrives in "
-                "context.credentials.openai_api_key) or set OPENAI_API_KEY."
-            ),
+            "message": "No OpenAI API key available. Set OPENAI_API_KEY in this backend's environment.",
         }
         return
 
-    # Built once and cached (see _get_agent); the user's key scopes the cache
+    # Built once and cached (see _get_agent); the env key scopes the cache
     # entry. stream_agent is imported lazily for the same reason as the SDK
     # imports inside _get_agent.
     from hexgate import User

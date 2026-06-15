@@ -141,12 +141,14 @@ async def check_stream(c: httpx.AsyncClient, r: Report, agent_id: str) -> None:
         "run_id": run_id,
         "input": {"messages": [{"role": "user", "content": "ping from verify_backend"}]},
         # Exercise the context the proxy forwards — backend must accept it.
+        # Provider keys are NOT part of the context (the backend reads its own
+        # from its env); the proxy forwards conversation_id, files, and user.
         "context": {
             "conversation_id": str(uuid.uuid4()),
-            "credentials": {"openai_api_key": "sk-verify-probe"},
             "files": [
                 {"id": "f1", "name": "note.txt", "mime": "text/plain", "size": 5, "content": "hello"}
             ],
+            "user": {"id": str(uuid.uuid4()), "name": "verify_backend", "role": None},
         },
     }
     frames: list[dict] = []

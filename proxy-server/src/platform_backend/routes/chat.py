@@ -6,15 +6,14 @@ The chat endpoint.
 1. Persist the incoming user message.
 2. Assemble the conversation history into the backend's `{"messages": [...]}`
    input shape.
-3. Decrypt the user's API keys and put them in `context.credentials`.
-4. Open the developer backend's MINIMAL SSE stream and NORMALIZE it into the
+3. Open the developer backend's MINIMAL SSE stream and NORMALIZE it into the
    rich internal event schema (`DevStreamTranslator` owns a `RunEmitter` that
    synthesizes run ids, sequence numbers, block lifecycle, and the
    `run_start` / `run_end` envelope), frame each event with `to_sse_frame`, and
    pipe it to the browser. Persist the assistant's final text + `run_id` from
    the translator's accumulated result.
-5. Auto-title the conversation on the first user message.
-6. Track the active `run_id` in-memory so `POST /conversations/{id}/cancel`
+4. Auto-title the conversation on the first user message.
+5. Track the active `run_id` in-memory so `POST /conversations/{id}/cancel`
    can target it.
 
 Notes:
@@ -51,7 +50,6 @@ from .conversations import (
     conversation_files,
     link_files,
 )
-from .me_keys import load_credentials_dict
 
 router = APIRouter(prefix="/conversations", tags=["chat"])
 logger = logging.getLogger("platform_backend.chat")
@@ -172,7 +170,6 @@ async def post_message(
     await session.refresh(conv)
 
     history = await _assemble_history(session, conv.id)
-    creds = await load_credentials_dict(session, user.id)
 
     # Link any newly-attached files to the conversation, then forward ALL of the
     # conversation's files (attachments persist across turns).
@@ -223,7 +220,6 @@ async def post_message(
         "run_id": run_id,
         "context": {
             "conversation_id": str(conv.id),
-            "credentials": creds,
             "files": files_payload,
             # Caller identity. `role` is an opaque string the developer's
             # agent can interpret however they like (e.g. opening an

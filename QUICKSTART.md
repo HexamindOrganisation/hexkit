@@ -58,7 +58,7 @@ To enable real LLM replies (instead of echo), prepend the env var:
 AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh
 ```
 
-You'll still need to add your `OPENAI_API_KEY` or `GOOGLE_API_KEY` in the app's Settings page once the UI loads — the proxy encrypts and forwards keys per turn rather than reading them from your shell.
+Provider keys live in the **agent backend's** environment, not the app — set `OPENAI_API_KEY` (Probe + healthcare/devops) and/or `GOOGLE_API_KEY` (Orbit) in your shell or in `demo/agent-server/.env` before starting the backends. HexUI never holds your model keys.
 
 #### Terminal 2 — frontend
 
@@ -86,7 +86,7 @@ Open <http://localhost:8873>.
 3. The chat shell loads with an empty greeting.
 4. Click the agent picker in the top bar and choose **Probe** (or any of the six demo agents — Probe, Orbit, Atlas, Forge, Healthcare, DevOps).
 5. Type a message and send.
-6. With `AGENT_ENABLE_LLM=1` and a key in Settings → a real LLM reply.
+6. With `AGENT_ENABLE_LLM=1` and a provider key in the agent backend's env → a real LLM reply.
    Without → an echo of your message (this confirms the full pipeline works).
 
 > **Production:** set `PLATFORM_SEED_DEV_USER=false` to skip the dev account seed.
@@ -118,7 +118,7 @@ Defaults work out-of-the-box. The variables you might touch:
 | `PLATFORM_PORT` | `8800` | proxy |
 | `PLATFORM_DATABASE_URL` | `sqlite+aiosqlite:////tmp/hexa_dev.sqlite` | proxy |
 | `PLATFORM_AGENT_BACKEND_URL` | `http://127.0.0.1:8880` | proxy → agent-server |
-| `PLATFORM_FERNET_KEY` | auto-generated | proxy (encrypts stored API keys) |
+| `OPENAI_API_KEY` / `GOOGLE_API_KEY` | unset | agent-server (provider keys for real replies) |
 
 The Vite dev server proxies `/api/*` → `http://127.0.0.1:8800`, so the frontend doesn't need its own env vars in the default setup.
 
@@ -134,7 +134,7 @@ lsof -i :8873   # front-app
 
 **`.venv` not found.** Re-run `bash demo/scripts/setup.sh`.
 
-**LLM replies look like echoes.** Either `AGENT_ENABLE_LLM` isn't set when starting the backends, or no API key has been added in the Settings page yet.
+**LLM replies look like echoes.** Either `AGENT_ENABLE_LLM` isn't set when starting the backends, or no provider key (`OPENAI_API_KEY` / `GOOGLE_API_KEY`) is set in the agent backend's environment.
 
 **Database feels stale.** The default SQLite file lives at `/tmp/hexa_dev.sqlite` — delete it to reset all conversations and users.
 
@@ -142,6 +142,6 @@ lsof -i :8873   # front-app
 
 ## Next steps
 
-- Read [`demo/CONTRACT.md`](demo/CONTRACT.md) for the deeper architecture (event schema, agent contract, framework translators).
+- Read [`CONTRACT.md`](CONTRACT.md) for the deeper architecture (event schema, agent contract, framework translators).
 - Read [`custom-UI/README.md`](custom-UI/README.md) to understand how each agent's `ui.yaml` becomes a rendered chat surface.
 - Copy `demo/starter-agent` and modify it to plug in your own agent backend.

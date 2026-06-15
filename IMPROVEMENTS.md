@@ -33,7 +33,7 @@ The session-scoped in-memory SQLite + per-test truncation in [conftest.py](proxy
 - **Manual `PYTHONPATH`.** Running tests requires `PYTHONPATH=src:../packages/hexa-events/src` — invisible to anyone who doesn't read [run-backends.sh](demo/scripts/run-backends.sh). Either move to a `src/`-layout where `pip install -e .` sets it, or document the env var in [pytest.ini](proxy-server/pytest.ini) with `pythonpath = src ../packages/hexa-events/src`.
 - **`custom-UI` build is not in setup.** `front-app` imports from `agent-ui` (a `file:../custom-UI` link). On a clean clone, `npm run dev` works (Vite is lenient) but `tsc --noEmit` fails with TS2307 "Cannot find module 'agent-ui'". Add `npm install && npm run build` for `custom-UI/` to [demo/scripts/setup.sh](demo/scripts/setup.sh).
 - **Multi-terminal start.** Make `make dev` orchestrate proxy + agent-server + front-app with `concurrently` (npm) or a tmux/foreman-style runner. Bonus: prefix log lines with the service name.
-- **No `.env.example`.** Document `PLATFORM_JWT_SECRET`, `PLATFORM_FERNET_KEY`, `PLATFORM_SEED_DEV_USER`, `AGENT_ENABLE_LLM` etc. in a checked-in `.env.example` so devs know what they can override.
+- **No `.env.example`.** Document `PLATFORM_JWT_SECRET`, `PLATFORM_SEED_DEV_USER`, `AGENT_ENABLE_LLM` etc. in a checked-in `.env.example` so devs know what they can override.
 
 ### Recommended top-level layout
 Add at repo root:
@@ -128,7 +128,7 @@ Tokens live in `localStorage`. XSS-vulnerable. For a production app, move to htt
 ### What exists
 - [README.md](README.md) — high-level pitch.
 - [QUICKSTART.md](QUICKSTART.md) — local run guide.
-- [demo/CONTRACT.md](demo/CONTRACT.md), [custom-UI/README.md](custom-UI/README.md) — the developer contract + UI library docs.
+- [CONTRACT.md](CONTRACT.md), [custom-UI/README.md](custom-UI/README.md) — the developer contract + UI library docs.
 
 ### What's missing
 - **`ARCHITECTURE.md`** at the root: how proxy ↔ agent-server ↔ frontend talk, the SSE event schema, the YAML UI contract.

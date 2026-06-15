@@ -12,7 +12,7 @@ class Settings:
     port: int = 8880
     # Default OFF — the reference path is the deterministic echo agent so the
     # contract is testable without a real provider key. Set AGENT_ENABLE_LLM=1
-    # to route to the optional OpenAI-backed agent when a key is forwarded.
+    # to route to the optional OpenAI-backed agent when a key is in the env.
     enable_llm: bool = False
 
 

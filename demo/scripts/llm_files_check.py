@@ -29,10 +29,9 @@ if os.path.exists(_db):
     os.remove(_db)
 os.environ["PLATFORM_DATABASE_URL"] = f"sqlite+aiosqlite:///{_db}"
 os.environ["AGENT_ENABLE_LLM"] = "1"  # so select_agent can choose LLMAgent
-
-from cryptography.fernet import Fernet  # noqa: E402
-
-os.environ["PLATFORM_FERNET_KEY"] = Fernet.generate_key().decode()
+# LLMAgent reads OPENAI_API_KEY from its own env (the fake `openai` stub below
+# captures it). Setting it here makes select_agent pick LLMAgent over EchoAgent.
+os.environ["OPENAI_API_KEY"] = "sk-test-CAFEBABE"
 
 
 # --- fake `openai` module: capture what the model is asked --------------------
@@ -133,10 +132,8 @@ def send(cid, content):
 
 
 # --- the scenario -----------------------------------------------------------
-# Store an OpenAI key (the proxy decrypts + forwards it as a credential, which is
-# what makes select_agent pick LLMAgent over EchoAgent).
-r = c.put("/me/keys/openai", json={"value": "sk-test-CAFEBABE"})
-check("openai key stored (PUT /me/keys/openai)", r.status_code in (200, 204), f"HTTP {r.status_code}: {r.text}")
+# The OpenAI key lives in the agent backend's env (set at the top of this file),
+# which is what makes select_agent pick LLMAgent over EchoAgent.
 
 # Two files: a normal text/plain and one mislabeled application/octet-stream
 # (browsers do this). Each carries a unique marker we can search for.
@@ -169,12 +166,12 @@ check(
     "LLMAgent was selected (model was actually called)",
     msgs is not None,
     "create() never ran → EchoAgent answered, not the LLM. Check AGENT_ENABLE_LLM=1 "
-    "and that an openai_api_key is forwarded (key stored for THIS user).",
+    "and that OPENAI_API_KEY is set in the agent backend's env.",
 )
 check(
-    "forwarded openai key reached the agent",
+    "agent read OPENAI_API_KEY from its env",
     _captured.get("api_key") == "sk-test-CAFEBABE",
-    f"agent saw api_key={_captured.get('api_key')!r} — credential decrypt/forward broke.",
+    f"agent saw api_key={_captured.get('api_key')!r} — env key not picked up.",
 )
 
 system_blob = "\n".join(

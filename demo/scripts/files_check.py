@@ -10,9 +10,6 @@ _db = os.path.join(tempfile.gettempdir(), "hexa_files.sqlite")
 if os.path.exists(_db):
     os.remove(_db)
 os.environ["PLATFORM_DATABASE_URL"] = f"sqlite+aiosqlite:///{_db}"
-from cryptography.fernet import Fernet  # noqa: E402
-
-os.environ["PLATFORM_FERNET_KEY"] = Fernet.generate_key().decode()
 
 import asyncio  # noqa: E402
 

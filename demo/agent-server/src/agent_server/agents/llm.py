@@ -1,14 +1,16 @@
 """Optional OpenAI-backed `native` agent.
 
 Streams real model tokens as minimal ``text`` events (framework `native`). The
-selector (`agents.select`) returns this only when ``AGENT_ENABLE_LLM=1`` and the
-proxy forwarded an ``openai_api_key``; otherwise the deterministic `EchoAgent`
-runs. Shows how a real agent consumes a forwarded secret with minimal plumbing.
+selector (`agents.select`) returns this only when ``AGENT_ENABLE_LLM=1`` and an
+``OPENAI_API_KEY`` is set in the backend's environment; otherwise the
+deterministic `EchoAgent` runs. Shows how a real agent reads its provider key
+from its own env with minimal plumbing.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -40,7 +42,7 @@ class LLMAgent:
         context: dict[str, Any],
     ) -> AsyncIterator[dict]:
         query = protocol.last_user_text(input)
-        api_key = ((context or {}).get("credentials") or {}).get("openai_api_key")
+        api_key = os.getenv("OPENAI_API_KEY")
         try:
             from openai import AsyncOpenAI
 

@@ -24,7 +24,6 @@ from ..routes import conversations as conversations_routes
 from ..routes import files as files_routes
 from ..routes import folders as folders_routes
 from ..routes import me as me_routes
-from ..routes import me_keys as me_keys_routes
 from ..routes import proxy as proxy_routes
 
 logger = logging.getLogger("platform_backend.server")
@@ -80,7 +79,6 @@ def create_app() -> FastAPI:
     app = FastAPI(title="platform-backend", version="0.1.0", lifespan=lifespan)
     app.include_router(auth_routes.router)
     app.include_router(me_routes.router)
-    app.include_router(me_keys_routes.router)
     app.include_router(files_routes.router)
     app.include_router(folders_routes.router)
     app.include_router(conversations_routes.router)

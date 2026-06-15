@@ -10,7 +10,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-export PLATFORM_FERNET_KEY="${PLATFORM_FERNET_KEY:-$(proxy-server/.venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
 export PLATFORM_DATABASE_URL="${PLATFORM_DATABASE_URL:-sqlite+aiosqlite:////tmp/hexa_dev.sqlite}"
 # Pre-create the demo users (alice@example.com, bob@example.com, …) on
 # first boot so the demo has populated accounts to log into. Idempotent —
@@ -24,12 +23,12 @@ cleanup() { fuser -k 8880/tcp 8800/tcp 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
 
 # Set AGENT_ENABLE_LLM=1 to route the `probe` agent to the real OpenAI-backed
-# LLMAgent when an openai_api_key is forwarded (else it falls back to echo).
+# LLMAgent when OPENAI_API_KEY is set in the env (else it falls back to echo).
 export AGENT_ENABLE_LLM="${AGENT_ENABLE_LLM:-0}"
 
-# Export agent-server secrets (OPENAI_API_KEY, HEXGATE_KEY). Agents read
-# OPENAI_API_KEY from the env first and fall back to the Settings UI key, so
-# .env is the reliable default — no frontend key needed.
+# Export agent-server secrets (OPENAI_API_KEY, GOOGLE_API_KEY, HEXGATE_KEY) from
+# its .env. The agent backend reads its provider keys from this env — HexUI
+# never sends them.
 if [ -f demo/agent-server/.env ]; then
   set -o allexport
   . demo/agent-server/.env

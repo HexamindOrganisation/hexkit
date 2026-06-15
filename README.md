@@ -2,9 +2,9 @@
 
 A **UI/UX-first multi-agent chat platform**. Developers bring their own
 streaming agent backend (any framework); HexaUI provides the chat experience —
-a configurable, YAML-driven UI, conversation history, folders, file attachments,
-encrypted secrets — and a thin proxy that normalizes any framework's event
-stream into one schema the UI renders.
+a configurable, YAML-driven UI, conversation history, folders, file attachments
+— and a thin proxy that normalizes any framework's event stream into one schema
+the UI renders.
 
 > **The pivot.** This repo began as a *unified agent runtime* (a backend that
 > wrapped LangChain/OpenAI/Google-ADK behind one protocol). That product was
@@ -31,8 +31,8 @@ product**, driven from a single variable (`page.main_color` → `--accent`).
 ┌───────────────────────────────────────────────────────────────┐
 │  proxy-server  (FastAPI)                                      │
 │   JWT auth (argon2id) · conversations · folders · files       │
-│   · Fernet-encrypted per-user keys · per-framework            │
-│   translators normalize native events → hexa SSE schema       │
+│   · per-framework translators normalize native events →       │
+│   hexa SSE schema                                             │
 └───────────────────────────────┬───────────────────────────────┘
                                 │ HTTP + SSE  (the developer contract)
                                 ▼
@@ -47,7 +47,7 @@ product**, driven from a single variable (`page.main_color` → `--accent`).
 The developer never reshapes their events into our schema and never writes UI
 code: they implement five HTTP endpoints and forward their framework's native
 events; the **proxy translates** and the **UI renders from YAML**. See
-[demo/CONTRACT.md](demo/CONTRACT.md).
+[CONTRACT.md](CONTRACT.md).
 
 ---
 
@@ -57,11 +57,11 @@ events; the **proxy translates** and the **UI renders from YAML**. See
 |---|---|
 | [custom-UI/](custom-UI/) | The product's heart: a React + TS library that renders a configurable agent UI from YAML (`<AgentUI>` + 11 built-in widgets). Theme bridge, streaming chat, the actions/`data_source` system. |
 | [front-app/](front-app/) | The HexaUI shell that consumes `custom-UI` and talks to the proxy. |
-| [proxy-server/](proxy-server/) | The platform backend (FastAPI): JWT auth, conversations, folders, files, Fernet-encrypted per-user keys, and the per-framework translators that normalize native events into the hexa SSE schema. Import package stays `platform_backend`. |
+| [proxy-server/](proxy-server/) | The platform backend (FastAPI): JWT auth, conversations, folders, files, and the per-framework translators that normalize native events into the hexa SSE schema. Import package stays `platform_backend`. |
 | [packages/hexa-events/](packages/hexa-events/) | The internal event schema package consumed by the proxy (a local path dependency). |
 | [demo/](demo/) | The runnable reference backends: [`agent-server/`](demo/agent-server/) (a contract-conformant developer backend with 6 sample agents), [`hexgate-agent/`](demo/hexgate-agent/) (a standalone hexgate-wrapped backend), [`starter-agent/`](demo/starter-agent/) (a minimal **copy-me** backend — the whole contract in one file), and [`scripts/`](demo/scripts/) (run + smoke checks, incl. the `verify_backend.py` conformance CLI). |
 | [legacy/](legacy/) | The dropped unified-runtime backend (`backend-runtime`), kept for reference. Not part of the live product. |
-| [demo/CONTRACT.md](demo/CONTRACT.md) | The developer contract — the one document an integrator reads. |
+| [CONTRACT.md](CONTRACT.md) | The developer contract — the one document an integrator reads. |
 
 ---
 
@@ -77,12 +77,9 @@ make dev          # backends + frontend together; Ctrl-C tears down both
 Open <http://localhost:8873>. The app redirects to **`/login`**. Sign in as
 one of the demo accounts (all share the password `hexademo`):
 
-- `dev01@hexamind.ai` (admin — full access on healthcare + devops)
-- `alice@example.com` (billing — healthcare billing)
-- `bob@example.com` (support — customer-support policy)
-- `carol@example.com` (no role — exercises the no-role path)
-- `dana@example.com` (nurse — healthcare) · `erin@example.com` (doctor — healthcare)
-- `frank@example.com` (viewer — devops) · `grace@example.com` (operator — devops)
+- `guest@example.com` (no role — exercises the fail-closed `default`)
+- `vince@hexamind.ai` (viewer), `olivia@hexamind.ai` (operator), `aaron@hexamind.ai` (admin) — devops roles
+- `nadia@clinic.org` (nurse), `priya@clinic.org` (physician), `bianca@clinic.org` (billing_staff) — healthcare roles
 
 The `role` only changes behavior when an agent is HexGate-gated (healthcare /
 devops with `HEXGATE_KEY` set); it scopes that agent's per-tool policy.
@@ -92,11 +89,13 @@ Or sign up a fresh account at `/signup`. The demo accounts come from
 `PLATFORM_DEMO_USERS_FILE` is set (set by default in `make dev`).
 
 To get real model replies rather than the deterministic echo/canned fallback,
-set your provider key in **Settings** (OpenAI for Probe, Google for Orbit) —
-the proxy forwards it to the agent backend per run, never persisting it in
-plaintext. The same Settings page has a free-text `role` field; if you point
-HexUI at a `hexgate`-wrapped agent, that role is forwarded to the agent and
-drives hexgate's per-tool policy + audit pipeline.
+put your provider keys in the **agent backend's environment** (`OPENAI_API_KEY`
+for Probe + the healthcare/devops agents, `GOOGLE_API_KEY` for Orbit) and start
+it with `AGENT_ENABLE_LLM=1` — see [`demo/agent-server/.env.sample`](demo/agent-server/.env.sample).
+HexUI never holds your model keys. The **Settings** page carries only your
+display name and a free-text `role`; if you point HexUI at a `hexgate`-wrapped
+agent, that role is forwarded to the agent and drives hexgate's per-tool policy
++ audit pipeline.
 
 Run `make help` to see all targets (`test`, `lint`, `typecheck`, …). The full
 guide with troubleshooting and configuration is in [QUICKSTART.md](QUICKSTART.md);
@@ -120,7 +119,7 @@ The bundled agents demonstrate the contract end to end:
 
 1. **`ui.yaml`** — which widgets, where, and the accent color. Placed/served by
    the developer backend (`GET /agents/{id}/ui`).
-2. **A backend** conforming to [demo/CONTRACT.md](demo/CONTRACT.md): five
+2. **A backend** conforming to [CONTRACT.md](CONTRACT.md): five
    endpoints; stream framework-native events tagged `{framework, event}`.
 
 Beyond the chat turn (which the platform owns), widget behavior is just two

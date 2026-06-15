@@ -1,6 +1,6 @@
 """
-Chat route: SSE passthrough, assistant persistence, auto-title, credentials
-flow, plus cancel and action proxy.
+Chat route: SSE passthrough, assistant persistence, auto-title, plus cancel
+and action proxy.
 
 We don't spawn a real runtime here — the chat route's only runtime touchpoint
 is the `runtime_client` module, which we drive through `httpx.MockTransport`.
@@ -169,7 +169,8 @@ async def test_chat_streams_through_and_persists_assistant(
     user_block = body["context"]["user"]
     assert set(user_block.keys()) == {"id", "name", "role"}
     assert uuid.UUID(user_block["id"])  # well-formed UUID
-    assert body["context"]["credentials"] == {}  # no keys configured
+    # Provider keys are no longer proxied — the backend reads them from its env.
+    assert "credentials" not in body["context"]
 
     # Assistant row exists, content is the concatenated deltas, run_id is set.
     rows = (
@@ -183,34 +184,6 @@ async def test_chat_streams_through_and_persists_assistant(
     assert len(rows) == 1
     assert rows[0].content == "Hello world!"
     assert rows[0].run_id == body["run_id"]
-
-
-async def test_credentials_forwarded_in_context(
-    client: AsyncClient, mock_runtime: dict
-) -> None:
-    me = await signup(client)
-    h = me["headers"]
-
-    await client.put("/me/keys/openai", json={"value": "sk-test"}, headers=h)
-    await client.put("/me/keys/anthropic", json={"value": "ant-y"}, headers=h)
-
-    cid = await _make_conv(client, h)
-    mock_runtime["rule"] = lambda r: (200, _build_run(["x"]))
-
-    async with client.stream(
-        "POST",
-        f"/conversations/{cid}/messages",
-        json={"content": "hi"},
-        headers=h,
-    ) as resp:
-        async for _ in resp.aiter_raw():
-            pass
-
-    body = json.loads(mock_runtime["requests"][-1]["body"])
-    assert body["context"]["credentials"] == {
-        "openai_api_key": "sk-test",
-        "anthropic_api_key": "ant-y",
-    }
 
 
 async def test_first_message_sets_auto_title(

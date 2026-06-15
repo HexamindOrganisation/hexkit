@@ -5,7 +5,6 @@ import { AgentUI, type ConversationMessage } from "agent-ui";
 
 import { getAgentUiYaml } from "../api/agents";
 import { listMessages } from "../api/conversations";
-import { listKeys } from "../api/keys";
 import { useActiveAgent } from "../hooks/useActiveAgent";
 import { RuntimeBridge } from "../runtime/runtimeBridge";
 import { makeDispatcher } from "../runtime/dispatcher";
@@ -79,11 +78,6 @@ export function ChatPage() {
     queryFn: () => listMessages(conversationId!),
   });
 
-  // Onboarding gate: with no API key set, the agent can only echo — so block the
-  // first message and prompt the user to add one. Shared cache key with Settings.
-  const keysQuery = useQuery({ queryKey: ["me", "keys"], queryFn: listKeys });
-  const requiresKey = keysQuery.isSuccess && (keysQuery.data?.length ?? 0) === 0;
-
   const bridge = useMemo(
     () =>
       new RuntimeBridge({
@@ -147,7 +141,6 @@ export function ChatPage() {
       <Greeting
         agent={agent}
         sessionKey={`${agentId}:${sessionNonce}`}
-        requiresKey={requiresKey}
         onSend={(text, fileIds) =>
           setPendingFirst({ text, fileIds, key: surfaceKey })
         }

@@ -27,14 +27,12 @@ class HealthcareAgent:
     async def run(
         self, *, input: dict[str, Any], context: dict[str, Any]
     ) -> AsyncIterator[dict]:
-        # .env key wins; fall back to the per-run key from the Settings UI.
-        api_key = os.getenv("OPENAI_API_KEY") or (
-            (context or {}).get("credentials") or {}
-        ).get("openai_api_key")
+        # Provider key comes from the backend's own environment.
+        api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             yield protocol.error(
                 "No OpenAI API key available. Set OPENAI_API_KEY in the "
-                "agent-server .env, or add one in the HexaUI Settings UI."
+                "agent-server .env (or the process environment)."
             )
             return
         set_default_openai_key(api_key)

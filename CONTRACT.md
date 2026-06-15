@@ -6,9 +6,9 @@
 > your agent's events: you forward your framework's **native** events, tagged,
 > and the **proxy translates** them into the one unified schema the UI consumes.
 >
-> The reference implementation in [`agent-server/`](agent-server/) demonstrates
+> The reference implementation in [`agent-server/`](demo/agent-server/) demonstrates
 > every supported framework; the proxy-side translators live in
-> [`proxy-server/.../translators/`](../proxy-server/src/platform_backend/translators/).
+> [`proxy-server/.../translators/`](proxy-server/src/platform_backend/translators/).
 
 ---
 
@@ -23,9 +23,9 @@ browser ──HTTP/SSE──▶ HexaUI proxy ──HTTP/SSE──▶ your agent 
   stream, each tagged with the `framework` that produced it. Your server layer
   is thin: iterate your agent's existing event stream, JSON-project each event,
   emit it. You change **no agent code**.
-- The **proxy** owns auth, persistence, secret encryption, auto-titling, **and
-  translation**: it selects the translator for your `framework` and normalizes
-  your native events into the single rich internal schema the frontend renders.
+- The **proxy** owns auth, persistence, auto-titling, **and translation**: it
+  selects the translator for your `framework` and normalizes your native events
+  into the single rich internal schema the frontend renders.
 
 ---
 
@@ -57,7 +57,6 @@ previous revision; see those sections at the end.)
   "input": { "messages": [ { "role": "user", "content": "..." } ] },
   "context": {
     "conversation_id": "uuid",
-    "credentials": { "openai_api_key": "sk-...", "anthropic_api_key": "..." },
     "files": [ { "id": "uuid", "name": "notes.txt", "mime": "text/plain", "size": 123, "content": "…" } ],
     "user": { "id": "uuid", "name": "Alice Anderson", "role": "billing" }
   }
@@ -66,8 +65,9 @@ previous revision; see those sections at the end.)
 
 - `run_id` — opaque id the proxy assigns; accept it on `cancel`.
 - `input.messages` — the chat transcript.
-- `context.credentials` — the user's decrypted secrets, flat `{provider}_api_key`.
-  **Use them only for the run; never persist or log them.**
+- **Provider API keys are *not* in the context.** HexUI does not store or forward
+  them — your backend reads its own provider keys (OpenAI, Google, …) from its
+  own environment. The platform never holds your model credentials.
 - `context.files` — files the user attached to the conversation (persist across
   turns; forwarded every run). `content` is the decoded text for text mimes,
   `null` for binary (fetch by `id` is post-v1). Inline them into the prompt /
@@ -168,13 +168,13 @@ framework's native streaming events:
 
 | `framework` | Native stream you forward | Reference |
 |---|---|---|
-| `langchain` / `langgraph` / `deepagents` | `runnable.astream_events(version="v2")` events | [`translators/langchain.py`](../proxy-server/src/platform_backend/translators/langchain.py) |
-| `openai-agents` | `Runner.run_streamed(...).stream_events()` items | [`translators/openai_agents.py`](../proxy-server/src/platform_backend/translators/openai_agents.py) |
-| `google-adk` | `Runner.run_async(...)` `Event`s | [`translators/google_adk.py`](../proxy-server/src/platform_backend/translators/google_adk.py) |
-| `native` | **the escape hatch** — already-normalized minimal events (below) | [`translators/native.py`](../proxy-server/src/platform_backend/translators/native.py) |
+| `langchain` / `langgraph` / `deepagents` | `runnable.astream_events(version="v2")` events | [`translators/langchain.py`](proxy-server/src/platform_backend/translators/langchain.py) |
+| `openai-agents` | `Runner.run_streamed(...).stream_events()` items | [`translators/openai_agents.py`](proxy-server/src/platform_backend/translators/openai_agents.py) |
+| `google-adk` | `Runner.run_async(...)` `Event`s | [`translators/google_adk.py`](proxy-server/src/platform_backend/translators/google_adk.py) |
+| `native` | **the escape hatch** — already-normalized minimal events (below) | [`translators/native.py`](proxy-server/src/platform_backend/translators/native.py) |
 
 Native event shapes each translator understands (the JSON projection — the
-reference [`agents/demos.py`](agent-server/src/agent_server/agents/demos.py)
+reference [`agents/demos.py`](demo/agent-server/src/agent_server/agents/demos.py)
 emits exactly these):
 
 ```
@@ -226,7 +226,7 @@ For each run the proxy:
 - persists user + assistant messages (with `run_id`), bumps `updated_at`,
   auto-titles new conversations.
 
-The rich internal schema is the proxy-internal [`hexa-events`](../packages/hexa-events/)
+The rich internal schema is the proxy-internal [`hexa-events`](packages/hexa-events/)
 package; developers never see or depend on it.
 
 ---
@@ -240,12 +240,12 @@ package; developers never see or depend on it.
 - [ ] `framework` is one of the supported values (or `native`).
 - [ ] `POST /agents/{id}/cancel` with `{run_id}` stops the run and returns `{cancelled: bool}`.
 - [ ] `POST /agents/{id}/actions/{name}` accepts `{args}` and returns `{result}` (only if the agent's `ui.yaml` uses `action` / `data_source`).
-- [ ] Credentials from `context.credentials` are used per-run and never persisted.
+- [ ] Provider API keys are read from the backend's own environment — never expected in the request.
 
-The reference [`agent-server/`](agent-server/) passes all of the above for every
-supported framework; see [`scripts/`](scripts/) for the executable checks.
+The reference [`agent-server/`](demo/agent-server/) passes all of the above for every
+supported framework; see [`scripts/`](demo/scripts/) for the executable checks.
 
-**Check your own backend.** Run [`scripts/verify_backend.py`](scripts/verify_backend.py)
+**Check your own backend.** Run [`scripts/verify_backend.py`](demo/scripts/verify_backend.py)
 against any running backend URL — it acts as the proxy would (assigns a `run_id`,
 reads the SSE stream, cancels mid-run, validates every frame's shape) and prints
 PASS/FAIL per item above, exiting non-zero on failure:
@@ -254,7 +254,7 @@ PASS/FAIL per item above, exiting non-zero on failure:
 python scripts/verify_backend.py http://127.0.0.1:8880 [--agent <id>]
 ```
 
-**Start from a template.** [`starter-agent/`](starter-agent/) is the smallest
+**Start from a template.** [`starter-agent/`](demo/starter-agent/) is the smallest
 conformant backend — the whole contract in one annotated file. Copy it and fill
 in the three `# CHANGE ME` spots.
 

@@ -15,7 +15,6 @@ from httpx import AsyncClient
 # that the dependency rejects before any body parsing happens.
 PROTECTED_ENDPOINTS = [
     ("GET", "/me"),
-    ("GET", "/me/keys"),
     ("GET", "/files"),
     ("GET", "/folders"),
     ("GET", "/conversations"),
