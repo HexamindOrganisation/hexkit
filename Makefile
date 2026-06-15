@@ -2,6 +2,7 @@
 #
 # Common flow on a fresh clone:
 #
+#     make demo     # brand-new user: setup → register agents on HexGate → run, one command
 #     make setup    # one-time: Python venvs, custom-UI build, front-app npm install
 #     make dev      # backends + frontend in one terminal (Ctrl-C tears down both)
 #
