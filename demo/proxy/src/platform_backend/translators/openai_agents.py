@@ -42,6 +42,9 @@ class OpenAIAgentsTranslator(BaseTranslator):
     def handle(self, emitter: RunEmitter, event: dict[str, Any]) -> list[StreamEvent]:
         etype = event.get("type")
 
+        if etype == "error":
+            return emitter.error(event.get("message", "") or "")
+
         if etype == "raw_response":
             data = event.get("data") or {}
             if data.get("type") == "response.output_text.delta":

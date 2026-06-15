@@ -1,0 +1,60 @@
+# DevOps — infra assistant (Google ADK). Service-state dashboard on top (3 env
+# buttons drive a summary + per-service table), with the chat + tool-calls below,
+# so you can see the impact of the tools the model runs (restart/scale/delete).
+page:
+  layout_type: grid
+  main_color: "#8b5cf6"
+
+widgets:
+  # ── Dashboard (top): 3 env buttons + summary + per-service table ──────────
+  - name: env-picker
+    type: button-group
+    position: { horizontal: left, vertical: high }
+    size: { width: 12, height: auto }
+    orientation: horizontal
+    buttons:
+      - { label: "Dev",     action: select_env, args: { env: dev },     refresh: [service-metrics, service-table] }
+      - { label: "Staging", action: select_env, args: { env: staging }, refresh: [service-metrics, service-table] }
+      - { label: "Prod",    action: select_env, args: { env: prod }, variant: secondary, refresh: [service-metrics, service-table] }
+
+  - name: service-metrics
+    type: metrics
+    position: { horizontal: left, vertical: high }
+    size: { width: 12, height: auto }
+    columns: 3
+    data_source: { action: service_summary }
+    metrics:
+      - { id: healthy,  label: "Healthy",        format: number }
+      - { id: degraded, label: "Degraded",       format: number }
+      - { id: replicas, label: "Total replicas", format: number }
+    empty_text: "Pick an environment above."
+
+  - name: service-table
+    type: table
+    position: { horizontal: left, vertical: high }
+    size: { width: 12, height: auto }
+    data_source: { action: service_state }
+    has_header: true
+    empty_text: "Pick an environment above."
+
+  # ── Chat + tool-calls (below the dashboard; tools on the right) ───────────
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: middle }
+    size: { width: 8, height: 420 }
+    empty_text: "Ask the DevOps assistant — e.g. \"Restart payments in prod, then scale checkout to 8 in staging.\""
+    thinking_indicator: dots
+
+  - name: tool-calls
+    type: tool-calls
+    position: { horizontal: right, vertical: middle }
+    size: { width: 4, height: 420 }
+    title: Ops steps
+    empty_text: "Tool calls (log reads, restarts, scaling, deletes…) appear here."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Message the DevOps assistant…"
+    rows: 2

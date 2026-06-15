@@ -1,5 +1,5 @@
 /**
- * TS mirror of the platform-runtime's Fortify-shared event schema.
+ * TS mirror of the platform-runtime's Hexgate-shared event schema.
  *
  * Authoritative source: `backend-runtime/src/platform_runtime/events.py`. Keep
  * this file in sync when the runtime adds variants — adapters fail soft
@@ -80,7 +80,7 @@ export type ApprovalDecision = "approved" | "denied";
 // ---------------------------------------------------------------------------
 
 export type RuntimeEvent =
-  // Core (Fortify parity) -----------------------------------------------------
+  // Core (Hexgate parity) -----------------------------------------------------
   | (BaseStreamEvent & {
       event_type: "run_start";
       query: string;

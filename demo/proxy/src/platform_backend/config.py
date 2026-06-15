@@ -35,12 +35,12 @@ class Settings(BaseSettings):
         ),
     )
     agent_backend_url: str = Field(
-        default="http://127.0.0.1:8080",
+        default="http://127.0.0.1:8880",
         description="Base URL of the developer's agent backend to proxy "
         "(env PLATFORM_AGENT_BACKEND_URL).",
     )
     host: str = "127.0.0.1"
-    port: int = 8000
+    port: int = 8800
     log_level: str = "info"
     demo_users_file: str = Field(
         default="",

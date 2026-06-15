@@ -131,7 +131,7 @@ it against any running URL:
 # Acts as the proxy would: assigns a run_id, reads the SSE stream, cancels
 # mid-run, checks every frame's shape against CONTRACT.md §8. Exits non-zero
 # on failure, so it works as a CI gate too.
-python demo/scripts/verify_backend.py http://127.0.0.1:8080
+python demo/scripts/verify_backend.py http://127.0.0.1:8880
 ```
 
 [`demo/agent-server/`](demo/agent-server/) is the richer reference (every

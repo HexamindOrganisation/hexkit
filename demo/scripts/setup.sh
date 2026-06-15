@@ -44,6 +44,9 @@ echo "→ front-app dependencies  (front-app/node_modules)"
 
 echo
 echo "done. start the stack with:"
-echo "    make dev"
-echo "    # or: AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh  (+ in another terminal)"
-echo "    #     cd front-app && npm run dev"
+echo "    AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh"
+echo
+echo "Optional — HexGate-wrapped healthcare agent (set HEXGATE_KEY to enable):"
+echo "  needs the hexgate checkout at ../hexgate and a Python >=3.13 venv, then:"
+echo "    uv venv --python 3.13 demo/agent-server/.venv   # if the venv isn't already 3.13"
+echo "    uv pip install --python demo/agent-server/.venv -e 'demo/agent-server[dev,llm,hexgate]'"
