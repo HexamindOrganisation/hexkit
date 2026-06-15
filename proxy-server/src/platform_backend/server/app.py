@@ -50,8 +50,9 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         engine = init_engine()
-        # SQLite (zero-infra dev path) migrates to head on startup; Postgres is
-        # migrated out-of-band by design.
+        # SQLite (zero-infra dev path) migrates to head on startup so a pull
+        # with new migrations is picked up on restart; Postgres is migrated
+        # out-of-band by design.
         if engine.url.get_backend_name() == "sqlite":
             await asyncio.to_thread(
                 _alembic_upgrade_head,

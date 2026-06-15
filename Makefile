@@ -2,13 +2,12 @@
 #
 # Common flow on a fresh clone:
 #
-#     make demo     # brand-new user: setup → register agents on HexGate → run, one command
 #     make setup    # one-time: Python venvs, custom-UI build, front-app npm install
 #     make dev      # backends + frontend in one terminal (Ctrl-C tears down both)
 #
 # Individual targets are listed in `make help`.
 
-.PHONY: help setup backends frontend dev demo register install-hexgate \
+.PHONY: help setup backends frontend dev \
         check test lint format typecheck \
         clean clean-venvs clean-node
 
@@ -16,8 +15,6 @@
 PROXY_PY      := proxy-server/.venv/bin/python
 PROXY_PATH    := proxy-server/src:packages/hexa-events/src
 AGENT_PY      := demo/agent-server/.venv/bin/python
-AGENT_PATH    := demo/agent-server/src
-HEXGATE       := demo/agent-server/.venv/bin/hexgate
 
 # -- meta -------------------------------------------------------------------
 help: ## Print this help.
