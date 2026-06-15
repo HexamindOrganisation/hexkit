@@ -7,7 +7,7 @@
 #
 # Individual targets are listed in `make help`.
 
-.PHONY: help setup backends frontend dev \
+.PHONY: help setup backends frontend dev demo register install-hexgate \
         check test lint format typecheck \
         clean clean-venvs clean-node
 
@@ -15,6 +15,8 @@
 PROXY_PY      := proxy-server/.venv/bin/python
 PROXY_PATH    := proxy-server/src:packages/hexa-events/src
 AGENT_PY      := demo/agent-server/.venv/bin/python
+AGENT_PATH    := demo/agent-server/src
+HEXGATE       := demo/agent-server/.venv/bin/hexgate
 
 # -- meta -------------------------------------------------------------------
 help: ## Print this help.
