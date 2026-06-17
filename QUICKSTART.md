@@ -77,9 +77,11 @@ Open <http://localhost:8873>.
      `aaron@hexamind.ai` (admin) — devops roles
    - `nadia@clinic.org` (nurse), `priya@clinic.org` (physician),
      `bianca@clinic.org` (billing_staff) — healthcare roles
+   - `alice@hexamind.ai` (requester), `carla@hexamind.ai` (implementer),
+     `emma@hexamind.ai` (change_manager), `gabriel@hexamind.ai` (cab_manager) — itsm roles
 
-   The `role` only matters for HexGate-gated agents (healthcare / devops with
-   `HEXGATE_KEY` set), where it scopes the per-tool policy. The accounts come
+   The `role` only matters for HexGate-gated agents (healthcare / devops / itsm
+   with `HEXGATE_KEY` set), where it scopes the per-tool policy. The accounts come
    from [`demo-users.yaml`](demo-users.yaml), upserted on
    startup when `PLATFORM_DEMO_USERS_FILE` is set (the `make dev` launcher sets
    it for you). Or sign up a fresh account at **/signup**.

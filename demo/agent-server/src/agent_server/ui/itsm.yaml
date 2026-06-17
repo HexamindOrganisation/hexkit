@@ -1,0 +1,29 @@
+# ITSM — change-request assistant (deepagents/LangChain). Served by GET /agents/itsm/ui.
+# Chat + a tool-calls panel so the workflow tools (create/update/read changes and
+# the new→Assess→Authorize→Schedule transitions) are visible as they fire. The
+# active agent's main_color is the only accent in the product.
+page:
+  layout_type: grid
+  main_color: "#d97706"
+
+widgets:
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: high }
+    size: { width: 8, height: 520 }
+    empty_text: "Ask the ITSM assistant — e.g. \"Create a change on srv-db-01: upgrade PostgreSQL 15 → 16.\""
+    thinking_indicator: dots
+
+  - name: tool-calls
+    type: tool-calls
+    position: { horizontal: right, vertical: high }
+    size: { width: 4, height: 520 }
+    title: Workflow steps
+    empty_text: "Tool calls (create, update, read, submit, authorize, schedule…) appear here."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Message the ITSM assistant…"
+    rows: 2
