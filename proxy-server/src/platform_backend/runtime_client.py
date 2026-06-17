@@ -88,6 +88,20 @@ async def cancel(agent_id: str, run_id: str) -> dict[str, Any]:
     return r.json()
 
 
+async def forget(agent_id: str, conversation_id: str) -> dict[str, Any]:
+    """Tell the backend to erase a conversation's memory (CONTRACT §5).
+
+    Called when the user deletes a conversation. Best-effort: the agent owns
+    the memory, so a failure here must not roll back the proxy-side delete —
+    the caller swallows errors.
+    """
+    r = await _client_or_raise().post(
+        f"/agents/{agent_id}/forget", json={"conversation_id": conversation_id}
+    )
+    r.raise_for_status()
+    return r.json()
+
+
 async def invoke_action(
     agent_id: str, action_name: str, args: dict[str, Any] | None = None
 ) -> tuple[int, Any]:

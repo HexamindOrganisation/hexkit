@@ -40,6 +40,7 @@ All paths are relative to your backend's base URL
 | `GET /agents/{id}/ui` | per-agent `ui.yaml` (`text/yaml`) with `page.main_color` + widgets |
 | `POST /agents/{id}/stream` | SSE run — framework-tagged native events (§5) |
 | `POST /agents/{id}/cancel` | body `{run_id}` → `{cancelled: bool}` |
+| `POST /agents/{id}/forget` | body `{conversation_id}` → `{forgotten: bool}` — erase that conversation's memory (§5) |
 | `POST /agents/{id}/actions/{name}` | widget action / data source → `{result}` (§5b) |
 
 Unknown `{id}` → `404`. (§3/§4 — roster and `ui.yaml` — are unchanged from the
@@ -63,21 +64,48 @@ previous revision; see those sections at the end.)
 }
 ```
 
-- `run_id` — opaque id the proxy assigns; accept it on `cancel`.
-- `input.messages` — the chat transcript.
+- `run_id` — opaque id the proxy assigns; accept it on `cancel`. Stable per
+  turn, so a re-delivered `(conversation_id, run_id)` is the *same* turn — don't
+  double-append it to memory.
+- `input.messages` — **the new user turn only** (normally a single message), not
+  the prior transcript. See "Conversation memory" below.
+- `context.conversation_id` — the **memory key**. Stable, opaque, minted by the
+  proxy; sent on every `stream` / `forget` call. Unique per `(user, agent)`.
 - **Provider API keys are *not* in the context.** HexUI does not store or forward
   them — your backend reads its own provider keys (OpenAI, Google, …) from its
   own environment. The platform never holds your model credentials.
-- `context.files` — files the user attached to the conversation (persist across
-  turns; forwarded every run). `content` is the decoded text for text mimes,
-  `null` for binary (fetch by `id` is post-v1). Inline them into the prompt /
-  provider content blocks as your framework needs.
+- `context.files` — files + additional context the user attached to the
+  conversation. **Forwarded in full every run and authoritative** — use what's
+  sent; this is *not* memory, so don't cache a stale file list. `content` is the
+  decoded text for text mimes, `null` for binary (fetch by `id` is post-v1).
+  Inline them into the prompt / provider content blocks as your framework needs.
 - `context.user` — caller identity. Always exactly three keys: `id` (the HexUI
   user uuid), `name` (display name or `null`), and `role` (free-text string or
   `null`). HexUI does not interpret `role`; it's there so policy-aware runtimes
   (hexgate, etc.) can scope per-call decisions to the calling user.
   **NEVER** includes email, password hash, or any internal identifier. An agent
   backend that doesn't use this can ignore the block.
+
+### Conversation memory (the backend owns it)
+
+HexUI does **not** manage conversation memory. Each `stream` carries only the
+new user turn; the proxy never sends prior messages. **Your backend owns the
+conversation context, keyed by `(context.user.id, context.conversation_id)`** —
+you decide what prior turns to feed the model (full history, a window, a
+summary, retrieval, …). Rules:
+
+- **Cold ids start fresh.** Accept a `conversation_id` you've never seen and
+  begin a new conversation — never error on an unknown id.
+- **Per `(user, agent, conversation)`.** A `conversation_id` never spans two
+  agents; switching agents starts a new thread.
+- **You own durability.** If you keep memory in-process only, multi-turn context
+  is lost on restart (HexUI still shows the past transcript it stored for
+  display, but your model won't have it). Persist if that matters to you.
+- **`files` / context items are not memory** — they arrive in full each turn
+  (above); treat them as the current attachments.
+
+> HexUI still stores the user-visible transcript for its own sidebar / reload —
+> but that display log is never sent to you and is not your memory.
 
 ### Response — framework-tagged native events
 
@@ -101,6 +129,16 @@ The proxy may call `POST /agents/{id}/cancel` with `{"run_id": "..."}` while a
 stream is open. Stop producing events and end the stream — the proxy finalizes
 and persists the partial text. Return `{cancelled: true}` if the run was found,
 `false` otherwise.
+
+### Forget (memory lifecycle)
+
+When the user deletes a conversation, the proxy calls
+`POST /agents/{id}/forget` with `{"conversation_id": "..."}`. Erase that
+conversation's memory and return `{forgotten: true}` (or `false` if you had
+nothing for it). Idempotent — forgetting an unknown id is still `200`. This is
+the only way the user's "delete conversation" can reach the memory you own, so
+implement it for any backend that stores conversation state (covers
+"clear history" and right-to-erasure).
 
 ---
 
@@ -223,8 +261,12 @@ For each run the proxy:
 - emits `run_end` at end-of-stream, accumulating the final assistant message;
 - frames every synthesized event in the internal hexa SSE schema and pipes it to
   the browser, where the frontend bridge maps it to UI widget events;
-- persists user + assistant messages (with `run_id`), bumps `updated_at`,
-  auto-titles new conversations.
+- persists user + assistant messages (with `run_id`) **as the display transcript
+  only**, bumps `updated_at`, auto-titles new conversations.
+
+What the proxy does **not** do: it does not manage conversation memory. It sends
+you only the new turn and calls `/forget` when a conversation is deleted — the
+model context is yours to own (see "Conversation memory" in §5).
 
 The rich internal schema is the proxy-internal [`hexa-events`](packages/hexa-events/)
 package; developers never see or depend on it.
@@ -240,6 +282,8 @@ package; developers never see or depend on it.
 - [ ] `framework` is one of the supported values (or `native`).
 - [ ] `POST /agents/{id}/cancel` with `{run_id}` stops the run and returns `{cancelled: bool}`.
 - [ ] `POST /agents/{id}/actions/{name}` accepts `{args}` and returns `{result}` (only if the agent's `ui.yaml` uses `action` / `data_source`).
+- [ ] The backend owns conversation memory keyed by `conversation_id`, accepts unseen ids, and treats `input.messages` as the new turn only.
+- [ ] `POST /agents/{id}/forget` with `{conversation_id}` erases that conversation's memory and returns `{forgotten: bool}`.
 - [ ] Provider API keys are read from the backend's own environment — never expected in the request.
 
 The reference [`agent-server/`](demo/agent-server/) passes all of the above for every

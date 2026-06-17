@@ -10,12 +10,20 @@ this directory, then change the three things marked `# CHANGE ME`.
     GET  /agents/{id}/ui               §4  per-agent ui.yaml (text/yaml)
     POST /agents/{id}/stream           §5  SSE run (framework-tagged events)
     POST /agents/{id}/cancel           §5  body {run_id} -> {cancelled}
+    POST /agents/{id}/forget           §5  body {conversation_id} -> {forgotten}
     POST /agents/{id}/actions/{name}   §5b widget action / data source (optional)
 
 You forward your framework's **native** events tagged with `framework`; the
 proxy synthesizes run_start/run_end, ids, sequence numbers, and block lifecycle.
-You never construct any of that. See demo/CONTRACT.md for the full spec and
-demo/agent-server/ for a richer reference that exercises every framework.
+You never construct any of that.
+
+**You own conversation memory** (CONTRACT.md §5): the proxy sends only the new
+user turn, keyed by `context.conversation_id`. This template keeps a dict of
+transcripts (`_MEMORY`) — append the turn, run against the full history, record
+the reply, and drop it on `/forget`. Swap the dict for your own store.
+
+See demo/CONTRACT.md for the full spec and demo/agent-server/ for a richer
+reference that exercises every framework.
 """
 
 from __future__ import annotations
@@ -69,7 +77,12 @@ _BY_ID = {a["id"]: a for a in AGENTS}
 async def run_agent(
     *, input: dict[str, Any], context: dict[str, Any], cancel: asyncio.Event
 ) -> AsyncIterator[dict]:
+    # `input.messages` here is the FULL transcript the server layer rebuilt from
+    # `_MEMORY` (the proxy itself sent only the new turn). A real agent feeds
+    # this history to its model; the echo just reads the latest line + turn count
+    # so multi-turn memory is observable.
     query = _last_user_text(input)
+    turns = sum(1 for m in (input.get("messages") or []) if m.get("role") == "user")
 
     # Provider API keys live in THIS backend's environment (e.g. OPENAI_API_KEY),
     # never in the request — read them with os.getenv where you call your model.
@@ -79,7 +92,7 @@ async def run_agent(
     files = (context or {}).get("files") or []
     files_note = f" [{len(files)} file(s) attached]" if files else ""
 
-    reply = f"You said: {query}{files_note}"
+    reply = f"You said: {query}{files_note} (turn {turns})"
 
     for word in reply.split(" "):
         if cancel.is_set():
@@ -90,7 +103,13 @@ async def run_agent(
     yield {"type": "done"}
 
 
-# ── The five contract endpoints ─────────────────────────────────────────────
+# ── Conversation memory (you own it) ────────────────────────────────────────
+# conversation_id -> running transcript. In-process, so a restart forgets it —
+# fine for a template; swap for Redis / a DB / your framework's session store.
+_MEMORY: dict[str, list[dict[str, str]]] = {}
+
+
+# ── The contract endpoints ──────────────────────────────────────────────────
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
@@ -118,16 +137,30 @@ async def stream(agent_id: str, body: dict[str, Any], request: Request):
     input = body.get("input") or {}
     context = body.get("context") or {}
     framework = _BY_ID[agent_id]["framework"]
+    conversation_id = context.get("conversation_id")
+
+    # We own memory: the proxy sent only the new turn. Append it, then run the
+    # agent against the full transcript we've accumulated for this conversation.
+    if conversation_id:
+        for m in input.get("messages") or []:
+            if isinstance(m, dict) and m.get("role") == "user":
+                _MEMORY.setdefault(conversation_id, []).append(
+                    {"role": "user", "content": str(m.get("content", ""))}
+                )
+    history = {"messages": list(_MEMORY.get(conversation_id, []))}
 
     # Register a cancel flag the /cancel route can flip mid-stream.
     cancel = asyncio.Event()
     request.app.state.runs[run_id] = cancel
 
     async def event_source() -> AsyncIterator[bytes]:
+        reply_parts: list[str] = []
         try:
-            async for ev in run_agent(input=input, context=context, cancel=cancel):
+            async for ev in run_agent(input=history, context=context, cancel=cancel):
                 if cancel.is_set() or await request.is_disconnected():
                     return
+                if ev.get("type") == "text":
+                    reply_parts.append(ev.get("text", ""))
                 # Each frame: data: {"framework": "...", "event": <native event>}
                 frame = {"framework": framework, "event": ev}
                 yield f"data: {json.dumps(frame, separators=(',', ':'))}\n\n".encode()
@@ -136,6 +169,12 @@ async def stream(agent_id: str, body: dict[str, Any], request: Request):
             yield f"data: {json.dumps(err)}\n\n".encode()
         finally:
             request.app.state.runs.pop(run_id, None)
+            # Record the assistant reply so the next turn sees it.
+            reply = "".join(reply_parts).strip()
+            if conversation_id and reply:
+                _MEMORY.setdefault(conversation_id, []).append(
+                    {"role": "assistant", "content": reply}
+                )
 
     return StreamingResponse(event_source(), media_type="text/event-stream")
 
@@ -148,6 +187,17 @@ async def cancel(agent_id: str, body: dict[str, Any], request: Request) -> dict:
         return {"cancelled": False}  # already finished / unknown run
     ev.set()
     return {"cancelled": True}
+
+
+@router.post("/{agent_id}/forget")  # §5
+async def forget(agent_id: str, body: dict[str, Any] | None = None) -> dict:
+    """Erase a conversation's memory — the proxy calls this when the user deletes
+    a conversation. Idempotent: an unknown id is still 200."""
+    if agent_id not in _BY_ID:
+        raise HTTPException(status_code=404, detail=f"Unknown agent '{agent_id}'")
+    conversation_id = (body or {}).get("conversation_id")
+    forgotten = _MEMORY.pop(conversation_id, None) is not None if conversation_id else False
+    return {"forgotten": forgotten}
 
 
 @router.post("/{agent_id}/actions/{action_name}")  # §5b (optional)
