@@ -2,8 +2,6 @@
 
 import os
 
-# google-adk >=2.x defaults the experimental JSON_SCHEMA_FOR_FUNC_DECL feature
-# on, which writes tool schemas to `parameters_json_schema` and leaves the
-# legacy `parameters` field empty. HexGate registration reads `parameters`, so
-# pin ADK to the legacy schema. setdefault keeps an explicit override possible.
+# Pin ADK to the legacy tool-schema field (`parameters`) that HexGate
+# registration reads; google-adk >=2.x otherwise uses `parameters_json_schema`.
 os.environ.setdefault("ADK_DISABLE_JSON_SCHEMA_FOR_FUNC_DECL", "1")
