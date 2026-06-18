@@ -15,7 +15,7 @@ import csv
 import io
 from typing import Any
 
-from .agents import devops_state
+from .agents import devops_state, itsm_db
 
 # The "retrieved sources" the Orbit `sources` table displays.
 _SOURCES: list[dict[str, Any]] = []
@@ -76,6 +76,26 @@ def _service_state(_args: dict[str, Any]) -> dict[str, Any]:
     return {"csv": devops_state.table_csv(devops_state.selected_env())}
 
 
+# ── ITSM lifecycle board (CONTRACT §5b) ──────────────────────────────────────
+# The Refresh button calls `refresh_changes`; the metrics show the per-state
+# funnel and the table lists every change. The agent's tools mutate the same
+# `itsm_db`, so a Refresh shows the impact of a run. Global view — no per-user
+# scope (unlike the chat tools).
+
+
+def _refresh_changes(_args: dict[str, Any]) -> dict[str, Any]:
+    """No-op trigger for the Refresh button — the metrics + table re-pull."""
+    return itsm_db.state_counts()
+
+
+def _change_summary(_args: dict[str, Any]) -> dict[str, Any]:
+    return itsm_db.state_counts()
+
+
+def _change_table(_args: dict[str, Any]) -> dict[str, Any]:
+    return {"csv": itsm_db.board_csv()}
+
+
 _ACTIONS = {
     # Orbit research workspace
     "list_sources": _list_sources,
@@ -85,6 +105,10 @@ _ACTIONS = {
     "select_env": _select_env,
     "service_summary": _service_summary,
     "service_state": _service_state,
+    # ITSM lifecycle board
+    "refresh_changes": _refresh_changes,
+    "change_summary": _change_summary,
+    "change_table": _change_table,
 }
 
 

@@ -73,6 +73,17 @@ AGENTS: list[dict[str, str]] = [
         "ui_url": "/agents/devops/ui",
         "framework": "google-adk",
     },
+    # ITSM — a real deepagents/LangChain agent; HexGate wrapping is opt-in
+    # (enabled by setting HEXGATE_KEY). The real-LLM showcase for the LangChain
+    # translator (RBAC + state-machine guard on a Change-Request workflow).
+    {
+        "id": "itsm",
+        "name": "ITSM",
+        "role": "Change-request assistant",
+        "main_color": "#d97706",
+        "ui_url": "/agents/itsm/ui",
+        "framework": "langchain",
+    },
 ]
 
 _BY_ID = {a["id"]: a for a in AGENTS}

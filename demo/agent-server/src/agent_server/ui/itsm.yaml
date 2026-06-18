@@ -1,0 +1,62 @@
+# ITSM — change-request assistant (deepagents/LangChain). Served by GET /agents/itsm/ui.
+# Lifecycle board on top (a Refresh button → per-state funnel + change table),
+# with the chat + tool-calls below, so you can watch a change move through
+# new → Assess → Authorize → Schedule as the agent's tools run (hit Refresh to
+# re-pull). The board is a global system view (no per-user scope — see
+# actions.py). The active agent's main_color is the only accent in the product.
+page:
+  layout_type: grid
+  main_color: "#d97706"
+
+widgets:
+  # ── Board (top): Refresh button + funnel metrics + change table ───────────
+  - name: refresh
+    type: button-group
+    position: { horizontal: left, vertical: high }
+    size: { width: 12, height: auto }
+    orientation: horizontal
+    buttons:
+      - { label: "Refresh", action: refresh_changes, refresh: [change-metrics, change-table] }
+
+  - name: change-metrics
+    type: metrics
+    position: { horizontal: left, vertical: high }
+    size: { width: 12, height: auto }
+    columns: 4
+    data_source: { action: change_summary }
+    metrics:
+      - { id: new,       label: "New",       format: number }
+      - { id: Assess,    label: "Assess",    format: number }
+      - { id: Authorize, label: "Authorize", format: number }
+      - { id: Schedule,  label: "Scheduled", format: number }
+    empty_text: "No changes yet."
+
+  - name: change-table
+    type: table
+    position: { horizontal: left, vertical: high }
+    size: { width: 12, height: auto }
+    data_source: { action: change_table }
+    has_header: true
+    empty_text: "No changes in this state."
+
+  # ── Chat + tool-calls (below the board; tools on the right) ───────────────
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: middle }
+    size: { width: 8, height: 420 }
+    empty_text: "Ask the ITSM assistant — e.g. \"Create a change on srv-db-01: upgrade PostgreSQL 15 → 16.\""
+    thinking_indicator: dots
+
+  - name: tool-calls
+    type: tool-calls
+    position: { horizontal: right, vertical: middle }
+    size: { width: 4, height: 420 }
+    title: Workflow steps
+    empty_text: "Tool calls (create, update, read, submit, authorize, schedule…) appear here."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Message the ITSM assistant…"
+    rows: 2

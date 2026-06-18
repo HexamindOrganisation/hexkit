@@ -17,6 +17,13 @@ llm = [
     "google-adk>=1.0",         # DevOps (google-adk runtime)
     "litellm>=1.40",           # DevOps model backend (openai/* via Google ADK)
 ]
+# ITSM (deepagents/LangChain). Heavier stack, so kept out of `llm` — pulled in
+# alongside hexgate by `make install-hexgate` (the ITSM agent is gated anyway).
+itsm = [
+    "langchain-openai>=0.2",   # ITSM model backend (ChatOpenAI)
+    "langchain-core>=0.3",     # ITSM tools (@tool)
+    "deepagents>=0.0.5",       # ITSM agent (create_deep_agent over LangGraph)
+]
 dev = [
     "pytest>=8",
     "pytest-asyncio>=0.23",

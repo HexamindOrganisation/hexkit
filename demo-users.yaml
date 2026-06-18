@@ -50,3 +50,24 @@ users:
     password: hexademo
     name: Bianca              # billing/claims lookups only; clinical data walled off
     role: billing_staff
+
+  # ── ITSM agent ── roles: requester, implementer, change_manager, cab_manager
+  # (itsm_policy.yaml). One user per role. Ownership/scope key off `name` (HexUI
+  # never forwards email), so these names must match the seed in itsm_db.py —
+  # Alice Martin owns CHG0001, Carla Robert is its implementer.
+  - email: alice@hexamind.ai
+    password: hexademo
+    name: Alice Martin        # create + edit own drafts + submit (owns CHG0001)
+    role: requester
+  - email: carla@hexamind.ai
+    password: hexademo
+    name: Carla Robert        # read-only, scoped to changes they implement (CHG0001)
+    role: implementer
+  - email: emma@hexamind.ai
+    password: hexademo
+    name: Emma Dubois         # read all + edit assessment + authorize (Assess→Authorize)
+    role: change_manager
+  - email: gabriel@hexamind.ai
+    password: hexademo
+    name: Gabriel Laurent     # read all + schedule decision only (Authorize→Schedule)
+    role: cab_manager
