@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { WidgetProps } from "../registry/types.js";
 import type { TableWidget } from "../schema/widgets/table.js";
 import { useWidgetData } from "../runtime/context.js";
@@ -12,6 +12,9 @@ export function TableWidgetComponent({
   name,
 }: WidgetProps<TableWidget>): JSX.Element {
   const { data, loading, error, refresh } = useWidgetData<CsvPayload>(props.data_source);
+  // One-shot spin on click — a visible cue even when the re-pull is instant
+  // (the data lives in-process). A genuine slow load shows the looping spin.
+  const [clickSpin, setClickSpin] = useState(false);
 
   const limit = props.rows ?? 20;
   const mode = props.mode ?? "head";
@@ -116,13 +119,19 @@ export function TableWidgetComponent({
         props.refreshable && props.data_source ? (
           <button
             type="button"
-            onClick={refresh}
+            onClick={() => {
+              setClickSpin(true);
+              refresh();
+            }}
             disabled={loading}
             title="Refresh"
             aria-label="Refresh table"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-transform hover:bg-muted hover:text-foreground active:scale-90 disabled:opacity-50"
           >
-            <RefreshIcon spinning={loading} />
+            <RefreshIcon
+              className={loading ? "hx-spin-loop" : clickSpin ? "hx-spin-once" : undefined}
+              onAnimationEnd={() => setClickSpin(false)}
+            />
           </button>
         ) : undefined
       }
@@ -132,7 +141,13 @@ export function TableWidgetComponent({
   );
 }
 
-function RefreshIcon({ spinning = false }: { spinning?: boolean }): JSX.Element {
+function RefreshIcon({
+  className,
+  onAnimationEnd,
+}: {
+  className?: string;
+  onAnimationEnd?: () => void;
+}): JSX.Element {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -142,7 +157,8 @@ function RefreshIcon({ spinning = false }: { spinning?: boolean }): JSX.Element 
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      className={spinning ? "animate-spin" : undefined}
+      className={className}
+      onAnimationEnd={onAnimationEnd}
       style={{ width: 15, height: 15 }}
     >
       <path d="M21 12a9 9 0 1 1-2.64-6.36" />

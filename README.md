@@ -55,7 +55,7 @@ events; the **proxy translates** and the **UI renders from YAML**. See
 
 | Path | Purpose |
 |---|---|
-| [custom-UI/](custom-UI/) | The product's heart: a React + TS library that renders a configurable agent UI from YAML (`<AgentUI>` + 11 built-in widgets). Theme bridge, streaming chat, the actions/`data_source` system. |
+| [custom-UI/](custom-UI/) | The product's heart: a React + TS library that renders a configurable agent UI from YAML (`<AgentUI>` + 12 built-in widgets). Theme bridge, streaming chat, the actions/`data_source` system. |
 | [front-app/](front-app/) | The HexaUI shell that consumes `custom-UI` and talks to the proxy. |
 | [proxy-server/](proxy-server/) | The platform backend (FastAPI): JWT auth, conversations, folders, files, and the per-framework translators that normalize native events into the hexa SSE schema. Import package stays `platform_backend`. |
 | [packages/hexa-events/](packages/hexa-events/) | The internal event schema package consumed by the proxy (a local path dependency). |

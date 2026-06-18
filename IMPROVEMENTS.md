@@ -134,7 +134,7 @@ Tokens live in `localStorage`. XSS-vulnerable. For a production app, move to htt
 - **`ARCHITECTURE.md`** at the root: how proxy ↔ agent-server ↔ frontend talk, the SSE event schema, the YAML UI contract.
 - **`CONTRIBUTING.md`**: branch model, commit style, how to run tests/lint, how to add a new agent.
 - **OpenAPI docs link.** FastAPI auto-generates them at `/docs` and `/redoc` — the README should call this out.
-- **A `docs/` directory for the YAML widget reference.** The `custom-UI` library has 11 widgets but no centralized reference for what YAML they each consume.
+- **A `docs/` directory for the YAML widget reference.** The `custom-UI` library has 12 widgets but no centralized reference for what YAML they each consume.
 
 ---
 

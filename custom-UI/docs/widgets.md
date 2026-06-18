@@ -18,6 +18,7 @@ custom widgets, see [extending.md](./extending.md).
 | `page-header`    | Title + optional subtitle/icon       | yes        | main   |
 | `page-footer`    | Single-line footer                   | yes        | footer |
 | `button-group`   | Row/column of action buttons         | no         | main   |
+| `dropdown`       | Single-select → action + `refresh`   | no         | main   |
 | `ai-chat-input`  | Textarea + send → AgentBridge        | yes        | main   |
 | `ai-response`    | Live chat transcript (user + agent)  | yes        | main   |
 | `spacer`         | Empty cell — reserves layout space   | yes        | main   |
@@ -150,6 +151,40 @@ click. `args` is whatever object you put in YAML — passed through verbatim.
 The 6 shadcn variants map directly to the shadcn `Button` component. Use
 `destructive` for delete/remove actions, `outline` for secondary actions,
 `ghost` for low-emphasis actions inside dense lists.
+
+---
+
+## `dropdown`
+
+A single-select menu — a styled popover (not a native `<select>`), so the
+trigger and items follow the app's design tokens. Choosing an option invokes its
+action and re-pulls the widgets in its `refresh` list — the same `action` +
+`refresh` mechanism as `button-group`, so a dropdown can **switch another
+widget's `data_source` content** (e.g. an env picker driving a table).
+
+### YAML
+
+```yaml
+- name: "env-picker"
+  type: "dropdown"
+  position: { horizontal: "left", vertical: "high" }
+  size: { width: 12, height: "auto" }
+  label: "Environment"     # optional; inline label before the select
+  default: "dev"           # optional; the option shown selected initially (defaults to the first)
+  placeholder: "Choose…"   # optional; a disabled first row
+  options:                 # required; at least 1
+    - { label: "Dev",     value: "dev",     action: "select_env", args: { env: "dev" },     refresh: ["service-table"] }
+    - { label: "Staging", value: "staging", action: "select_env", args: { env: "staging" }, refresh: ["service-table"] }
+    - { label: "Prod",    value: "prod",    action: "select_env", args: { env: "prod" },     refresh: ["service-table"] }
+```
+
+### Behavior
+
+On change, `dispatcher.invoke(option.action, option.args)` runs; on success the
+widgets named in `option.refresh` re-pull their `data_source`. The selected
+value is local UI state — the **backend stays the source of truth** (the action
+sets server-side state; the refreshed widget reads it back). Set `default` to
+mirror your backend's initial selection so the bound widget's first pull matches.
 
 ---
 
@@ -602,6 +637,7 @@ many data rows are displayed.
 | `rows`         | integer (1–10000)             | Number of data rows shown. Defaults to `20`. The header row, if any, is always shown and does not count toward this limit. |
 | `delimiter`    | single character              | CSV delimiter. Defaults to auto-detect among `,`, `;`, `\t`, `\|`. |
 | `has_header`   | boolean                       | Treat the first row as a sticky header. Defaults to `true`. |
+| `refreshable`  | boolean                       | Show a manual refresh button (in the card header) that re-pulls `data_source`. Defaults to `false`. No effect without a `data_source`. |
 | `empty_text`   | string                        | Shown when no source is configured or the payload is empty. |
 | `loading_text` | string                        | Shown while `data_source` is loading and no payload has arrived. |
 

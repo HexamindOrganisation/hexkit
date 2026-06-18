@@ -685,3 +685,11 @@
 /* KaTeX display blocks: keep tight default margins inside chat prose and let
  * wide equations scroll horizontally rather than overflow the bubble. */
 .katex-display { margin: 0; }
+
+/* Refresh-control spin. Shipped with the library (not Tailwind's `animate-spin`)
+ * so it works regardless of the host app's Tailwind content scan.
+ *   - `hx-spin-once`  → one rotation, the "you clicked it" cue.
+ *   - `hx-spin-loop`  → continuous, while a data_source is actually loading. */
+@keyframes hx-spin { to { transform: rotate(360deg); } }
+.au-root .hx-spin-once { animation: hx-spin 0.6s ease; }
+.au-root .hx-spin-loop { animation: hx-spin 0.8s linear infinite; }

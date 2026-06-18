@@ -111,6 +111,7 @@ serializable and snapshot-testable.
 | `page-header`    | Title + optional subtitle/icon                |
 | `page-footer`    | Single-line footer                            |
 | `button-group`   | Row/column of action buttons (shadcn)         |
+| `dropdown`       | Single-select → action + `refresh` (switch another widget's data) |
 | `ai-chat-input`  | Textarea + send → `AgentBridge`               |
 | `ai-response`    | Live chat transcript (user + agent + tokens)  |
 | `spacer`         | Empty cell — reserves layout space            |
