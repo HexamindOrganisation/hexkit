@@ -17,6 +17,7 @@ export function ContextCard({
   caption,
   mime,
   text,
+  headerAction,
   children,
 }: {
   /** Stable per-widget key (the widget name). */
@@ -26,6 +27,8 @@ export function ContextCard({
   mime: string;
   /** Current widget content as text; "" means "nothing to add yet". */
   text: string;
+  /** Optional control rendered in the header, before the context toggle. */
+  headerAction?: ReactNode;
   children: ReactNode;
 }): JSX.Element {
   const { agent } = useAgentUIContext();
@@ -89,6 +92,7 @@ export function ContextCard({
         <span className="ch-ic">{iconForMime(mime)}</span>
         <span className="ch-title">{caption}</span>
         <span className="spacer" style={{ flex: 1 }} />
+        {headerAction}
         {ctx && (
           <button
             type="button"

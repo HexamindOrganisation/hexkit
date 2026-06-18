@@ -29,6 +29,8 @@ export const TableWidgetSchema = {
     delimiter: { type: "string", minLength: 1, maxLength: 1 },
     /** Treat the first row as a header. Defaults to true. */
     has_header: { type: "boolean" },
+    /** Show a manual "refresh" button that re-pulls `data_source`. Default false. */
+    refreshable: { type: "boolean" },
     /** Shown when no source is configured or the payload is empty. */
     empty_text: { type: "string" },
     /** Shown while data_source is loading and no payload has arrived. */

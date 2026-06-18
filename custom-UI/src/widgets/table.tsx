@@ -11,7 +11,7 @@ export function TableWidgetComponent({
   props,
   name,
 }: WidgetProps<TableWidget>): JSX.Element {
-  const { data, loading, error } = useWidgetData<CsvPayload>(props.data_source);
+  const { data, loading, error, refresh } = useWidgetData<CsvPayload>(props.data_source);
 
   const limit = props.rows ?? 20;
   const mode = props.mode ?? "head";
@@ -112,9 +112,42 @@ export function TableWidgetComponent({
       caption={props.caption ?? name}
       mime="text/csv"
       text={contextText}
+      headerAction={
+        props.refreshable && props.data_source ? (
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={loading}
+            title="Refresh"
+            aria-label="Refresh table"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            <RefreshIcon spinning={loading} />
+          </button>
+        ) : undefined
+      }
     >
       {body}
     </ContextCard>
+  );
+}
+
+function RefreshIcon({ spinning = false }: { spinning?: boolean }): JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={spinning ? "animate-spin" : undefined}
+      style={{ width: 15, height: 15 }}
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </svg>
   );
 }
 
