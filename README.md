@@ -1,6 +1,6 @@
 <div align="center">
 
-# HexaUI
+# HexUI
 
 </div>
 
