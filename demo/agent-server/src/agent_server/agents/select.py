@@ -41,6 +41,11 @@ def select_agent(agent_id: str, context: dict[str, Any]) -> Agent:
 
         return ItsmAgent()
 
+    if agent_id == "hr":
+        from .hr import HrAgent
+
+        return HrAgent()
+
     if framework == "langchain":
         return LangChainDemoAgent()
     if framework == "openai-agents":

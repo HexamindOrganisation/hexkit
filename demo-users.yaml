@@ -36,7 +36,7 @@ users:
   # ── Hexamind org (DevOps + ITSM) ── one merged group; everyone can reach BOTH
   # agents. Each keeps a single role, meaningful to one agent; talking to the
   # other falls through to that policy's fail-closed `default` (deny).
-  #   DevOps roles:  viewer < operator < admin            (devops_policy.yaml)
+  #   DevOps roles:  default < operator < admin           (devops_policy.yaml)
   #   ITSM roles:    requester, implementer, change_manager, cab_manager
   #                  (itsm_policy.yaml — ownership/scope key off `name`, which
   #                  must match the seed in itsm_db.py: Alice Martin owns
@@ -44,43 +44,44 @@ users:
   - email: vince@hexamind.ai
     password: hexademo
     name: Vince Reilly        # devops: read service logs only
-    role: viewer
-    agents: [devops, itsm]
+    role: default
+    agents: [devops, itsm, hr]
   - email: olivia@hexamind.ai
     password: hexademo
     name: Olivia Park         # devops: restart/scale in dev & staging (replicas <= 10); prod walled off
     role: operator
-    agents: [devops, itsm]
+    agents: [devops, itsm, hr]
   - email: mark@hexamind.ai
     password: hexademo
     name: Mark Johnson
     role: operator
-    agents: [devops, itsm]
+    agents: [devops, itsm, hr]
   - email: aaron@hexamind.ai
     password: hexademo
     name: Aaron Mensah        # devops: full ops incl. prod, higher cap, the only role that can delete
     role: admin
-    agents: [devops, itsm]
+    agents: [devops, itsm, hr]
+
   - email: alice@hexamind.ai
     password: hexademo
     name: Alice Martin        # itsm: create + edit own drafts + submit (owns CHG0001)
     role: requester
-    agents: [devops, itsm]
+    agents: [devops, itsm, hr]
   - email: carla@hexamind.ai
     password: hexademo
     name: Carla Robert        # itsm: read-only, scoped to changes they implement (CHG0001)
     role: implementer
-    agents: [devops, itsm]
+    agents: [devops, itsm, hr]
   - email: emma@hexamind.ai
     password: hexademo
     name: Emma Dubois         # itsm: read all + edit assessment + authorize (Assess→Authorize)
     role: change_manager
-    agents: [devops, itsm]
+    agents: [devops, itsm, hr]
   - email: gabriel@hexamind.ai
     password: hexademo
     name: Gabriel Laurent     # itsm: read all + schedule decision only (Authorize→Schedule)
     role: cab_manager
-    agents: [devops, itsm]
+    agents: [devops, itsm, hr]
 
   # ── Clinic org (Healthcare) ── healthcare agent only.
   #   roles: nurse, physician, billing_staff             (healthcare_policy.yaml)
@@ -88,14 +89,33 @@ users:
     password: hexademo
     name: Nadia               # clinical reads + order labs; cannot prescribe or share PHI
     role: nurse
-    agents: [healthcare]
+    agents: [healthcare, hr]
   - email: priya@clinic.org
     password: hexademo
     name: Priya               # full clinical authority; controlled meds gated, PHI shares only to allowlisted domains
     role: physician
-    agents: [healthcare]
+    agents: [healthcare, hr]
   - email: bianca@clinic.org
     password: hexademo
     name: Bianca              # billing/claims lookups only; clinical data walled off
     role: billing_staff
-    agents: [healthcare]
+    agents: [healthcare, hr]
+
+  # ── HR agent ── roles: default < manager < gestionnaire_rh (hr_policy.yaml).
+  # One user per role; the role widens the readable employee fields and unlocks
+  # salary/medical/export/offboarding.
+  - email: hugo@hexamind.ai
+    password: hexademo
+    name: Hugo Bernard        # annuaire + annuaire fields only
+    role: default
+    agents: [hr]
+  - email: manon@hexamind.ai
+    password: hexademo
+    name: Manon Lefevre       # + leave_balance / performance_rating (team-scoped in a real impl; stubs gate by field only)
+    role: manager
+    agents: [hr]
+  - email: chloe@hexamind.ai
+    password: hexademo
+    name: Chloe Garnier       # paie, médical, export (≤1000), offboarding
+    role: gestionnaire_rh
+    agents: [hr]

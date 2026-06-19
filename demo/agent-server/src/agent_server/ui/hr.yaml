@@ -1,0 +1,30 @@
+# HR — people assistant (LangChain). Served by GET /agents/hr/ui.
+# Chat + a tool-calls panel so the HR tools (directory lookup, field reads, salary
+# updates, payroll export, offboarding…) are visible as they fire — and you can
+# see which the policy allows vs denies per role. The active agent's main_color is
+# the only accent in the product.
+page:
+  layout_type: grid
+  main_color: "#0d9488"
+
+widgets:
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: high }
+    size: { width: 8, height: 520 }
+    empty_text: "Ask the HR assistant — e.g. \"Donne-moi le titre et le service de Sophie Martin.\""
+    thinking_indicator: dots
+
+  - name: tool-calls
+    type: tool-calls
+    position: { horizontal: right, vertical: high }
+    size: { width: 4, height: 520 }
+    title: HR steps
+    empty_text: "Tool calls (directory, record fields, salary, payroll, offboarding…) appear here."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Message the HR assistant…"
+    rows: 2

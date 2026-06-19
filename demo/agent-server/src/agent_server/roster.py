@@ -84,6 +84,17 @@ AGENTS: list[dict[str, str]] = [
         "ui_url": "/agents/itsm/ui",
         "framework": "langchain",
     },
+    # HR — a real LangChain agent (create_react_agent); HexGate wrapping is opt-in
+    # (enabled by setting HEXGATE_KEY). Showcases role-based field-level scoping
+    # over an employee record (default < manager < gestionnaire_rh).
+    {
+        "id": "hr",
+        "name": "HR",
+        "role": "People assistant",
+        "main_color": "#0d9488",
+        "ui_url": "/agents/hr/ui",
+        "framework": "langchain",
+    },
 ]
 
 _BY_ID = {a["id"]: a for a in AGENTS}

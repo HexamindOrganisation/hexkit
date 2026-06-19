@@ -73,14 +73,16 @@ Open <http://localhost:8873>.
 1. Loading the app redirects you to **/login** (the route guard fires).
 2. Log in as one of the demo accounts (all share the same password, `hexademo`):
    - `guest@example.com` (no role) — exercises the fail-closed `default` (deny)
-   - `vince@hexamind.ai` (viewer), `olivia@hexamind.ai` (operator),
+   - `vince@hexamind.ai` (default), `olivia@hexamind.ai` (operator),
      `aaron@hexamind.ai` (admin) — devops roles
    - `nadia@clinic.org` (nurse), `priya@clinic.org` (physician),
      `bianca@clinic.org` (billing_staff) — healthcare roles
    - `alice@hexamind.ai` (requester), `carla@hexamind.ai` (implementer),
      `emma@hexamind.ai` (change_manager), `gabriel@hexamind.ai` (cab_manager) — itsm roles
+   - `hugo@hexamind.ai` (default), `manon@hexamind.ai` (manager),
+     `chloe@hexamind.ai` (gestionnaire_rh) — hr roles
 
-   The `role` only matters for HexGate-gated agents (healthcare / devops / itsm
+   The `role` only matters for HexGate-gated agents (healthcare / devops / itsm / hr
    with `HEXGATE_KEY` set), where it scopes the per-tool policy. The accounts come
    from [`demo-users.yaml`](demo-users.yaml), upserted on
    startup when `PLATFORM_DEMO_USERS_FILE` is set (the `make dev` launcher sets

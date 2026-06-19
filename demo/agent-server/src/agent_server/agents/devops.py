@@ -18,6 +18,11 @@ from . import devops_agent
 
 logger = logging.getLogger("agent_server.devops")
 
+# The elevated DevOps roles (devops_policy.yaml). Anything else — no role, or a
+# role from another agent (nurse, requester…) — normalizes to the `default`
+# baseline (read logs) rather than passing an unrecognized string to the policy.
+_DEVOPS_ROLES = {"operator", "admin"}
+
 
 class DevopsAgent:
     framework = "google-adk"
@@ -45,7 +50,9 @@ class DevopsAgent:
             # user block.
             caller = protocol.caller(context)
             user_id = caller.get("id") or "hexui-demo"
-            role = caller.get("role") or os.getenv("HEXGATE_ROLE", "operator")
+            role = caller.get("role") or os.getenv("HEXGATE_ROLE", "default")
+            if role not in _DEVOPS_ROLES:
+                role = "default"
             events = devops_agent.stream_as(text, user_id=user_id, role=role)
         else:
             events = devops_agent.stream(text)
