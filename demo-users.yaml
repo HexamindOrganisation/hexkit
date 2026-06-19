@@ -71,3 +71,19 @@ users:
     password: hexademo
     name: Gabriel Laurent     # read all + schedule decision only (Authorize→Schedule)
     role: cab_manager
+
+  # ── HR agent ── roles: default < manager < gestionnaire_rh (hr_policy.yaml).
+  # One user per role; the role widens the readable employee fields and unlocks
+  # salary/medical/export/offboarding.
+  - email: hugo@hexamind.ai
+    password: hexademo
+    name: Hugo Bernard        # annuaire + annuaire fields only
+    role: default
+  - email: manon@hexamind.ai
+    password: hexademo
+    name: Manon Lefevre       # + leave_balance / performance_rating (own team)
+    role: manager
+  - email: chloe@hexamind.ai
+    password: hexademo
+    name: Chloe Garnier       # paie, médical, export (≤1000), offboarding
+    role: gestionnaire_rh
