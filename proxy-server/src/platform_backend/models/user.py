@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Uuid, func
+from sqlalchemy import JSON, DateTime, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base
@@ -29,6 +29,11 @@ class User(Base):
     # `context.user.role`. HexUI never interprets it; each dev team decides
     # their own role vocabulary.
     role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Agent allow-list: the agent ids this user may reach. `NULL` (or empty)
+    # means unrestricted — every agent in the roster (see `access.py`). A
+    # non-empty list scopes the user to exactly those agents (the roster the
+    # proxy returns is filtered to it, and the agent-scoped routes 403 the rest).
+    agents: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..access import can_access
 from ..auth.deps import current_user
 from ..db import get_session
 from ..models.conversation import Conversation
@@ -78,6 +79,11 @@ async def create_conversation(
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_session),
 ) -> ConversationOut:
+    if not can_access(user, body.agent_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"No access to agent '{body.agent_id}'",
+        )
     await _verify_folder(session, user.id, body.folder_id)
     conv = Conversation(
         user_id=user.id,

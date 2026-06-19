@@ -13,11 +13,16 @@ process spawn, no network.
 from __future__ import annotations
 
 import json
+import uuid
 
 import httpx
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from platform_backend import runtime_client
+from platform_backend.models.user import User
 
 from ._helpers import signup
 
@@ -76,6 +81,44 @@ async def test_ui_404_preserved(client: AsyncClient, _mock_runtime: dict) -> Non
     h = (await signup(client))["headers"]
     r = await client.get("/agents/a1/ui", headers=h)
     assert r.status_code == 404
+
+
+async def test_agent_allowlist_filters_roster_and_gates_routes(
+    client: AsyncClient, session: AsyncSession, _mock_runtime: dict
+) -> None:
+    """A user with an explicit `agents` list sees only those in the roster, and
+    the agent-scoped routes 403 the rest. (No list = unrestricted — that's the
+    path every other test exercises.)"""
+    roster = [{"id": "devops"}, {"id": "itsm"}, {"id": "healthcare"}]
+    _mock_runtime["rule"] = lambda r: httpx.Response(200, json=roster)
+
+    me = await signup(client)
+    h = me["headers"]
+    await session.execute(
+        update(User)
+        .where(User.id == uuid.UUID(me["user"]["id"]))
+        .values(agents=["devops", "itsm"])
+    )
+    await session.commit()
+
+    # Roster is filtered to the allow-list.
+    r = await client.get("/agents", headers=h)
+    assert r.status_code == 200
+    assert {a["id"] for a in r.json()} == {"devops", "itsm"}
+
+    # A disallowed agent → 403 on ui, conversation-free actions, and create.
+    assert (await client.get("/agents/healthcare/ui", headers=h)).status_code == 403
+    assert (
+        await client.post("/agents/healthcare/actions/x", json={"args": {}}, headers=h)
+    ).status_code == 403
+    assert (
+        await client.post("/conversations", json={"agent_id": "healthcare"}, headers=h)
+    ).status_code == 403
+
+    # An allowed agent still works.
+    assert (
+        await client.post("/conversations", json={"agent_id": "devops"}, headers=h)
+    ).status_code == 201
 
 
 async def test_proxy_requires_auth(client: AsyncClient, _mock_runtime: dict) -> None:

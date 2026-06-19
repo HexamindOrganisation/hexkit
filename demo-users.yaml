@@ -2,8 +2,8 @@
 # points at this file (`make dev` sets that env var by default).
 #
 # Idempotent: existing rows (matched by email) are LEFT ALONE — changing a
-# password here won't overwrite the DB. Wipe /tmp/hexa_dev.sqlite to start
-# fresh.
+# password (or `agents`) here won't overwrite the DB. Wipe /tmp/hexa_dev.sqlite
+# to start fresh.
 #
 # DO NOT commit real credentials here. This file is for local demos with
 # throwaway accounts.
@@ -14,60 +14,88 @@
 # means something to the agent whose policy defines it; talking to the other
 # agent falls through to that policy's fail-closed `default` (deny).
 #
+# `agents` is an optional allow-list of agent ids the user may reach. The proxy
+# filters the roster (and the picker) to it and 403s the rest. OMIT it for
+# unrestricted access — every agent (what sign-ups / non-seeded accounts get,
+# and the only way to reach the framework-demo agents probe/atlas/forge/orbit).
+# The seeded users below are scoped to their use-case agents only. (A shared
+# agent for everyone — e.g. a future HR agent — goes in access.py's
+# COMMON_AGENT_IDS, not here.)
+#
 # Password is `hexademo` for everyone (min length is 8).
 users:
 
-  # ── No role ── exercises the fail-closed `default` (deny) path on both agents
+  # ── No role ── exercises the fail-closed `default` (deny) path on the gated
+  # agents. Scoped to all three so you can demo no-role denial on each.
   - email: guest@example.com
     password: hexademo
     name: Sam Guest
+    agents: [healthcare, devops, itsm]
     # role omitted on purpose
 
-  # ── DevOps agent ── roles: viewer < operator < admin (devops_policy.yaml)
+  # ── Hexamind org (DevOps + ITSM) ── one merged group; everyone can reach BOTH
+  # agents. Each keeps a single role, meaningful to one agent; talking to the
+  # other falls through to that policy's fail-closed `default` (deny).
+  #   DevOps roles:  viewer < operator < admin            (devops_policy.yaml)
+  #   ITSM roles:    requester, implementer, change_manager, cab_manager
+  #                  (itsm_policy.yaml — ownership/scope key off `name`, which
+  #                  must match the seed in itsm_db.py: Alice Martin owns
+  #                  CHG0001, Carla Robert is its implementer).
   - email: vince@hexamind.ai
     password: hexademo
-    name: Vince Reilly        # read service logs only
+    name: Vince Reilly        # devops: read service logs only
     role: viewer
+    agents: [devops, itsm]
   - email: olivia@hexamind.ai
     password: hexademo
-    name: Olivia Park         # restart/scale in dev & staging (replicas <= 10); prod walled off
+    name: Olivia Park         # devops: restart/scale in dev & staging (replicas <= 10); prod walled off
     role: operator
+    agents: [devops, itsm]
+  - email: mark@hexamind.ai
+    password: hexademo
+    name: Mark Johnson
+    role: operator
+    agents: [devops, itsm]
   - email: aaron@hexamind.ai
     password: hexademo
-    name: Aaron Mensah        # full ops incl. prod, higher cap, the only role that can delete
+    name: Aaron Mensah        # devops: full ops incl. prod, higher cap, the only role that can delete
     role: admin
+    agents: [devops, itsm]
+  - email: alice@hexamind.ai
+    password: hexademo
+    name: Alice Martin        # itsm: create + edit own drafts + submit (owns CHG0001)
+    role: requester
+    agents: [devops, itsm]
+  - email: carla@hexamind.ai
+    password: hexademo
+    name: Carla Robert        # itsm: read-only, scoped to changes they implement (CHG0001)
+    role: implementer
+    agents: [devops, itsm]
+  - email: emma@hexamind.ai
+    password: hexademo
+    name: Emma Dubois         # itsm: read all + edit assessment + authorize (Assess→Authorize)
+    role: change_manager
+    agents: [devops, itsm]
+  - email: gabriel@hexamind.ai
+    password: hexademo
+    name: Gabriel Laurent     # itsm: read all + schedule decision only (Authorize→Schedule)
+    role: cab_manager
+    agents: [devops, itsm]
 
-  # ── Healthcare agent ── roles: nurse, physician, billing_staff (healthcare_policy.yaml)
+  # ── Clinic org (Healthcare) ── healthcare agent only.
+  #   roles: nurse, physician, billing_staff             (healthcare_policy.yaml)
   - email: nadia@clinic.org
     password: hexademo
     name: Nadia               # clinical reads + order labs; cannot prescribe or share PHI
     role: nurse
+    agents: [healthcare]
   - email: priya@clinic.org
     password: hexademo
     name: Priya               # full clinical authority; controlled meds gated, PHI shares only to allowlisted domains
     role: physician
+    agents: [healthcare]
   - email: bianca@clinic.org
     password: hexademo
     name: Bianca              # billing/claims lookups only; clinical data walled off
     role: billing_staff
-
-  # ── ITSM agent ── roles: requester, implementer, change_manager, cab_manager
-  # (itsm_policy.yaml). One user per role. Ownership/scope key off `name` (HexUI
-  # never forwards email), so these names must match the seed in itsm_db.py —
-  # Alice Martin owns CHG0001, Carla Robert is its implementer.
-  - email: alice@hexamind.ai
-    password: hexademo
-    name: Alice Martin        # create + edit own drafts + submit (owns CHG0001)
-    role: requester
-  - email: carla@hexamind.ai
-    password: hexademo
-    name: Carla Robert        # read-only, scoped to changes they implement (CHG0001)
-    role: implementer
-  - email: emma@hexamind.ai
-    password: hexademo
-    name: Emma Dubois         # read all + edit assessment + authorize (Assess→Authorize)
-    role: change_manager
-  - email: gabriel@hexamind.ai
-    password: hexademo
-    name: Gabriel Laurent     # read all + schedule decision only (Authorize→Schedule)
-    role: cab_manager
+    agents: [healthcare]

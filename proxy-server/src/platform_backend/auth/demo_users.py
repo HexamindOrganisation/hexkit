@@ -16,7 +16,8 @@ File shape::
       - email: alice@demo.local
         password: hexademo
         name: Alice Anderson
-        role: billing     # optional, opaque, hexgate-only meaning
+        role: billing            # optional, opaque, hexgate-only meaning
+        agents: [healthcare]     # optional allow-list; omit = all agents (see access.py)
 """
 
 from __future__ import annotations
@@ -72,7 +73,16 @@ def _validate_entry(entry: Any, index: int) -> tuple[str, str, str | None, str |
         raise DemoUsersError(f"users[{index}] ({email}): `name` must be a string or null")
     if role is not None and not isinstance(role, str):
         raise DemoUsersError(f"users[{index}] ({email}): `role` must be a string or null")
-    return email.lower(), password, name, role
+    # `agents` is the optional per-user allow-list (omit = unrestricted; see
+    # access.py). Must be a list of non-empty agent-id strings when present.
+    agents = entry.get("agents")
+    if agents is not None and (
+        not isinstance(agents, list) or not all(isinstance(a, str) and a for a in agents)
+    ):
+        raise DemoUsersError(
+            f"users[{index}] ({email}): `agents` must be a list of agent-id strings"
+        )
+    return email.lower(), password, name, role, agents
 
 
 async def load_demo_users(path: Path) -> int:
@@ -82,7 +92,7 @@ async def load_demo_users(path: Path) -> int:
     inserted = 0
     async with session_factory()() as session:
         for i, entry in enumerate(entries):
-            email, password, name, role = _validate_entry(entry, i)
+            email, password, name, role, agents = _validate_entry(entry, i)
             existing = (
                 await session.execute(select(User).where(User.email == email))
             ).scalar_one_or_none()
@@ -94,6 +104,7 @@ async def load_demo_users(path: Path) -> int:
                     password_hash=hash_password(password),
                     name=name,
                     role=role,
+                    agents=agents,
                 )
             )
             inserted += 1
