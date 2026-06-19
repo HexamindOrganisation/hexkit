@@ -18,11 +18,10 @@ import uuid
 import httpx
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from platform_backend import runtime_client
 from platform_backend.models.user import User
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ._helpers import signup
 
