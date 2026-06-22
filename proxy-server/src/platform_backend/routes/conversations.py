@@ -15,8 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..access import can_access
 from .. import runtime_client
+from ..access import can_access
 from ..auth.deps import current_user
 from ..db import get_session
 from ..models.conversation import Conversation
