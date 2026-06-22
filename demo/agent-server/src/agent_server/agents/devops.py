@@ -15,6 +15,7 @@ from typing import Any
 
 from .. import protocol
 from . import devops_agent
+from .google_adk import to_native_event
 
 logger = logging.getLogger("agent_server.devops")
 
@@ -59,7 +60,7 @@ class DevopsAgent:
 
         try:
             async for adk_event in events:
-                native_event = devops_agent.to_native_event(adk_event)
+                native_event = to_native_event(adk_event)
                 if native_event is not None:
                     yield native_event
         except Exception as exception:  # noqa: BLE001 — degrade to a visible error event
