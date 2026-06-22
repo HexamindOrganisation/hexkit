@@ -3,8 +3,8 @@
 The tools + ``agent``, and how to invoke it: ``stream`` (plain ADK runner) and
 ``stream_as`` (the same agent gated by HexGate policy). Vendored from
 ``hexgate/examples/devops_agent.py``. The HexaUI contract wrapper that the
-server runs lives in ``devops.py``; ADK ``Event`` → native projection is
-``to_native_event`` below.
+server runs lives in ``devops.py``; the ADK ``Event`` → native projection lives
+in ``google_adk``.
 
 One agent definition; the caller's ``role`` (viewer < operator < admin) is what
 flips the decision — the policy gates ``scale_deployment`` on the replica count
@@ -138,60 +138,3 @@ async def stream_as(text: str, *, user_id: str, role: str) -> AsyncIterator[Any]
     runner = HexgateRunner(agent=agent, app_name=_APP_NAME, session_service=session_service)
     async for event in runner.run_async(new_message=_message(text), user=user):
         yield event
-
-
-# ── ADK Event → HexaUI native event ──────────────────────────────────────────
-
-
-def to_native_event(event: Any) -> dict | None:
-    """Project one ADK ``Event`` into the native JSON the proxy's
-    ``GoogleADKTranslator`` reads (``None`` to drop it).
-
-    Mirrors the wire shape the translator expects: ``author`` + ``content.parts``
-    of ``text`` / ``function_call`` / ``function_response``, with ``partial`` and
-    ``turn_complete`` carried through so block framing stays correct.
-    """
-    content = getattr(event, "content", None)
-    raw_parts = getattr(content, "parts", None) or []
-
-    parts: list[dict] = []
-    for part in raw_parts:
-        func_call = getattr(part, "function_call", None)
-        func_resp = getattr(part, "function_response", None)
-        text = getattr(part, "text", None)
-        if func_call is not None:
-            parts.append(
-                {
-                    "function_call": {
-                        "id": getattr(func_call, "id", None) or "",
-                        "name": getattr(func_call, "name", "tool") or "tool",
-                        "args": dict(getattr(func_call, "args", None) or {}),
-                    }
-                }
-            )
-        elif func_resp is not None:
-            parts.append(
-                {
-                    "function_response": {
-                        "id": getattr(func_resp, "id", None) or "",
-                        "name": getattr(func_resp, "name", "tool") or "tool",
-                        "response": getattr(func_resp, "response", None),
-                    }
-                }
-            )
-        elif text:
-            parts.append({"text": text})
-
-    turn_complete = bool(getattr(event, "turn_complete", False))
-    if not parts and not turn_complete:
-        return None
-
-    native: dict[str, Any] = {
-        "author": getattr(event, "author", None) or "assistant",
-        "content": {"parts": parts},
-    }
-    if getattr(event, "partial", False):
-        native["partial"] = True
-    if turn_complete:
-        native["turn_complete"] = True
-    return native
