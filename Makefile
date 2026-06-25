@@ -60,15 +60,15 @@ register: install-hexgate ## Register the healthcare + devops + itsm + hr agents
 	 if [ -z "$$HEXGATE_KEY" ]; then \
 	   echo "HEXGATE_KEY not set — add it to demo/agent-server/.env or export it."; exit 1; fi; \
 	 echo "→ registering healthcare_agent"; \
-	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.healthcare_agent:agent && \
+	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.clinic_org.healthcare.healthcare_agent:agent && \
 	 echo "→ registering devops_agent" && \
-	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.devops_agent:agent && \
+	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.tech_org.devops.devops_agent:agent && \
 	 echo "→ registering itsm_agent" && \
-	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.itsm_agent:agent \
-	     --tools agent_server.agents.itsm_agent:TOOLS --model gpt-4o-mini && \
+	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.tech_org.itsm.itsm_agent:agent \
+	     --tools agent_server.agents.tech_org.itsm.itsm_agent:TOOLS --model gpt-4o-mini && \
 	 echo "→ registering hr_agent" && \
-	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.hr_agent:agent \
-	     --tools agent_server.agents.hr_agent:TOOLS --model gpt-4o-mini
+	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.shared.hr.hr_agent:agent \
+	     --tools agent_server.agents.shared.hr.hr_agent:TOOLS --model gpt-4o-mini
 
 # -- test -------------------------------------------------------------------
 test: ## Run the proxy test suite.
