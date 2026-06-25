@@ -18,8 +18,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PLATFORM_", extra="ignore")
 
     database_url: str = Field(
-        default="postgresql+asyncpg://platform:platform@127.0.0.1:5433/platform",
-        description="Async SQLAlchemy URL for the primary database.",
+        default="sqlite+aiosqlite:///./hexa.sqlite",
+        description=(
+            "Async SQLAlchemy URL for the primary database. Defaults to a local "
+            "SQLite file — no server to deploy. For multi-worker / high-concurrency "
+            "deployments, install the `postgres` extra and set a "
+            "`postgresql+asyncpg://…` URL."
+        ),
     )
     jwt_secret: str = Field(
         default="dev-only-change-me-dev-only-change-me",

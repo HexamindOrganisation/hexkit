@@ -246,7 +246,8 @@ async def test_second_message_keeps_title_and_extends_history(
         async for _ in resp.aiter_raw():
             pass
 
-    # Second message: runtime gets THREE messages back (user, assistant, user).
+    # Second message: the proxy forwards ONLY the new turn (the agent owns
+    # conversation memory now), not the prior transcript.
     mock_runtime["rule"] = lambda r: (200, _build_run(["second reply"]))
     async with client.stream(
         "POST",
@@ -258,11 +259,17 @@ async def test_second_message_keeps_title_and_extends_history(
             pass
 
     body = json.loads(mock_runtime["requests"][-1]["body"])
-    messages = body["input"]["messages"]
-    assert [m["role"] for m in messages] == ["user", "assistant", "user"]
-    assert messages[0]["content"] == "First turn"
-    assert messages[1]["content"] == "first reply"
-    assert messages[2]["content"] == "Second turn"
+    assert body["input"]["messages"] == [{"role": "user", "content": "Second turn"}]
+
+    # …but the DISPLAY transcript the proxy stores still extends to all four
+    # messages, in order (this is what the UI renders on reload).
+    rows = (await client.get(f"/conversations/{cid}/messages", headers=h)).json()
+    assert [(m["role"], m["content"]) for m in rows] == [
+        ("user", "First turn"),
+        ("assistant", "first reply"),
+        ("user", "Second turn"),
+        ("assistant", "second reply"),
+    ]
 
     # Title is locked in from the first turn.
     conv = await session.get(Conversation, uuid.UUID(cid))

@@ -71,8 +71,9 @@ register: install-hexgate ## Register the healthcare + devops + itsm + hr agents
 	     --tools agent_server.agents.shared.hr.hr_agent:TOOLS --model gpt-4o-mini
 
 # -- test -------------------------------------------------------------------
-test: ## Run the proxy test suite.
+test: ## Run the proxy + agent-server test suites.
 	cd proxy-server && PYTHONPATH=$(PROXY_PATH) .venv/bin/python -m pytest
+	cd demo/agent-server && PYTHONPATH=$(AGENT_PATH) .venv/bin/python -m pytest
 
 # -- lint / format ----------------------------------------------------------
 lint: ## ruff check across every Python package in the repo (shared ruff.toml).

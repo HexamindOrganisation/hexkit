@@ -8,12 +8,14 @@ go through the chat route, Phase C.4).
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .. import runtime_client
 from ..access import can_access
 from ..auth.deps import current_user
 from ..db import get_session
@@ -34,6 +36,7 @@ from ..schemas.file import AttachFilesIn, FileOut
 from ..schemas.message import MessageOut
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
+logger = logging.getLogger("platform_backend.conversations")
 
 
 async def _get_owned(
@@ -124,8 +127,16 @@ async def delete_conversation(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     conv = await _get_owned(session, user.id, conv_id)
+    agent_id = conv.agent_id
     await session.delete(conv)
     await session.commit()
+    # The agent owns this conversation's memory (CONTRACT §5) — tell it to
+    # forget. Best-effort: the proxy-side delete already succeeded, so a backend
+    # that's down or doesn't implement /forget must not surface as an error.
+    try:
+        await runtime_client.forget(agent_id, str(conv_id))
+    except Exception:  # noqa: BLE001
+        logger.warning("forget failed for conversation %s (agent %r)", conv_id, agent_id)
 
 
 @router.get("/{conv_id}/messages", response_model=list[MessageOut])
