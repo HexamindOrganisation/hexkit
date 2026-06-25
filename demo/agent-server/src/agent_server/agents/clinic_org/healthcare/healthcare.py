@@ -14,9 +14,10 @@ from typing import Any
 
 from agents import set_default_openai_key
 
-from .. import protocol
+from agent_server import protocol
+from agent_server.frameworks.openai_agents import agent_input, to_native_event
+
 from . import healthcare_agent
-from .openai_agents import agent_input, to_native_event
 
 logger = logging.getLogger("agent_server.healthcare")
 

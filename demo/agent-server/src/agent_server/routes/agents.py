@@ -18,8 +18,8 @@ from fastapi.responses import Response, StreamingResponse
 
 from .. import protocol
 from ..actions import run_action
-from ..agents.select import select_agent
 from ..roster import AGENTS, get_agent, read_ui
+from ..select import select_agent
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 

@@ -32,8 +32,9 @@ from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
+from agent_server.frameworks.langchain_events import messages_input, to_native_event  # noqa: F401
+
 from . import hr_state
-from .langchain_events import messages_input, to_native_event  # noqa: F401
 
 # Load .env at import — the eager `agent` below (which `hexgate register`
 # resolves) needs OPENAI_API_KEY at ChatOpenAI construction time.
