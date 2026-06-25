@@ -308,7 +308,10 @@ def _enforced_agent() -> Any:
 # Invocation — yield LangChain astream_events items for the proxy. The event
 # projection + input coercion are shared with the HR agent in `langchain_events`;
 # `to_native_event` is re-exported here so `itsm.py` can call it off this module.
-from .langchain_events import messages_input, to_native_event  # noqa: E402, F401
+from agent_server.frameworks.langchain_events import (  # noqa: E402, F401
+    messages_input,
+    to_native_event,
+)
 
 
 async def stream(input: Any) -> AsyncIterator[Any]:

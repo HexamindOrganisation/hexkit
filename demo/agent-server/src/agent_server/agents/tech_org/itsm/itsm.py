@@ -12,7 +12,7 @@ import os
 from collections.abc import AsyncIterator
 from typing import Any
 
-from .. import protocol
+from agent_server import protocol
 
 logger = logging.getLogger("agent_server.itsm")
 

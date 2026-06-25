@@ -238,7 +238,7 @@ def set_state(number: str, new_state: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Lifecycle board (UI widget). Global view, no per-user scope — see ui/itsm.yaml.
+# Lifecycle board (UI widget). Global view, no per-user scope — see ui.yaml.
 # ---------------------------------------------------------------------------
 
 STATES = ["new", "Assess", "Authorize", "Schedule"]

@@ -9,50 +9,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-_UI_DIR = Path(__file__).parent / "ui"
+_AGENTS_DIR = Path(__file__).parent / "agents"
+
+# Each agent co-locates its UI config with its sources (one folder per agent).
+_UI_PATHS = {
+    "devops": _AGENTS_DIR / "tech_org" / "devops" / "ui.yaml",
+    "itsm": _AGENTS_DIR / "tech_org" / "itsm" / "ui.yaml",
+    "healthcare": _AGENTS_DIR / "clinic_org" / "healthcare" / "ui.yaml",
+    "hr": _AGENTS_DIR / "shared" / "hr" / "ui.yaml",
+}
 
 # id -> public roster entry. ``ui_url`` is relative to the agent-server root;
 # the proxy rewrites/serves it under its own /agents/{id}/ui. ``framework`` tells
-# the proxy which translator to apply to this agent's native event stream — each
-# reference agent demonstrates one framework path (`native` is the escape hatch).
-#   - Probe (native): the simple real-LLM chat showcase (OpenAI).
-#   - Orbit (google-adk): the "complex" showcase — a real LLM via Google ADK /
-#     Gemini PLUS a widget actions + data-source workspace (see ui/orbit.yaml).
-# Both stream a real model when AGENT_ENABLE_LLM is set and the matching key is
-# forwarded; otherwise they fall back (echo / canned ADK events).
+# the proxy which translator to apply to this agent's native event stream
+# (`native` is the escape hatch). Each entry is a real agent; HexGate wrapping is
+# opt-in (enabled by setting HEXGATE_KEY).
 AGENTS: list[dict[str, str]] = [
-    {
-        "id": "probe",
-        "name": "Probe",
-        "role": "General assistant",
-        "main_color": "#3f9d94",
-        "ui_url": "/agents/probe/ui",
-        "framework": "native",
-    },
-    {
-        "id": "atlas",
-        "name": "Atlas",
-        "role": "Operations copilot",
-        "main_color": "#4f74c9",
-        "ui_url": "/agents/atlas/ui",
-        "framework": "langchain",
-    },
-    {
-        "id": "forge",
-        "name": "Forge",
-        "role": "Code & build",
-        "main_color": "#56809e",
-        "ui_url": "/agents/forge/ui",
-        "framework": "openai-agents",
-    },
-    {
-        "id": "orbit",
-        "name": "Orbit",
-        "role": "Research workspace",
-        "main_color": "#b0714f",
-        "ui_url": "/agents/orbit/ui",
-        "framework": "google-adk",
-    },
     # Healthcare — a real OpenAI Agents SDK agent; HexGate wrapping is opt-in
     # (enabled by setting HEXGATE_KEY).
     {
@@ -106,7 +78,7 @@ def get_agent(agent_id: str) -> dict[str, str] | None:
 
 def read_ui(agent_id: str) -> str | None:
     """Return the agent's ``ui.yaml`` text, or ``None`` when absent."""
-    path = _UI_DIR / f"{agent_id}.yaml"
-    if not path.is_file():
+    path = _UI_PATHS.get(agent_id)
+    if path is None or not path.is_file():
         return None
     return path.read_text(encoding="utf-8")

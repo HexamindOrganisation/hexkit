@@ -13,9 +13,10 @@ import os
 from collections.abc import AsyncIterator
 from typing import Any
 
-from .. import protocol
+from agent_server import protocol
+from agent_server.frameworks.google_adk import to_native_event
+
 from . import devops_agent
-from .google_adk import to_native_event
 
 logger = logging.getLogger("agent_server.devops")
 
