@@ -1,0 +1,27 @@
+# Docs Assistant — served by GET /agents/docs/ui.
+# The tool-calls widget is where the gate shows up: every mcp-gdocs-* call
+# appears here, and a policy-denied call renders as a failed tool call.
+page:
+  layout_type: grid
+  main_color: "#2563eb"
+
+widgets:
+  - name: transcript
+    type: ai-response
+    position: { horizontal: left, vertical: high }
+    size: { width: 8, height: 520 }
+    empty_text: "Ask the Docs Assistant — try \"share the launch plan with dana@hexamind.ai\", then try an outside address."
+    thinking_indicator: dots
+
+  - name: tools
+    type: tool-calls
+    position: { horizontal: right, vertical: high }
+    size: { width: 4, height: 520 }
+    empty_text: "Tool calls appear here — allowed ones run; denied ones show the policy block."
+
+  - name: chat-input
+    type: ai-chat-input
+    position: { horizontal: left, vertical: low }
+    size: { width: 12, height: auto }
+    placeholder: "Message the Docs Assistant…"
+    rows: 2

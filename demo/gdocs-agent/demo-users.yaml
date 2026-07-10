@@ -1,0 +1,37 @@
+# Demo users for the gates demo (the gdocs agent). Point the proxy at this with
+# PLATFORM_DEMO_USERS_FILE so switching login shows the same call allowed for
+# one role and denied for another.
+#
+# `role` is opaque to HexKit — the gdocs agent reads it via User(role=...) and
+# the platform's docs_agent policy resolves the rules. The three roles below
+# match that policy: analyst (read-only) < editor (create/share internal) <
+# admin (everything, with guardrails). `agents: [docs]` scopes each user to the
+# one agent this backend serves.
+#
+# Password is `hexademo` for everyone. DO NOT commit real credentials.
+users:
+
+  # No role → exercises the policy's fail-closed default (deny) path.
+  - email: guest@example.com
+    password: hexademo
+    name: Sam Guest
+    agents: [docs]
+    # role omitted on purpose
+
+  - email: ana@hexamind.ai
+    password: hexademo
+    name: Ana Analyst          # read-only: search + read (not CONF-* docs)
+    role: analyst
+    agents: [docs]
+
+  - email: ed@hexamind.ai
+    password: hexademo
+    name: Ed Editor            # + create, share inside @hexamind.ai (<=5, not owner)
+    role: editor
+    agents: [docs]
+
+  - email: adah@hexamind.ai
+    password: hexademo
+    name: Adah Admin           # everything: read CONF-*, export to internal drive, delete (confirm)
+    role: admin
+    agents: [docs]
