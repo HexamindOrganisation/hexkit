@@ -45,7 +45,12 @@ class DevopsAgent:
 
         text = protocol.last_user_text(input)
         # HexGate-gated path whenever HexGate is configured; plain ADK otherwise.
-        if os.getenv("HEXGATE_KEY"):
+        # `banned_error` is the ban exception type, resolved only on the gated
+        # path so the plain path never imports the optional hexgate dependency.
+        banned_error: type[Exception] | None = None
+        if os.getenv("HEXGATE_API_KEY"):
+            from hexgate.security import AgentBannedError as banned_error
+
             # Scope policy decisions to the signed-in HexKit user. `id` / `role`
             # ride in `context.user` (CONTRACT.md §5); fall back to the static
             # demo identity and HEXGATE_ROLE for standalone runs that send no
@@ -65,5 +70,19 @@ class DevopsAgent:
                 if native_event is not None:
                     yield native_event
         except Exception as exception:  # noqa: BLE001 — degrade to a visible error event
+            # A kill-switch ban refuses the run before the LLM. Surface it as a
+            # structured error the frontend can recognize (and localize) rather
+            # than a generic failure.
+            if banned_error is not None and isinstance(exception, banned_error):
+                yield protocol.error(
+                    exception.user_message,
+                    details={
+                        "code": exception.code,
+                        "ban_type": exception.ban_type,
+                        "target": exception.target,
+                        "reason": exception.reason,
+                    },
+                )
+                return
             logger.exception("devops run failed")
             yield protocol.error(f"agent failed: {exception}")

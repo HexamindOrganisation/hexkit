@@ -83,7 +83,7 @@ Open <http://localhost:8873>.
      `chloe@hexamind.ai` (gestionnaire_rh) — hr roles
 
    The `role` only matters for HexGate-gated agents (healthcare / devops / itsm / hr
-   with `HEXGATE_KEY` set), where it scopes the per-tool policy. The accounts come
+   with `HEXGATE_API_KEY` set), where it scopes the per-tool policy. The accounts come
    from [`demo-users.yaml`](demo-users.yaml), upserted on
    startup when `PLATFORM_DEMO_USERS_FILE` is set (the `make dev` launcher sets
    it for you). Or sign up a fresh account at **/signup**.

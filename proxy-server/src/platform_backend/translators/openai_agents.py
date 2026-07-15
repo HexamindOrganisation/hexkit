@@ -43,7 +43,9 @@ class OpenAIAgentsTranslator(BaseTranslator):
         etype = event.get("type")
 
         if etype == "error":
-            return emitter.error(event.get("message", "") or "")
+            return emitter.error(
+                event.get("message", "") or "", details=event.get("details") or {}
+            )
 
         if etype == "raw_response":
             data = event.get("data") or {}

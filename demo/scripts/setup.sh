@@ -49,7 +49,7 @@ echo
 echo "done. start the stack with:"
 echo "    AGENT_ENABLE_LLM=1 bash demo/scripts/run-backends.sh"
 echo
-echo "Optional — HexGate-wrapped healthcare + devops agents (set HEXGATE_KEY to enable):"
+echo "Optional — HexGate-wrapped healthcare + devops agents (set HEXGATE_API_KEY to enable):"
 echo "  hexgate (from PyPI) needs a Python >=3.13 venv. Let the Makefile handle it:"
 echo "    make install-hexgate   # (re)create the agent-server venv on 3.13 with the hexgate extra"
-echo "    make register          # register the agents (reads HEXGATE_KEY from demo/agent-server/.env)"
+echo "    make register          # register the agents (reads HEXGATE_API_KEY from demo/agent-server/.env)"

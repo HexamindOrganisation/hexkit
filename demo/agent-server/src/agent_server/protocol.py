@@ -14,7 +14,8 @@ Event vocabulary (the `type` field):
                             "args": {...}, "widget": "tool-calls"}  (args, widget optional)
     {"type": "tool_result", "id": "t1", "output": {...}}          a tool call ends
     {"type": "tool_result", "id": "t1", "error": "..."}             (output OR error)
-    {"type": "error",       "message": "..."}                     the run failed
+    {"type": "error",       "message": "...", "details": {...}}    the run failed
+                            (details optional — e.g. a kill-switch ban)
     {"type": "done"}                                              optional; EOF also ends
 
 The builder functions below are conveniences; emitting the plain dicts directly
@@ -56,8 +57,11 @@ def tool_result(id: str, output: Any = None, error: str | None = None) -> dict:
     return ev
 
 
-def error(message: str) -> dict:
-    return {"type": "error", "message": message}
+def error(message: str, details: dict[str, Any] | None = None) -> dict:
+    ev: dict[str, Any] = {"type": "error", "message": message}
+    if details:
+        ev["details"] = details
+    return ev
 
 
 def done() -> dict:

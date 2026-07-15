@@ -68,7 +68,9 @@ class NativeTranslator(BaseTranslator):
             )
 
         if etype == "error":
-            return emitter.error(event.get("message", "") or "")
+            return emitter.error(
+                event.get("message", "") or "", details=event.get("details") or {}
+            )
 
         # "done" and unknown types: nothing (run_end is synthesized by the route).
         return []
