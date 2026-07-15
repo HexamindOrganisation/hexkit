@@ -40,6 +40,14 @@ class GoogleADKTranslator(BaseTranslator):
     def handle(self, emitter: RunEmitter, event: dict[str, Any]) -> list[StreamEvent]:
         out: list[StreamEvent] = []
 
+        # A native error frame (e.g. a kill-switch ban) is not an ADK Event — it
+        # carries no `content.parts`, so surface it directly rather than letting
+        # the parts loop below silently drop it.
+        if event.get("type") == "error":
+            return emitter.error(
+                event.get("message", "") or "", details=event.get("details") or {}
+            )
+
         # Author switch (multi-agent) closes the previous author's open block.
         author = event.get("author")
         if author and author != self._last_author:

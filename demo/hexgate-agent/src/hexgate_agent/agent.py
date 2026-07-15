@@ -19,7 +19,7 @@ Two things make this backend interesting:
    - per-request biscuit attenuation by ``HexgateClient``;
    - audit events POSTed to the hexgate cloud, tagged with the HexKit user.
 
-   To see those audit events on the cloud dashboard, set ``HEXGATE_KEY`` in
+   To see those audit events on the cloud dashboard, set ``HEXGATE_API_KEY`` in
    this process's env (it's the dev/admin key — biscuits attenuate per request
    to scope back down to the HexKit user).
 

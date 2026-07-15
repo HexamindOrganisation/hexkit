@@ -95,7 +95,7 @@ one of the demo accounts (all share the password `hexademo`):
 - `nadia@clinic.org` (nurse), `priya@clinic.org` (physician), `bianca@clinic.org` (billing_staff) — healthcare roles
 
 The `role` only changes behavior when an agent is HexGate-gated (healthcare /
-devops with `HEXGATE_KEY` set); it scopes that agent's per-tool policy.
+devops with `HEXGATE_API_KEY` set); it scopes that agent's per-tool policy.
 
 Or sign up a fresh account at `/signup`. The demo accounts come from
 [`demo-users.yaml`](demo-users.yaml), upserted on startup when
@@ -122,8 +122,8 @@ The bundled agents demonstrate the contract end to end:
 | **Orbit** | `google-adk` (Gemini) | a real LLM **plus** the widget actions + `data_source` workspace |
 | **Atlas** | `langchain` | the LangChain translator (canned native events) |
 | **Forge** | `openai-agents` | the OpenAI Agents translator (canned native events) |
-| **Healthcare** | `openai-agents` (OpenAI) | a real clinical-assistant agent; HexGate-gated when `HEXGATE_KEY` is set, scoping per-tool policy to the caller's `context.user` role |
-| **DevOps** | `google-adk` (OpenAI via LiteLLM) | a real infra-assistant agent; HexGate-gated when `HEXGATE_KEY` is set, scoping per-tool policy to the caller's `context.user` role |
+| **Healthcare** | `openai-agents` (OpenAI) | a real clinical-assistant agent; HexGate-gated when `HEXGATE_API_KEY` is set, scoping per-tool policy to the caller's `context.user` role |
+| **DevOps** | `google-adk` (OpenAI via LiteLLM) | a real infra-assistant agent; HexGate-gated when `HEXGATE_API_KEY` is set, scoping per-tool policy to the caller's `context.user` role |
 | **ITSM** | `langchain` (deepagents) | a change-request assistant with a live lifecycle dashboard (refresh button → funnel metrics + change table updates as the agent's tools run) |
 | **HR** | `langchain` (deepagents) | an internal HR assistant; demonstrates stateful per-user data (`hr_state.py`) and role-gated tools when HexGate is wired |
 | **Hexgate Guard** | `hexgate` | a hexgate-wrapped agent that opens `User(user_id, role)` per run and emits audit decisions to the hexgate cloud (separate backend at [`demo/hexgate-agent/`](demo/hexgate-agent/)) |

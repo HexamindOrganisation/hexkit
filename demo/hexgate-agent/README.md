@@ -35,7 +35,7 @@ hexgate's own envelope events and re-drives the emitter from the content events
 
 - **Python ≥ 3.13** — hexgate requires it (the other demo backends only need
   3.11). The venv below must use a 3.13+ interpreter.
-- **`HEXGATE_KEY`** (optional, for cloud audit) — the dev/admin key that
+- **`HEXGATE_API_KEY`** (optional, for cloud audit) — the dev/admin key that
   authenticates this backend to your hexgate cloud project. Per-request biscuit
   attenuation scopes each call down to the HexKit user, so one key serves all
   HexKit users.
@@ -49,7 +49,7 @@ uv venv --python 3.13 demo/hexgate-agent/.venv
 uv pip install --python demo/hexgate-agent/.venv -e 'demo/hexgate-agent[dev]'
 
 # Optional: stream policy decisions to the hexgate cloud dashboard.
-export HEXGATE_KEY=...
+export HEXGATE_API_KEY=...
 
 demo/hexgate-agent/.venv/bin/python -m hexgate_agent     # serves on :8080
 ```

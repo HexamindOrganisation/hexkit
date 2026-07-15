@@ -122,7 +122,7 @@ async def stream_as(text: str, *, user_id: str, role: str) -> AsyncIterator[Any]
     """Same as :func:`stream`, but through HexGate as ``user_id`` / ``role`` —
     every tool call is policy-gated against the calling user. The caller's
     ``role`` (viewer < operator < admin) is what flips each decision.
-    ``HexgateRunner`` reads ``HEXGATE_KEY`` from the environment.
+    ``HexgateRunner`` reads ``HEXGATE_API_KEY`` from the environment.
 
     ``user_id`` and ``role`` come from the HexKit caller (``context.user``); the
     wrapper in ``devops.py`` resolves them.

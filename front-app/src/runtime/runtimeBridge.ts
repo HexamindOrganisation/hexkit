@@ -333,6 +333,20 @@ export class RuntimeBridge implements AgentBridge {
             role: "system",
             content: "Run cancelled.",
           });
+        } else if (
+          event.details &&
+          (event.details.code === "agent_banned" ||
+            event.details.code === "user_banned")
+        ) {
+          // A kill-switch ban refused the run before the LLM. Show the
+          // administrator's message as a system notice rather than an error;
+          // append the operator-supplied reason when one was provided.
+          const reason = event.details.reason;
+          const content =
+            typeof reason === "string" && reason.trim()
+              ? `${event.message} (${reason})`
+              : event.message;
+          this.emit({ kind: "message", role: "system", content });
         } else {
           this.emit({ kind: "error", message: event.message });
         }

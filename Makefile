@@ -50,15 +50,16 @@ install-hexgate: ## Ensure the agent-server venv is Python 3.13 with the hexgate
 	@if ! $(AGENT_PY) -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 13) else 1)' 2>/dev/null; then \
 	   echo "→ (re)creating agent-server venv on Python 3.13 (hexgate needs >=3.13)"; \
 	   uv venv --python 3.13 demo/agent-server/.venv; fi
-	@$(AGENT_PY) -c 'import hexgate' 2>/dev/null || \
-	   uv pip install --python demo/agent-server/.venv -e 'demo/agent-server[dev,llm,hexgate]'
+	@# Always sync via uv so a bumped pin in pyproject.toml (e.g. hexgate>=…) is
+	@# actually applied. A bare `import hexgate` guard would keep a stale version.
+	@uv pip install --python demo/agent-server/.venv -e 'demo/agent-server[dev,llm,hexgate]'
 	@$(AGENT_PY) -c 'import deepagents' 2>/dev/null || \
 	   uv pip install --python demo/agent-server/.venv -e 'demo/agent-server[itsm]'
 
-register: install-hexgate ## Register the healthcare + devops + itsm + hr agents on the HexGate platform (reads HEXGATE_KEY from demo/agent-server/.env).
+register: install-hexgate ## Register the healthcare + devops + itsm + hr agents on the HexGate platform (reads HEXGATE_API_KEY from demo/agent-server/.env).
 	@if [ -f demo/agent-server/.env ]; then set -a; . demo/agent-server/.env; set +a; fi; \
-	 if [ -z "$$HEXGATE_KEY" ]; then \
-	   echo "HEXGATE_KEY not set — add it to demo/agent-server/.env or export it."; exit 1; fi; \
+	 if [ -z "$$HEXGATE_API_KEY" ]; then \
+	   echo "HEXGATE_API_KEY not set — add it to demo/agent-server/.env or export it."; exit 1; fi; \
 	 echo "→ registering healthcare_agent"; \
 	 PYTHONPATH=$(AGENT_PATH) $(HEXGATE) register --agent agent_server.agents.clinic_org.healthcare.healthcare_agent:agent && \
 	 echo "→ registering devops_agent" && \

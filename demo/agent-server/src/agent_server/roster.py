@@ -23,10 +23,10 @@ _UI_PATHS = {
 # the proxy rewrites/serves it under its own /agents/{id}/ui. ``framework`` tells
 # the proxy which translator to apply to this agent's native event stream
 # (`native` is the escape hatch). Each entry is a real agent; HexGate wrapping is
-# opt-in (enabled by setting HEXGATE_KEY).
+# opt-in (enabled by setting HEXGATE_API_KEY).
 AGENTS: list[dict[str, str]] = [
     # Healthcare — a real OpenAI Agents SDK agent; HexGate wrapping is opt-in
-    # (enabled by setting HEXGATE_KEY).
+    # (enabled by setting HEXGATE_API_KEY).
     {
         "id": "healthcare",
         "name": "Healthcare",
@@ -36,7 +36,7 @@ AGENTS: list[dict[str, str]] = [
         "framework": "openai-agents",
     },
     # DevOps — a real Google ADK agent (LiteLLM over an OpenAI model); HexGate
-    # wrapping is opt-in (enabled by setting HEXGATE_KEY).
+    # wrapping is opt-in (enabled by setting HEXGATE_API_KEY).
     {
         "id": "devops",
         "name": "DevOps",
@@ -46,7 +46,7 @@ AGENTS: list[dict[str, str]] = [
         "framework": "google-adk",
     },
     # ITSM — a real deepagents/LangChain agent; HexGate wrapping is opt-in
-    # (enabled by setting HEXGATE_KEY). The real-LLM showcase for the LangChain
+    # (enabled by setting HEXGATE_API_KEY). The real-LLM showcase for the LangChain
     # translator (RBAC + state-machine guard on a Change-Request workflow).
     {
         "id": "itsm",
@@ -57,7 +57,7 @@ AGENTS: list[dict[str, str]] = [
         "framework": "langchain",
     },
     # HR — a real LangChain agent (create_react_agent); HexGate wrapping is opt-in
-    # (enabled by setting HEXGATE_KEY). Showcases role-based field-level scoping
+    # (enabled by setting HEXGATE_API_KEY). Showcases role-based field-level scoping
     # over an employee record (default < manager < gestionnaire_rh).
     {
         "id": "hr",

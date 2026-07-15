@@ -42,7 +42,7 @@ class HrAgent:
         from . import hr_agent
 
         # HexGate-gated whenever configured; plain graph otherwise.
-        if os.getenv("HEXGATE_KEY"):
+        if os.getenv("HEXGATE_API_KEY"):
             # `name` / `role` ride in `context.user` (CONTRACT.md §5); fall back to
             # a static identity for standalone runs that send no user block.
             caller = protocol.caller(context)

@@ -26,7 +26,7 @@ trap cleanup EXIT INT TERM
 # LLMAgent when OPENAI_API_KEY is set in the env (else it falls back to echo).
 export AGENT_ENABLE_LLM="${AGENT_ENABLE_LLM:-0}"
 
-# Export agent-server secrets (OPENAI_API_KEY, GOOGLE_API_KEY, HEXGATE_KEY) from
+# Export agent-server secrets (OPENAI_API_KEY, GOOGLE_API_KEY, HEXGATE_API_KEY) from
 # its .env. The agent backend reads its provider keys from this env — HexKit
 # never sends them.
 if [ -f demo/agent-server/.env ]; then
