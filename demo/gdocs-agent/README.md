@@ -9,7 +9,8 @@ The "gates" demo backend. It serves **one** hexgate agent (`docs`) over the five
   **fetched from the hexgate platform** and hot-reloaded every run — edit it in
   the dashboard's **Policies** tab and the next message reflects it;
 - runs under the caller's HexKit **role** (`analyst` / `editor` / `admin`) via
-  `async with hexgate.User(role=...)`, so the same call is allowed for one role
+  `async with hexgate.HexgateContext(user_id=..., user_roles=[...])`, so the
+  same call is allowed for one role
   and denied for another. A denied tool call streams as a hexgate `error` event
   and shows up as a failed call in the tool-calls widget.
 

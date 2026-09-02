@@ -48,12 +48,13 @@ class HealthcareAgent:
             # Scope policy decisions to the signed-in HexKit user. `id` / `role`
             # ride in `context.user` (CONTRACT.md §5); fall back to the static
             # demo identity and HEXGATE_ROLE for standalone runs that send no
-            # user block.
+            # user block. HexgateContext takes a role *set*; the contract
+            # carries one role per caller, so the set is that single role.
             caller = protocol.caller(context)
             user_id = caller.get("id") or "hexkit-demo"
             role = caller.get("role") or os.getenv("HEXGATE_ROLE", "nurse")
             events = healthcare_agent.stream_as(
-                agent_input(input), user_id=user_id, role=role
+                agent_input(input), user_id=user_id, roles=[role]
             )
         else:
             events = healthcare_agent.stream(agent_input(input))

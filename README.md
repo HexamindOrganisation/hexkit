@@ -126,7 +126,7 @@ The bundled agents demonstrate the contract end to end:
 | **DevOps** | `google-adk` (OpenAI via LiteLLM) | a real infra-assistant agent; HexGate-gated when `HEXGATE_API_KEY` is set, scoping per-tool policy to the caller's `context.user` role |
 | **ITSM** | `langchain` (deepagents) | a change-request assistant with a live lifecycle dashboard (refresh button → funnel metrics + change table updates as the agent's tools run) |
 | **HR** | `langchain` (deepagents) | an internal HR assistant; demonstrates stateful per-user data (`hr_state.py`) and role-gated tools when HexGate is wired |
-| **Hexgate Guard** | `hexgate` | a hexgate-wrapped agent that opens `User(user_id, role)` per run and emits audit decisions to the hexgate cloud (separate backend at [`demo/hexgate-agent/`](demo/hexgate-agent/)) |
+| **Hexgate Guard** | `hexgate` | a hexgate-wrapped agent that opens `HexgateContext(user_id, user_roles)` per run and emits audit decisions to the hexgate cloud (separate backend at [`demo/hexgate-agent/`](demo/hexgate-agent/)) |
 
 ---
 

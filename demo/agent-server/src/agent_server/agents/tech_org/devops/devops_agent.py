@@ -2,13 +2,14 @@
 
 The tools + ``agent``, and how to invoke it: ``stream`` (plain ADK runner) and
 ``stream_as`` (the same agent gated by HexGate policy). Vendored from
-``hexgate/examples/devops_agent.py``. The HexKit contract wrapper that the
+``hexgate/examples/devops_google.py``. The HexKit contract wrapper that the
 server runs lives in ``devops.py``; the ADK ``Event`` → native projection lives
 in ``google_adk``.
 
-One agent definition; the caller's ``role`` (viewer < operator < admin) is what
-flips the decision — the policy gates ``scale_deployment`` on the replica count
-AND the env, and reserves ``delete_resource`` for admin.
+One agent definition; the caller's roles (viewer < operator < admin), carried on
+the per-request ``HexgateContext``, are what flip the decision — the policy gates
+``scale_deployment`` on the replica count AND the env, and reserves
+``delete_resource`` for admin.
 """
 
 from __future__ import annotations
@@ -118,23 +119,37 @@ async def stream(text: str) -> AsyncIterator[Any]:
         yield event
 
 
-async def stream_as(text: str, *, user_id: str, role: str) -> AsyncIterator[Any]:
-    """Same as :func:`stream`, but through HexGate as ``user_id`` / ``role`` —
-    every tool call is policy-gated against the calling user. The caller's
-    ``role`` (viewer < operator < admin) is what flips each decision.
+async def stream_as(
+    text: str, *, user_id: str, roles: list[str]
+) -> AsyncIterator[Any]:
+    """Same as :func:`stream`, but through HexGate as ``user_id`` / ``roles`` —
+    every tool call is policy-gated against the calling user.
+
+    The caller's roles (viewer < operator < admin) are what flip each decision.
+    HexGate evaluates *every* role in the set and takes the most permissive
+    outcome, so the set — not a single string — is the unit of authorization.
     ``HexgateRunner`` reads ``HEXGATE_API_KEY`` from the environment.
 
-    ``user_id`` and ``role`` come from the HexKit caller (``context.user``); the
+    ``user_id`` and ``roles`` come from the HexKit caller (``context.user``); the
     wrapper in ``devops.py`` resolves them.
     """
     from hexgate.adapters.google import HexgateRunner
-    from hexgate.runtime import User
+    from hexgate.runtime import HexgateContext
 
-    user = User(user_id=user_id, session_id=_SESSION_ID, role=role)
+    # The per-request scope: identity for audit, `user_roles` for policy
+    # selection. The runner opens `async with hexgate_context` around the run,
+    # so the wrapped tools' enforcers resolve the caller off this contextvar.
+    hexgate_context = HexgateContext(
+        user_id=user_id, session_id=_SESSION_ID, user_roles=list(roles)
+    )
     session_service = InMemorySessionService()
     await session_service.create_session(
-        app_name=_APP_NAME, user_id=user.user_id, session_id=user.session_id
+        app_name=_APP_NAME,
+        user_id=hexgate_context.user_id,
+        session_id=hexgate_context.session_id,
     )
     runner = HexgateRunner(agent=agent, app_name=_APP_NAME, session_service=session_service)
-    async for event in runner.run_async(new_message=_message(text), user=user):
+    async for event in runner.run_async(
+        new_message=_message(text), hexgate_context=hexgate_context
+    ):
         yield event

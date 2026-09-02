@@ -54,13 +54,15 @@ class DevopsAgent:
             # Scope policy decisions to the signed-in HexKit user. `id` / `role`
             # ride in `context.user` (CONTRACT.md §5); fall back to the static
             # demo identity and HEXGATE_ROLE for standalone runs that send no
-            # user block.
+            # user block. HexgateContext takes a role *set* (every role is
+            # evaluated, most permissive wins) — the contract carries one role
+            # per caller, so the set is that single role.
             caller = protocol.caller(context)
             user_id = caller.get("id") or "hexkit-demo"
             role = caller.get("role") or os.getenv("HEXGATE_ROLE", "default")
             if role not in _DEVOPS_ROLES:
                 role = "default"
-            events = devops_agent.stream_as(text, user_id=user_id, role=role)
+            events = devops_agent.stream_as(text, user_id=user_id, roles=[role])
         else:
             events = devops_agent.stream(text)
 

@@ -17,7 +17,11 @@ contract. Two things make it the "gates" demo:
    proxy's ``HexgateTranslator`` renders in the tool-calls widget.
 
 The caller's HexKit role (``context.user.role`` — analyst / editor / admin)
-drives which rules apply, via ``async with hexgate.User(role=...)``.
+drives which rules apply, via
+``async with hexgate.HexgateContext(user_id=..., user_roles=[...])``. The
+``user_roles`` set is what hexgate selects policies with (every role in it is
+evaluated, most permissive wins); the contract carries one role per caller, so
+the set holds that single role.
 
 BYOK: the OpenAI key is never sent by HexKit. It's read from this process's env
 (``OPENAI_API_KEY``) or handed in-memory to ``POST /byok`` (the demo notebook
@@ -142,7 +146,7 @@ async def run_gdocs_agent(
         }
         return
 
-    from hexgate import User
+    from hexgate import HexgateContext
     from hexgate.agents.factory import stream_agent
 
     try:
@@ -156,7 +160,7 @@ async def run_gdocs_agent(
     messages = _messages_with_files(input, context)
 
     # Bind the run to the HexKit caller's identity — hexgate reads this
-    # ContextVar to resolve the role's rules from the platform policy. No user
+    # ContextVar to resolve each role's rules from the platform policy. No user
     # block = unscoped (falls through to the policy's fail-closed default).
     caller = (context or {}).get("user") or {}
     user_id = caller.get("id")
@@ -169,7 +173,7 @@ async def run_gdocs_agent(
             yield event.model_dump(mode="json")
         return
 
-    async with User(user_id=user_id, role=role):
+    async with HexgateContext(user_id=user_id, user_roles=[role] if role else []):
         async for event in stream_agent(agent, handler, {"messages": messages}):
             if cancel.is_set():
                 return

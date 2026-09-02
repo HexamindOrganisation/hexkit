@@ -27,7 +27,7 @@ from . import itsm_db as db
 # register` resolves) needs OPENAI_API_KEY at construction time.
 load_dotenv()
 
-# Each transition tool maps to (required from_state, to_state). The role is
+# Each transition tool maps to (required from_state, to_state). The roles are
 # enforced by the policy (one tool per role); the from-state, in the tool body.
 
 _TRANSITIONS = {
@@ -37,14 +37,29 @@ _TRANSITIONS = {
 }
 
 
-def _actor() -> tuple[str, str | None]:
-    """Trusted caller identity (name, role) from the active User scope."""
-    from hexgate.runtime import get_current_user
+# Roles that may see every change record (see `list_my_changes`).
+_MANAGER_ROLES = frozenset({"change_manager", "cab_manager"})
 
-    user = get_current_user()
-    if user is None:  # no scope → fail closed
-        return ("anonymous", None)
-    return (user.user_id, user.role)
+
+def _actor() -> tuple[str, frozenset[str]]:
+    """Trusted caller identity (name, roles) from the active HexgateContext scope.
+
+    Returns the caller's *whole* role set, not one role: the policy evaluates
+    every role a caller carries and allows the call if any of them allows it
+    (permissive union). The app-level scoping below has to union the same way,
+    or it would be stricter than the policy that let the call through.
+    """
+    from hexgate.runtime import get_current_context
+
+    context = get_current_context()
+    if context is None:  # no scope → fail closed
+        return ("anonymous", frozenset())
+    return (context.user_id, frozenset(context.user_roles))
+
+
+def _roles_label(roles: frozenset[str]) -> str | None:
+    """Audit-log rendering of the caller's role set (``None`` when empty)."""
+    return ", ".join(sorted(roles)) or None
 
 
 def _fmt(change: dict) -> str:
@@ -59,16 +74,17 @@ def _transition(tool_name: str, change_id: str) -> str:
     """Shared guard for the three transitions: the change must be in the expected
     ``from`` state (role is already enforced by the policy), and — for the
     requester's submit — the actor must own the record."""
-    actor_name, role = _actor()
+    actor_name, roles = _actor()
+    role_label = _roles_label(roles)
     from_state, to_state = _TRANSITIONS[tool_name]
     change = db.get_change(change_id)
     if change is None:
-        db.audit(action=tool_name, actor=actor_name, role=role, number=change_id,
+        db.audit(action=tool_name, actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", detail="not found")
         return f"DENIED: change {change_id} not found."
 
     if change["state"] != from_state:
-        db.audit(action=tool_name, actor=actor_name, role=role, number=change_id,
+        db.audit(action=tool_name, actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", before=change["state"], detail=f"requires {from_state}")
         return (
             f"DENIED: {tool_name} requires state '{from_state}', but "
@@ -77,12 +93,12 @@ def _transition(tool_name: str, change_id: str) -> str:
 
     # Only the requester's own draft may be submitted.
     if tool_name == "submit_for_assessment" and change["requester_name"] != actor_name:
-        db.audit(action=tool_name, actor=actor_name, role=role, number=change_id,
+        db.audit(action=tool_name, actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", before=change["state"], detail="not owner")
         return f"DENIED: {change_id} is not your change."
 
     updated = db.set_state(change_id, to_state)
-    db.audit(action=tool_name, actor=actor_name, role=role, number=change_id,
+    db.audit(action=tool_name, actor=actor_name, role=role_label, number=change_id,
              decision="ALLOW", before=from_state, after=to_state)
     return f"OK: {change_id} transitioned {from_state} → {to_state}.\n{_fmt(updated)}"
 
@@ -98,16 +114,17 @@ async def create_change(ci: str, short_description: str) -> str:
     `ci` is a CMDB CI name such as 'srv-db-01' or 'CRM'. The new change is
     forced to state 'new' and owned by the calling user.
     """
-    actor_name, role = _actor()
+    actor_name, roles = _actor()
+    role_label = _roles_label(roles)
     try:
         created = db.create_change(
             short_description=short_description, ci_name=ci, requester_name=actor_name
         )
     except ValueError as exc:
-        db.audit(action="create_change", actor=actor_name, role=role, number=None,
+        db.audit(action="create_change", actor=actor_name, role=role_label, number=None,
                  decision="DENY", detail=str(exc))
         return f"DENIED: {exc} (known CIs: srv-web-01/02, srv-db-01, srv-app-01, CRM, ERP, Billing)."
-    db.audit(action="create_change", actor=actor_name, role=role,
+    db.audit(action="create_change", actor=actor_name, role=role_label,
              number=created["number"], decision="ALLOW", after="new", detail=f"CI={ci}")
     return f"OK: created {created['number']} in state 'new'.\n{_fmt(created)}"
 
@@ -119,17 +136,18 @@ async def update_change(change_id: str, description: str = "", ci: str = "") -> 
     Allowed only while the change is in state 'new' and owned by the caller —
     write access expires once the change moves past 'new'.
     """
-    actor_name, role = _actor()
+    actor_name, roles = _actor()
+    role_label = _roles_label(roles)
     change = db.get_change(change_id)
     if change is None:
         return f"DENIED: change {change_id} not found."
 
     if change["state"] != "new":
-        db.audit(action="update_change", actor=actor_name, role=role, number=change_id,
+        db.audit(action="update_change", actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", before=change["state"], detail="not editable past 'new'")
         return f"DENIED: {change_id} is in '{change['state']}'; drafts are editable only while 'new'."
     if change["requester_name"] != actor_name:
-        db.audit(action="update_change", actor=actor_name, role=role, number=change_id,
+        db.audit(action="update_change", actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", before=change["state"], detail="not owner")
         return f"DENIED: {change_id} is not your draft."
 
@@ -140,10 +158,10 @@ async def update_change(change_id: str, description: str = "", ci: str = "") -> 
             ci_name=ci or None,
         )
     except ValueError as exc:
-        db.audit(action="update_change", actor=actor_name, role=role, number=change_id,
+        db.audit(action="update_change", actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", detail=str(exc))
         return f"DENIED: {exc}."
-    db.audit(action="update_change", actor=actor_name, role=role, number=change_id,
+    db.audit(action="update_change", actor=actor_name, role=role_label, number=change_id,
              decision="ALLOW", before="new", after="new")
     return f"OK: updated {change_id}.\n{_fmt(updated)}"
 
@@ -151,17 +169,22 @@ async def update_change(change_id: str, description: str = "", ci: str = "") -> 
 @tool
 async def read_change(change_id: str) -> str:
     """Return a single change request by number (e.g. 'CHG0001')."""
-    actor_name, role = _actor()
+    actor_name, roles = _actor()
+    role_label = _roles_label(roles)
     change = db.get_change(change_id)
-    # Implementers may read ONLY changes they are mentioned on. Return
+    # Implementers may read ONLY changes they are mentioned on. Any *other* role
+    # the caller carries lifts that restriction, because no other role is
+    # read-restricted here — matching the policy's permissive union, which
+    # already allowed this call on the strength of the widest role. Return
     # 'not found' on a miss so the existence of unrelated changes never leaks.
+    implementer_only = roles == frozenset({"implementer"})
     if change is None or (
-        role == "implementer" and change["implementer_name"] != actor_name
+        implementer_only and change["implementer_name"] != actor_name
     ):
-        db.audit(action="read_change", actor=actor_name, role=role, number=change_id,
+        db.audit(action="read_change", actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", detail="not found / out of scope")
         return f"Not found: {change_id}."
-    db.audit(action="read_change", actor=actor_name, role=role, number=change_id,
+    db.audit(action="read_change", actor=actor_name, role=role_label, number=change_id,
              decision="ALLOW", before=change["state"])
     return _fmt(change)
 
@@ -169,18 +192,23 @@ async def read_change(change_id: str) -> str:
 @tool
 async def list_my_changes() -> str:
     """List the change requests visible to the calling user."""
-    actor_name, role = _actor()
+    actor_name, roles = _actor()
+    role_label = _roles_label(roles)
     changes = db.all_changes()
     # Filter to the caller's scope BEFORE returning — no unrelated rows leak.
-    if role == "requester":
-        visible = [c for c in changes if c["requester_name"] == actor_name]
-    elif role == "implementer":
-        visible = [c for c in changes if c["implementer_name"] == actor_name]
-    elif role in ("change_manager", "cab_manager"):
+    # The scope is the UNION over the caller's roles, so someone who is both a
+    # requester and an implementer sees both sets. Filtering on one role would
+    # hide rows the policy plainly grants them.
+    if roles & _MANAGER_ROLES:
         visible = changes
     else:
-        visible = []
-    db.audit(action="list_my_changes", actor=actor_name, role=role, number=None,
+        visible = [
+            c
+            for c in changes
+            if ("requester" in roles and c["requester_name"] == actor_name)
+            or ("implementer" in roles and c["implementer_name"] == actor_name)
+        ]
+    db.audit(action="list_my_changes", actor=actor_name, role=role_label, number=None,
              decision="ALLOW", detail=f"{len(visible)} visible")
     if not visible:
         return "No changes visible to you."
@@ -196,16 +224,17 @@ async def submit_for_assessment(change_id: str) -> str:
 @tool
 async def update_assessment(change_id: str, short_description: str) -> str:
     """Update assessment details on a change under review (state must be 'Assess')."""
-    actor_name, role = _actor()
+    actor_name, roles = _actor()
+    role_label = _roles_label(roles)
     change = db.get_change(change_id)
     if change is None:
         return f"DENIED: change {change_id} not found."
     if change["state"] != "Assess":
-        db.audit(action="update_assessment", actor=actor_name, role=role, number=change_id,
+        db.audit(action="update_assessment", actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", before=change["state"], detail="requires Assess")
         return f"DENIED: assessment edits require state 'Assess'; {change_id} is in '{change['state']}'."
     updated = db.update_change_fields(change_id, description=short_description)
-    db.audit(action="update_assessment", actor=actor_name, role=role, number=change_id,
+    db.audit(action="update_assessment", actor=actor_name, role=role_label, number=change_id,
              decision="ALLOW", before="Assess", after="Assess")
     return f"OK: updated assessment on {change_id}.\n{_fmt(updated)}"
 
@@ -223,17 +252,18 @@ async def schedule_change(change_id: str, cab_decision: str) -> str:
     `cab_decision` is the CAB's note (e.g. 'approved for Saturday window').
     Decision-only: no change fields are edited here.
     """
-    actor_name, role = _actor()
+    actor_name, roles = _actor()
+    role_label = _roles_label(roles)
     from_state, to_state = _TRANSITIONS["schedule_change"]
     change = db.get_change(change_id)
     if change is None:
         return f"DENIED: change {change_id} not found."
     if change["state"] != from_state:
-        db.audit(action="schedule_change", actor=actor_name, role=role, number=change_id,
+        db.audit(action="schedule_change", actor=actor_name, role=role_label, number=change_id,
                  decision="DENY", before=change["state"], detail=f"requires {from_state}")
         return f"DENIED: scheduling requires state '{from_state}'; {change_id} is in '{change['state']}'."
     updated = db.set_state(change_id, to_state)
-    db.audit(action="schedule_change", actor=actor_name, role=role, number=change_id,
+    db.audit(action="schedule_change", actor=actor_name, role=role_label, number=change_id,
              decision="ALLOW", before=from_state, after=to_state,
              detail=f"CAB: {cab_decision}")
     return f"OK: {change_id} scheduled (Authorize → Schedule). CAB decision: {cab_decision}.\n{_fmt(updated)}"
@@ -292,7 +322,7 @@ agent = _build_agent()
 
 # Enforced wrapper, built once on first gated use — `wrap_langchain_agent`
 # mutates TOOLS in place, so re-running it per request would re-wrap them.
-# One wrapper serves all users; `user` is passed per call.
+# One wrapper serves all users; the `HexgateContext` is passed per call.
 _enforced: Any | None = None
 
 
@@ -320,14 +350,18 @@ async def stream(input: Any) -> AsyncIterator[Any]:
         yield event
 
 
-async def stream_as(input: Any, *, user_id: str, role: str) -> AsyncIterator[Any]:
+async def stream_as(
+    input: Any, *, user_id: str, roles: list[str]
+) -> AsyncIterator[Any]:
     """Same as :func:`stream`, but policy-gated against the caller. ``user_id`` is
-    the caller's NAME (tools read it back via ``get_current_user()`` for ownership
-    / scope); ``role`` is the opaque role from ``context.user``."""
-    from hexgate.runtime import User
+    the caller's NAME (tools read it back via ``get_current_context()`` for
+    ownership / scope); ``roles`` are the opaque roles from ``context.user``."""
+    from hexgate.runtime import HexgateContext
 
-    user = User(user_id=user_id, role=role, session_id="hexkit-demo-itsm")
+    hexgate_context = HexgateContext(
+        user_id=user_id, user_roles=list(roles), session_id="hexkit-demo-itsm"
+    )
     async for event in _enforced_agent().astream_events(
-        messages_input(input), user=user
+        messages_input(input), hexgate_context=hexgate_context
     ):
         yield event

@@ -42,21 +42,22 @@ load_dotenv()
 
 
 def _actor() -> str:
-    """The calling employee's NAME from the active User scope (the self-service
-    tools act on this, never a model-supplied id). Falls back to a demo identity
-    on the ungated path, where no User scope is set."""
-    from hexgate.runtime import get_current_user
+    """The calling employee's NAME from the active HexgateContext scope (the
+    self-service tools act on this, never a model-supplied id). Falls back to a
+    demo identity on the ungated path, where no context scope is set."""
+    from hexgate.runtime import get_current_context
 
-    user = get_current_user()
-    return user.user_id if user is not None else "hexkit-demo"
+    context = get_current_context()
+    return context.user_id if context is not None else "hexkit-demo"
 
 
 # ---------------------------------------------------------------------------
 # Tools — stubs (no datastore), so the only gating they demonstrate is the
 # policy's arg-level check on each call's `args` (e.g. `args.field`, `args.count`).
 # Checks the constraint engine can't express — row-level "son équipe" scope,
-# name → id resolution — would live in the tool body keyed off the trusted User
-# identity (as the ITSM agent does via `_actor`); these stubs deliberately don't
+# name → id resolution — would live in the tool body keyed off the trusted
+# HexgateContext identity (as the ITSM agent does via `_actor`); these stubs
+# deliberately don't
 # implement them, so a caller is bounded by field-by-role gating only, NOT by
 # which employees are theirs to see.
 # ---------------------------------------------------------------------------
@@ -260,7 +261,7 @@ agent = _build_agent()
 
 # Enforced wrapper, built once on first gated use — `wrap_langchain_agent`
 # mutates TOOLS in place, so re-running it per request would re-wrap them.
-# One wrapper serves all users; `user` is passed per call.
+# One wrapper serves all users; the `HexgateContext` is passed per call.
 _enforced: Any | None = None
 
 
@@ -283,13 +284,19 @@ async def stream(input: Any) -> AsyncIterator[Any]:
         yield event
 
 
-async def stream_as(input: Any, *, user_id: str, role: str) -> AsyncIterator[Any]:
-    """Same as :func:`stream`, but policy-gated against the caller — ``role``
-    (default < manager < gestionnaire_rh) flips each decision."""
-    from hexgate.runtime import User
+async def stream_as(
+    input: Any, *, user_id: str, roles: list[str]
+) -> AsyncIterator[Any]:
+    """Same as :func:`stream`, but policy-gated against the caller — the
+    ``user_roles`` on the per-request :class:`~hexgate.runtime.HexgateContext`
+    (default < manager < gestionnaire_rh) flip each decision. Every role in the
+    set is evaluated and the most permissive outcome wins."""
+    from hexgate.runtime import HexgateContext
 
-    user = User(user_id=user_id, role=role, session_id="hexkit-demo-hr")
+    hexgate_context = HexgateContext(
+        user_id=user_id, user_roles=list(roles), session_id="hexkit-demo-hr"
+    )
     async for event in _enforced_agent().astream_events(
-        messages_input(input), user=user
+        messages_input(input), hexgate_context=hexgate_context
     ):
         yield event

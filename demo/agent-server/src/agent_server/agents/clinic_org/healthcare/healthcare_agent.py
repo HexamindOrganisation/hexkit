@@ -108,18 +108,26 @@ async def stream(input: Any) -> AsyncIterator[Any]:
         yield event
 
 
-async def stream_as(input: Any, *, user_id: str, role: str) -> AsyncIterator[Any]:
-    """Same as :func:`stream`, but through HexGate as ``user_id`` / ``role`` —
+async def stream_as(
+    input: Any, *, user_id: str, roles: list[str]
+) -> AsyncIterator[Any]:
+    """Same as :func:`stream`, but through HexGate as ``user_id`` / ``roles`` —
     every tool call is policy-gated against the calling user.
 
-    ``user_id`` and ``role`` come from the HexKit caller (``context.user``); the
-    wrapper in ``healthcare.py`` resolves them. Policy decisions and audit events
-    are tagged with this identity.
+    ``user_id`` and ``roles`` come from the HexKit caller (``context.user``); the
+    wrapper in ``healthcare.py`` resolves them. The per-request
+    :class:`~hexgate.runtime.HexgateContext` carries both: the id tags policy
+    decisions and audit events, and every role in ``user_roles`` is evaluated
+    (most permissive outcome wins).
     """
     from hexgate.adapters.openai import HexgateRunner
-    from hexgate.runtime import User
+    from hexgate.runtime import HexgateContext
 
-    user = User(user_id=user_id, session_id="hexkit-demo-healthcare", role=role)
-    result = HexgateRunner().run_streamed(agent, input, user=user)
+    hexgate_context = HexgateContext(
+        user_id=user_id, session_id="hexkit-demo-healthcare", user_roles=list(roles)
+    )
+    result = HexgateRunner().run_streamed(
+        agent, input, hexgate_context=hexgate_context
+    )
     async for event in result.stream_events():
         yield event
