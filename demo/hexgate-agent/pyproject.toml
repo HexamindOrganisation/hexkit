@@ -8,7 +8,7 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "hexgate>=0.2",
+    "hexgate>=0.3.0",
 ]
 
 [project.optional-dependencies]

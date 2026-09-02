@@ -9,7 +9,8 @@
 # throwaway accounts.
 #
 # `role` is optional and opaque: hexgate-wrapped agents read it via
-# `User(role=...)`. HexKit itself never interprets the string — every team
+# `HexgateContext(user_roles=[...])`. HexKit itself never interprets the
+# string — every team
 # defines their own role vocabulary in their hexgate policy. A role only
 # means something to the agent whose policy defines it; talking to the other
 # agent falls through to that policy's fail-closed `default` (deny).

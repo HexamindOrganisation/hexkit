@@ -45,12 +45,14 @@ class HrAgent:
         if os.getenv("HEXGATE_API_KEY"):
             # `name` / `role` ride in `context.user` (CONTRACT.md §5); fall back to
             # a static identity for standalone runs that send no user block.
+            # HexgateContext takes a role *set*; the contract carries one role
+            # per caller, so the set is that single role.
             caller = protocol.caller(context)
             identity = caller.get("name") or "hexkit-demo"
             role = caller.get("role") or os.getenv("HEXGATE_ROLE", "default")
             if role not in _HR_ROLES:
                 role = "default"
-            events = hr_agent.stream_as(input, user_id=identity, role=role)
+            events = hr_agent.stream_as(input, user_id=identity, roles=[role])
         else:
             events = hr_agent.stream(input)
 

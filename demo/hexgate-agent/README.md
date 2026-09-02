@@ -9,10 +9,12 @@ authorization-infrastructure SDK from the security-platform team) over the five
    events verbatim and the proxy's `HexgateTranslator` maps them onto the
    shared `RunEmitter`. The round-trip proves the "same events" decision
    between the two products holds on the wire.
-2. **End-to-end user identity.** When the HexKit proxy sends
+2. **End-to-end caller identity.** When the HexKit proxy sends
    `context.user = {id, name, role}` (CONTRACT.md §5), this backend opens an
-   `async with hexgate.User(user_id=..., role=...)` block around the run. The
-   role drives hexgate's per-tool policy decisions, biscuit attenuation, and
+   `async with hexgate.HexgateContext(user_id=..., user_roles=[...])` block
+   around the run. Those roles drive hexgate's per-tool policy decisions
+   (every role in the set is evaluated, most permissive wins), biscuit
+   attenuation, and
    audit emission to the hexgate cloud — so the demo's HexKit users show up
    in the cloud dashboard tagged with whatever role you set in **Settings**.
 
@@ -67,10 +69,10 @@ The proxy's smoke check works against any contract-conformant backend:
 demo/hexgate-agent/.venv/bin/python demo/scripts/verify_backend.py http://127.0.0.1:8080
 ```
 
-## User identity and policy
+## Caller identity and policy
 
 [`run_hexgate_agent`](src/hexgate_agent/agent.py) reads `context.user.id` and
-`context.user.role` and opens `async with hexgate.User(...)` around
+`context.user.role` and opens `async with hexgate.HexgateContext(...)` around
 `stream_agent(...)`. From there, hexgate's policy enforcement picks the role's
 rules from your `policy.yaml` (or your registered cloud policy) and audit events
 stream to the cloud, tagged with the HexKit user. **Policy enforcement** is

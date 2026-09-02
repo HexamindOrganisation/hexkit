@@ -10,12 +10,14 @@ Two things make this backend interesting:
    onto the rich internal schema. That round-trip is the whole point: it
    proves the two products' "same events" decision actually holds on the wire.
 
-2. **The user identity it carries.** When the HexKit proxy sends
+2. **The caller identity it carries.** When the HexKit proxy sends
    ``context.user = {id, name, role}`` (CONTRACT.md §5), this backend opens an
-   ``async with hexgate.User(user_id=..., role=...)`` block around the run.
-   That ContextVar drives:
+   ``async with hexgate.HexgateContext(user_id=..., user_roles=[...])`` block
+   around the run. ``user_roles`` is a set — hexgate evaluates every role and
+   takes the most permissive outcome — and the contract carries one role per
+   caller, so the set holds that single role. That ContextVar drives:
 
-   - per-tool policy decisions (``enforce_policy(role, tool, args)``);
+   - per-tool policy decisions (one policy per role, resolved from the set);
    - per-request biscuit attenuation by ``HexgateClient``;
    - audit events POSTed to the hexgate cloud, tagged with the HexKit user.
 
@@ -147,16 +149,16 @@ async def run_hexgate_agent(
     # Built once and cached (see _get_agent); the env key scopes the cache
     # entry. stream_agent is imported lazily for the same reason as the SDK
     # imports inside _get_agent.
-    from hexgate import User
+    from hexgate import HexgateContext
     from hexgate.agents.factory import stream_agent
 
     agent, handler = _get_agent(api_key)
     messages = _messages_with_files(input, context)
 
     # Bind the run to the HexKit caller's identity. hexgate reads the ContextVar
-    # set by `async with User(...)` for policy decisions, biscuit attenuation,
-    # and audit emission. Missing user block = no scoping (the SDK still runs;
-    # decisions just won't be tagged with a user).
+    # set by `async with HexgateContext(...)` for policy decisions, biscuit
+    # attenuation, and audit emission. Missing user block = no scoping (the SDK
+    # still runs; decisions just won't be tagged with a caller).
     caller = (context or {}).get("user") or {}
     user_id = caller.get("id")
     role = caller.get("role")
@@ -170,7 +172,7 @@ async def run_hexgate_agent(
             yield event.model_dump(mode="json")
         return
 
-    async with User(user_id=user_id, role=role):
+    async with HexgateContext(user_id=user_id, user_roles=[role] if role else []):
         async for event in stream_agent(agent, handler, {"messages": messages}):
             if cancel.is_set():
                 return  # stop producing; the proxy persists the partial text
