@@ -259,6 +259,25 @@ async def check_cancel(c: httpx.AsyncClient, r: Report, agent_id: str) -> None:
         r.fail("cancel returns {cancelled: bool}", json.dumps(cancelled_resp)[:60])
 
 
+async def check_forget(c: httpx.AsyncClient, r: Report, agent_id: str) -> None:
+    section(f"§5  POST /agents/{agent_id}/forget — memory lifecycle")
+    resp = await c.post(
+        f"/agents/{agent_id}/forget", json={"conversation_id": uuid.uuid4().hex}
+    )
+    if resp.status_code != 200:
+        r.fail("forget an unknown conversation -> 200", f"got {resp.status_code}")
+        return
+    try:
+        data = resp.json()
+    except json.JSONDecodeError:
+        r.fail("forget returns JSON")
+        return
+    if isinstance(data, dict) and isinstance(data.get("forgotten"), bool):
+        r.ok("forget returns {forgotten: bool}")
+    else:
+        r.fail("forget returns {forgotten: bool}", json.dumps(data)[:60])
+
+
 async def check_actions(c: httpx.AsyncClient, r: Report, agent_id: str, ui_text: str) -> None:
     section(f"§5b POST /agents/{agent_id}/actions/{{name}} — widget actions")
     # Strip YAML comments so wiring mentioned in prose doesn't count as real.
@@ -311,6 +330,7 @@ async def main() -> int:
         ui_text = await check_ui(c, r, agent_id)
         await check_stream(c, r, agent_id)
         await check_cancel(c, r, agent_id)
+        await check_forget(c, r, agent_id)
         await check_actions(c, r, agent_id, ui_text)
 
     print(

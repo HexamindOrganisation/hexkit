@@ -8,3 +8,5 @@ coverage
 __pycache__
 .claude
 .env
+*.sqlite
+*.sqlite-journal

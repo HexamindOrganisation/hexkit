@@ -122,17 +122,6 @@ def _autotitle(text: str) -> str:
     return line[:57].rstrip() + "…"
 
 
-async def _assemble_history(
-    session: AsyncSession, conv_id: uuid.UUID
-) -> list[dict[str, str]]:
-    result = await session.execute(
-        select(Message.role, Message.content)
-        .where(Message.conversation_id == conv_id)
-        .order_by(Message.created_at)
-    )
-    return [{"role": role, "content": content} for role, content in result.all()]
-
-
 # ---------------------------------------------------------------------------
 # Chat (streaming)
 # ---------------------------------------------------------------------------
@@ -164,12 +153,14 @@ async def post_message(
     if is_first_message and not conv.title:
         conv.title = _autotitle(body.content)
     await session.commit()
-    # Refresh so the assembled history below includes this row's timestamp
-    # ordering reliably.
     await session.refresh(user_message)
     await session.refresh(conv)
 
-    history = await _assemble_history(session, conv.id)
+    # The proxy forwards ONLY the new user turn — the agent owns conversation
+    # memory, keyed by `context.conversation_id` (CONTRACT §5). The user +
+    # assistant rows we persist are the *display* transcript (sidebar / reload),
+    # never the model context.
+    turn = [{"role": "user", "content": body.content}]
 
     # Link any newly-attached files to the conversation, then forward ALL of the
     # conversation's files (attachments persist across turns).
@@ -216,7 +207,7 @@ async def post_message(
     agent_id = conv.agent_id
 
     runtime_body = {
-        "input": {"messages": history},
+        "input": {"messages": turn},
         "run_id": run_id,
         "context": {
             "conversation_id": str(conv.id),
@@ -234,7 +225,7 @@ async def post_message(
         },
     }
 
-    input_payload = {"messages": history}
+    input_payload = {"messages": turn}
     emitter = RunEmitter(run_id, agent_id=agent_id)
     _active_runs[conv.id] = run_id
 

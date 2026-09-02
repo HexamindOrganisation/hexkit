@@ -41,8 +41,13 @@ AGENTS: list[dict[str, str]] = [
 ]
 _BY_ID = {a["id"]: a for a in AGENTS}
 
+# Conversation memory (CONTRACT.md §5): the proxy sends only the new turn, so we
+# own the transcript, keyed by conversation_id. In-process; swap for a durable
+# store in production.
+_MEMORY: dict[str, list[dict[str, str]]] = {}
 
-# ── The five contract endpoints ─────────────────────────────────────────────
+
+# ── The contract endpoints ──────────────────────────────────────────────────
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
@@ -70,18 +75,33 @@ async def stream(agent_id: str, body: dict[str, Any], request: Request):
     input = body.get("input") or {}
     context = body.get("context") or {}
     framework = _BY_ID[agent_id]["framework"]
+    conversation_id = context.get("conversation_id")
+
+    # We own memory: the proxy sent only the new turn. Append it, then run the
+    # agent against the full transcript for this conversation.
+    if conversation_id:
+        for m in input.get("messages") or []:
+            if isinstance(m, dict) and m.get("role") == "user":
+                _MEMORY.setdefault(conversation_id, []).append(
+                    {"role": "user", "content": str(m.get("content", ""))}
+                )
+    history = {"messages": list(_MEMORY.get(conversation_id, []))}
 
     # Register a cancel flag the /cancel route can flip mid-stream.
     cancel = asyncio.Event()
     request.app.state.runs[run_id] = cancel
 
     async def event_source() -> AsyncIterator[bytes]:
+        reply_parts: list[str] = []
         try:
             async for ev in run_hexgate_agent(
-                input=input, context=context, cancel=cancel
+                input=history, context=context, cancel=cancel
             ):
                 if cancel.is_set() or await request.is_disconnected():
                     return
+                # hexgate streams assistant text as block_delta events.
+                if ev.get("event_type") == "block_delta" and ev.get("text"):
+                    reply_parts.append(ev["text"])
                 # Each frame: data: {"framework": "hexgate", "event": <hexgate event>}
                 frame = {"framework": framework, "event": ev}
                 yield f"data: {json.dumps(frame, separators=(',', ':'))}\n\n".encode()
@@ -93,6 +113,11 @@ async def stream(agent_id: str, body: dict[str, Any], request: Request):
             yield f"data: {json.dumps(err)}\n\n".encode()
         finally:
             request.app.state.runs.pop(run_id, None)
+            reply = "".join(reply_parts).strip()
+            if conversation_id and reply:
+                _MEMORY.setdefault(conversation_id, []).append(
+                    {"role": "assistant", "content": reply}
+                )
 
     return StreamingResponse(event_source(), media_type="text/event-stream")
 
@@ -105,6 +130,17 @@ async def cancel(agent_id: str, body: dict[str, Any], request: Request) -> dict:
         return {"cancelled": False}  # already finished / unknown run
     ev.set()
     return {"cancelled": True}
+
+
+@router.post("/{agent_id}/forget")  # §5
+async def forget(agent_id: str, body: dict[str, Any] | None = None) -> dict:
+    """Erase a conversation's memory (the proxy calls this on conversation
+    delete). Idempotent — an unknown id is still 200."""
+    if agent_id not in _BY_ID:
+        raise HTTPException(status_code=404, detail=f"Unknown agent '{agent_id}'")
+    conversation_id = (body or {}).get("conversation_id")
+    forgotten = _MEMORY.pop(conversation_id, None) is not None if conversation_id else False
+    return {"forgotten": forgotten}
 
 
 @router.post("/{agent_id}/actions/{action_name}")  # §5b (optional)
