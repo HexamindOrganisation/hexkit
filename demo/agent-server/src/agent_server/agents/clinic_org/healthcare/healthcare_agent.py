@@ -117,9 +117,11 @@ async def stream_as(input: Any, *, user_id: str, role: str) -> AsyncIterator[Any
     are tagged with this identity.
     """
     from hexgate.adapters.openai import HexgateRunner
-    from hexgate.runtime import User
+    from hexgate.runtime import HexgateContext
 
-    user = User(user_id=user_id, session_id="hexkit-demo-healthcare", role=role)
-    result = HexgateRunner().run_streamed(agent, input, user=user)
+    hexgate_context = HexgateContext(
+        user_id=user_id, session_id="hexkit-demo-healthcare", user_roles=[role]
+    )
+    result = HexgateRunner().run_streamed(agent, input, hexgate_context=hexgate_context)
     async for event in result.stream_events():
         yield event

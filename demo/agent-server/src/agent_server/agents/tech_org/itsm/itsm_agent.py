@@ -38,13 +38,13 @@ _TRANSITIONS = {
 
 
 def _actor() -> tuple[str, str | None]:
-    """Trusted caller identity (name, role) from the active User scope."""
-    from hexgate.runtime import get_current_user
+    """Trusted caller identity (name, role) from the active HexgateContext scope."""
+    from hexgate.runtime import get_current_context
 
-    user = get_current_user()
-    if user is None:  # no scope → fail closed
+    context = get_current_context()
+    if context is None:  # no scope → fail closed
         return ("anonymous", None)
-    return (user.user_id, user.role)
+    return (context.user_id, context.user_roles[0] if context.user_roles else None)
 
 
 def _fmt(change: dict) -> str:
@@ -322,12 +322,14 @@ async def stream(input: Any) -> AsyncIterator[Any]:
 
 async def stream_as(input: Any, *, user_id: str, role: str) -> AsyncIterator[Any]:
     """Same as :func:`stream`, but policy-gated against the caller. ``user_id`` is
-    the caller's NAME (tools read it back via ``get_current_user()`` for ownership
+    the caller's NAME (tools read it back via ``get_current_context()`` for ownership
     / scope); ``role`` is the opaque role from ``context.user``."""
-    from hexgate.runtime import User
+    from hexgate.runtime import HexgateContext
 
-    user = User(user_id=user_id, role=role, session_id="hexkit-demo-itsm")
+    hexgate_context = HexgateContext(
+        user_id=user_id, user_roles=[role], session_id="hexkit-demo-itsm"
+    )
     async for event in _enforced_agent().astream_events(
-        messages_input(input), user=user
+        messages_input(input), hexgate_context=hexgate_context
     ):
         yield event

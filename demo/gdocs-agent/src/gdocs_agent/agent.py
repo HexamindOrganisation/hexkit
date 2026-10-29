@@ -17,7 +17,7 @@ contract. Two things make it the "gates" demo:
    proxy's ``HexgateTranslator`` renders in the tool-calls widget.
 
 The caller's HexKit role (``context.user.role`` — analyst / editor / admin)
-drives which rules apply, via ``async with hexgate.User(role=...)``.
+drives which rules apply, via ``async with HexgateContext(user_roles=[...])``.
 
 BYOK: the OpenAI key is never sent by HexKit. It's read from this process's env
 (``OPENAI_API_KEY``) or handed in-memory to ``POST /byok`` (the demo notebook
@@ -142,8 +142,8 @@ async def run_gdocs_agent(
         }
         return
 
-    from hexgate import User
     from hexgate.agents.factory import stream_agent
+    from hexgate.runtime import HexgateContext
 
     try:
         # Build + platform-bind off the event loop: create_agent(bind_policy=True)
@@ -169,7 +169,8 @@ async def run_gdocs_agent(
             yield event.model_dump(mode="json")
         return
 
-    async with User(user_id=user_id, role=role):
+    hexgate_context = HexgateContext(user_id=user_id, user_roles=[role] if role else [])
+    async with hexgate_context:
         async for event in stream_agent(agent, handler, {"messages": messages}):
             if cancel.is_set():
                 return

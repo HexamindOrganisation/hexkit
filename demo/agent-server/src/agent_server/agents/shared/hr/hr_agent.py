@@ -42,13 +42,13 @@ load_dotenv()
 
 
 def _actor() -> str:
-    """The calling employee's NAME from the active User scope (the self-service
+    """The calling employee's NAME from the active HexgateContext scope (the self-service
     tools act on this, never a model-supplied id). Falls back to a demo identity
-    on the ungated path, where no User scope is set."""
-    from hexgate.runtime import get_current_user
+    on the ungated path, where no context scope is set."""
+    from hexgate.runtime import get_current_context
 
-    user = get_current_user()
-    return user.user_id if user is not None else "hexkit-demo"
+    context = get_current_context()
+    return context.user_id if context is not None else "hexkit-demo"
 
 
 # ---------------------------------------------------------------------------
@@ -286,10 +286,12 @@ async def stream(input: Any) -> AsyncIterator[Any]:
 async def stream_as(input: Any, *, user_id: str, role: str) -> AsyncIterator[Any]:
     """Same as :func:`stream`, but policy-gated against the caller — ``role``
     (default < manager < gestionnaire_rh) flips each decision."""
-    from hexgate.runtime import User
+    from hexgate.runtime import HexgateContext
 
-    user = User(user_id=user_id, role=role, session_id="hexkit-demo-hr")
+    hexgate_context = HexgateContext(
+        user_id=user_id, user_roles=[role], session_id="hexkit-demo-hr"
+    )
     async for event in _enforced_agent().astream_events(
-        messages_input(input), user=user
+        messages_input(input), hexgate_context=hexgate_context
     ):
         yield event
