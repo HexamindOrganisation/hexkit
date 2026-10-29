@@ -62,6 +62,27 @@ def extract_text(obj: Any) -> str:
     return ""
 
 
+# hexgate >= 0.3 hands a blocked call back to the model as an ordinary tool
+# result prefixed with one of these markers (the tool itself never ran).
+_POLICY_MARKERS = ("[policy_denied]", "[approval_required]")
+
+
+def policy_error(output: Any) -> str | None:
+    """The hexgate policy verdict carried *as* the tool result, or ``None``.
+
+    A denied / approval-gated call is not a framework error, so every adapter
+    returns it as a plain result string (``{"result": "[policy_denied] …"}`` on
+    ADK, a bare string elsewhere). Surface it as the step's ``error`` so the UI
+    renders a blocked step rather than a successful call.
+    """
+    text = output
+    if isinstance(output, dict):
+        text = output.get("result", output.get("error"))
+    if isinstance(text, str) and text.lstrip().startswith(_POLICY_MARKERS):
+        return text
+    return None
+
+
 def coerce_args(value: Any) -> dict[str, Any]:
     """Coerce a tool-arguments payload into a dict (JSON-string tolerated)."""
     if isinstance(value, dict):

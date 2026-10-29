@@ -22,7 +22,7 @@ from typing import Any
 
 from hexa_events import RunEmitter, StreamEvent
 
-from .base import BaseTranslator, coerce_args, extract_text
+from .base import BaseTranslator, coerce_args, extract_text, policy_error
 
 
 class LangChainTranslator(BaseTranslator):
@@ -54,10 +54,12 @@ class LangChainTranslator(BaseTranslator):
 
         if name == "on_tool_end":
             tool_id = self._tool_ids.pop(event.get("run_id", ""), uuid.uuid4().hex)
+            output = data.get("output")
             return emitter.tool_end(
                 tool_id=tool_id,
                 tool_name=event.get("name", "tool"),
-                output=data.get("output"),
+                output=output,
+                error=policy_error(output),
             )
 
         return []

@@ -26,7 +26,7 @@ from typing import Any
 
 from hexa_events import RunEmitter, StreamEvent
 
-from .base import BaseTranslator, coerce_args, extract_text
+from .base import BaseTranslator, coerce_args, extract_text, policy_error
 
 # All streamed deltas in a run share one logical message block until a
 # message_output_created finalizes it (the SDK doesn't key deltas by message).
@@ -82,10 +82,12 @@ class OpenAIAgentsTranslator(BaseTranslator):
                 raw = item.get("raw_item") or {}
                 call_id = raw.get("call_id", "")
                 tool_id = self._tool_ids.pop(call_id, uuid.uuid4().hex)
+                output = item.get("output")
                 return emitter.tool_end(
                     tool_id=tool_id,
                     tool_name=raw.get("name", "tool"),
-                    output=item.get("output"),
+                    output=output,
+                    error=policy_error(output),
                 )
 
         return []
